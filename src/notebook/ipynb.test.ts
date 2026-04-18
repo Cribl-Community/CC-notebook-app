@@ -138,6 +138,10 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
 
   it('preserves sources, outputs, execution counts, and title', () => {
     const state = minimalState()
+    const before = state.cells[0]
+    expect(before?.cell_type).toBe('code')
+    if (before?.cell_type !== 'code') return
+
     const json = serializeNotebookToIpynbJson(state)
     const { title, cells } = parseIpynbJson(json)
     expect(title).toBe('RT')
@@ -147,6 +151,6 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
     if (c?.cell_type !== 'code') return
     expect(c.source).toBe('print(1)')
     expect(c.execution_count).toBe(3)
-    expect(c.outputs).toEqual(state.cells[0]?.outputs)
+    expect(c.outputs).toEqual(before.outputs)
   })
 })
