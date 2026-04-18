@@ -69,6 +69,19 @@ api.example.com:
 
 Sensitive headers (`cookie`, `authorization`, `host`, etc.) are always stripped from the original request — use `headers.inject` for auth. Header values support string literals (`"'static'"`) and KV lookups (`kv.myKey`).
 
+### Local Testing (Pyodide Kernel)
+
+```bash
+npm run dev
+```
+
+- Standard dev (same-origin): `http://localhost:5173`
+  - Shows the Pyodide smoke test in DEV mode; all 3 checks should pass.
+- Null-origin sandbox test (simulates Cribl App Platform iframe): `http://localhost:5173/sandbox-test.html`
+  - Embeds the app in `<iframe sandbox="allow-scripts">` (no `allow-same-origin`).
+  - `window.location.origin` inside the iframe will be `"null"`.
+  - The smoke test should still pass — proving the kernel works under null-origin constraints.
+
 ### Build System
 
 Vite config includes two custom plugins:
