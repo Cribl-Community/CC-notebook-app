@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+declare module '*.py?raw' {
+  const src: string
+  export default src
+}
+
 declare global {
   interface Window {
     /** Cribl App Platform: base URL for API calls (e.g. https://host/api/v1). */

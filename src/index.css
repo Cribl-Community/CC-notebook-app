@@ -913,6 +913,80 @@ body {
   color: var(--nb-placeholder);
 }
 
+/* CodeMirror cell editor */
+.nb-cell-editor-cm {
+  min-height: 40px;
+}
+
+.nb-cell-editor-cm .cm-editor {
+  outline: none;
+}
+
+.nb-cell-editor-cm .cm-editor.cm-focused {
+  outline: none;
+}
+
+/* Jupyter-style completion tooltip (CodeMirror) */
+.cm-tooltip.cm-tooltip-autocomplete {
+  border: 1px solid var(--nb-border);
+  border-radius: 4px;
+  background: var(--nb-bg-cell);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  max-height: 240px;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete ul {
+  padding: 4px 0;
+  margin: 0;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete li {
+  padding: 2px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete li[aria-selected] {
+  background: var(--nb-brand-focus);
+}
+
+.cm-completionIcon {
+  width: 1.1em;
+  height: 1.1em;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+}
+
+.cm-completionIcon-function {
+  background: #1565c0;
+}
+
+.cm-completionIcon-class {
+  background: #2e7d32;
+}
+
+.cm-completionIcon-namespace {
+  background: #c62828;
+}
+
+.cm-completionIcon-property {
+  background: #ef6c00;
+}
+
+.cm-completionDetail {
+  margin-left: auto;
+  padding-left: 12px;
+  color: var(--nb-text-muted);
+  font-size: 12px;
+}
+
 /* ─── Outputs ──────────────────────────────────────────────────── */
 
 .nb-cell-outputs {

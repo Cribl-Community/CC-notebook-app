@@ -1,10 +1,15 @@
 import { useRef, useEffect, useCallback } from 'react'
+import { Compartment, EditorState } from '@codemirror/state'
+import { EditorView } from '@codemirror/view'
 import type { CodeCell as CellData } from './types'
 import { CellOutput } from './CellOutput'
+import { createPythonCellExtensions } from './pythonCodeMirror'
+import type { CompletionItem } from '../pyodide/types'
 
 interface CodeCellProps {
   cell: CellData
   isSelected: boolean
+  theme: 'dark' | 'light'
   onSelect: () => void
   onRun: () => void
   onDelete: () => void
@@ -12,6 +17,8 @@ interface CodeCellProps {
   onClearOutput: () => void
   onMoveUp?: () => void
   onMoveDown?: () => void
+  /** Namespace-aware completion from the active tab's Pyodide kernel (Tab). */
+  completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
 }
 
 function GutterLabel({ cell }: { cell: CellData }) {
@@ -23,6 +30,7 @@ function GutterLabel({ cell }: { cell: CellData }) {
 export function CodeCell({
   cell,
   isSelected,
+  theme,
   onSelect,
   onRun,
   onDelete,
@@ -30,29 +38,91 @@ export function CodeCell({
   onClearOutput,
   onMoveUp,
   onMoveDown,
+  completeCode,
 }: CodeCellProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const hostRef = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<EditorView | null>(null)
+  const onRunRef = useRef(onRun)
+  const onChangeRef = useRef(onChange)
+  const onSelectRef = useRef(onSelect)
+  const completeRef = useRef(completeCode)
+  const readOnlyCompartmentRef = useRef<Compartment | null>(null)
 
   useEffect(() => {
-    const ta = textareaRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = `${ta.scrollHeight}px`
+    onRunRef.current = onRun
+    onChangeRef.current = onChange
+    onSelectRef.current = onSelect
+    completeRef.current = completeCode
+  })
+
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host) return
+
+    const readOnlyCompartment = new Compartment()
+    readOnlyCompartmentRef.current = readOnlyCompartment
+
+    const extensions = createPythonCellExtensions({
+      theme,
+      readOnlyCompartment,
+      readOnly: cell.execution_state === 'running',
+      placeholderText: '# Enter Python code here…',
+      onRun: () => onRunRef.current(),
+      getComplete: () => completeRef.current ?? undefined,
+    })
+
+    const state = EditorState.create({
+      doc: cell.source,
+      extensions: [
+        ...extensions,
+        EditorView.updateListener.of((u) => {
+          if (u.focusChanged && u.view.hasFocus) {
+            onSelectRef.current()
+          }
+          if (u.docChanged) {
+            onChangeRef.current(u.state.doc.toString())
+          }
+        }),
+      ],
+    })
+
+    const view = new EditorView({ state, parent: host })
+    viewRef.current = view
+    return () => {
+      view.destroy()
+      viewRef.current = null
+    }
+    // Editor is tied to cell identity and theme; document text and read-only are updated in other effects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [cell.id, theme])
+
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const cur = view.state.doc.toString()
+    if (cur !== cell.source) {
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length, insert: cell.source },
+      })
+    }
   }, [cell.source])
 
   useEffect(() => {
-    if (isSelected) textareaRef.current?.focus()
+    const view = viewRef.current
+    const comp = readOnlyCompartmentRef.current
+    if (!view || !comp) return
+    view.dispatch({
+      effects: comp.reconfigure(EditorState.readOnly.of(cell.execution_state === 'running')),
+    })
+  }, [cell.execution_state])
+
+  useEffect(() => {
+    if (isSelected) viewRef.current?.focus()
   }, [isSelected])
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if ((e.shiftKey || e.ctrlKey) && e.key === 'Enter') {
-        e.preventDefault()
-        onRun()
-      }
-    },
-    [onRun],
-  )
+  const onEditorMouseDown = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+  }, [])
 
   const isRunning = cell.execution_state === 'running'
   const canClearOutput = cell.outputs.length > 0 || cell.execution_count !== null
@@ -80,7 +150,10 @@ export function CodeCell({
           </button>
           <button
             className="nb-btn nb-btn-move"
-            onClick={(e) => { e.stopPropagation(); onMoveUp?.() }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onMoveUp?.()
+            }}
             disabled={!onMoveUp}
             title="Move cell up"
           >
@@ -88,7 +161,10 @@ export function CodeCell({
           </button>
           <button
             className="nb-btn nb-btn-move"
-            onClick={(e) => { e.stopPropagation(); onMoveDown?.() }}
+            onClick={(e) => {
+              e.stopPropagation()
+              onMoveDown?.()
+            }}
             disabled={!onMoveDown}
             title="Move cell down"
           >
@@ -116,17 +192,10 @@ export function CodeCell({
             ✕
           </button>
         </div>
-        <textarea
-          ref={textareaRef}
-          className="nb-cell-editor"
-          value={cell.source}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={onSelect}
-          onClick={(e) => e.stopPropagation()}
-          placeholder="# Enter Python code here…"
-          spellCheck={false}
-          rows={1}
+        <div
+          ref={hostRef}
+          className="nb-cell-editor nb-cell-editor-cm"
+          onMouseDown={onEditorMouseDown}
         />
         {cell.outputs.length > 0 && (
           <div className="nb-cell-outputs">

@@ -1,5 +1,6 @@
 import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import { PyodideKernel } from '../pyodide/PyodideKernel'
+import type { CompletionItem } from '../pyodide/types'
 import { createEmptyNotebookCells } from './notebookReducer'
 import type { CellId, NotebookAction } from './types'
 import { parseIpynbJson, serializeNotebookToIpynbJson, titleToDownloadFilename } from './ipynb'
@@ -265,6 +266,24 @@ export function NotebookPage() {
   const dispatchNotebookForTab = useCallback((tabId: string, action: NotebookAction) => {
     dispatch({ type: 'TAB_NOTEBOOK', tabId, action })
   }, [])
+
+  const completeCode = useCallback(
+    async (code: string, cursor: number): Promise<CompletionItem[] | null> => {
+      const tid = activeTabIdRef.current
+      const kernel = kernelsRef.current.get(tid)
+      if (!kernel) return null
+      const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+      const ks = tab?.notebook.kernelStatus
+      if (ks === 'loading' || ks === 'error') return null
+      try {
+        await kernel.ready
+      } catch {
+        return null
+      }
+      return kernel.complete(code, cursor)
+    },
+    [],
+  )
 
   const runCell = useCallback(
     (id: CellId) => {
@@ -770,6 +789,8 @@ export function NotebookPage() {
                       selectedId={state.selectedId}
                       dispatch={dispatchNotebook}
                       onRun={runCell}
+                      theme={theme}
+                      completeCode={completeCode}
                     />
                   </div>
                 </div>

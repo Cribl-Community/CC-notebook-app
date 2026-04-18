@@ -1,15 +1,25 @@
 import type { Cell, CellId, NotebookAction } from './types'
 import { CodeCell } from './CodeCell'
 import { MarkdownCell } from './MarkdownCell'
+import type { CompletionItem } from '../pyodide/types'
 
 interface CellListProps {
   cells: Cell[]
   selectedId: CellId | null
   dispatch: React.Dispatch<NotebookAction>
   onRun: (id: CellId) => void
+  theme: 'dark' | 'light'
+  completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
 }
 
-export function CellList({ cells, selectedId, dispatch, onRun }: CellListProps) {
+export function CellList({
+  cells,
+  selectedId,
+  dispatch,
+  onRun,
+  theme,
+  completeCode,
+}: CellListProps) {
   return (
     <div className="nb-cell-list">
       {cells.map((cell, index) => (
@@ -18,6 +28,8 @@ export function CellList({ cells, selectedId, dispatch, onRun }: CellListProps) 
             <CodeCell
               cell={cell}
               isSelected={cell.id === selectedId}
+              theme={theme}
+              completeCode={completeCode}
               onSelect={() => dispatch({ type: 'SELECT_CELL', id: cell.id })}
               onRun={() => onRun(cell.id)}
               onDelete={() => dispatch({ type: 'DELETE_CELL', id: cell.id })}

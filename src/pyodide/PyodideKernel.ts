@@ -1,12 +1,23 @@
-import type { CellOutput, KernelResult, WorkerInbound, WorkerOutbound } from './types'
+import type {
+  CellOutput,
+  CompletionItem,
+  KernelResult,
+  WorkerInbound,
+  WorkerOutbound,
+} from './types'
 import { getPyodidePackageBaseUrl } from './pyodideVersion'
+import completionPy from './notebook_complete.py?raw'
 
 // Worker source as a classic-worker string (not ES module) so importScripts is available.
 // The pyodide URL is passed via the first 'init' message so the worker loads from
 // the app's own origin rather than a CDN — required in Cribl's sandboxed iframe
 // where external importScripts calls are blocked.
-const WORKER_SOURCE = `
+const WORKER_SOURCE =
+  `
 let pyodide = null;
+const COMPLETION_PY = ` +
+  JSON.stringify(completionPy) +
+  `;
 
 self.onmessage = async function(e) {
   const msg = e.data;
@@ -18,9 +29,27 @@ self.onmessage = async function(e) {
         indexURL: msg.pyodideBaseUrl,
         packageBaseUrl: msg.pyodidePackageBaseUrl,
       });
+      await pyodide.runPythonAsync(COMPLETION_PY);
       self.postMessage({ type: 'ready' });
     } catch (err) {
       self.postMessage({ type: 'init_error', message: err.message });
+    }
+    return;
+  }
+
+  if (msg.type === 'complete') {
+    if (!pyodide) return;
+    const id = msg.id;
+    try {
+      pyodide.globals.set('_nb_code', msg.code);
+      pyodide.globals.set('_nb_cursor', msg.cursor);
+      const jsonStr = await pyodide.runPythonAsync(
+        '_notebook_complete_json(_nb_code, _nb_cursor)',
+      );
+      const options = JSON.parse(jsonStr);
+      self.postMessage({ type: 'complete_result', id: id, options: options });
+    } catch (err) {
+      self.postMessage({ type: 'complete_result', id: id, options: [] });
     }
     return;
   }
@@ -62,6 +91,7 @@ export class PyodideKernel {
   readonly ready: Promise<void>
   private worker: Worker
   private pending = new Map<string, Pending>()
+  private pendingComplete = new Map<string, (opts: CompletionItem[]) => void>()
 
   constructor() {
     const blob = new Blob([WORKER_SOURCE], { type: 'application/javascript' })
@@ -76,8 +106,22 @@ export class PyodideKernel {
 
     this.worker.onmessage = (e: MessageEvent<WorkerOutbound>) => {
       const msg = e.data
-      if (msg.type === 'ready') { onReady(); return }
-      if (msg.type === 'init_error') { onFail(msg.message); return }
+      if (msg.type === 'ready') {
+        onReady()
+        return
+      }
+      if (msg.type === 'init_error') {
+        onFail(msg.message)
+        return
+      }
+
+      if (msg.type === 'complete_result') {
+        const p = this.pendingComplete.get(msg.id)
+        if (!p) return
+        this.pendingComplete.delete(msg.id)
+        p(msg.options)
+        return
+      }
 
       if (msg.type === 'stream') {
         const p = this.pending.get(msg.id)
@@ -134,11 +178,23 @@ export class PyodideKernel {
     })
   }
 
+  complete(code: string, cursor: number): Promise<CompletionItem[]> {
+    const id = crypto.randomUUID()
+    return new Promise<CompletionItem[]>((resolve) => {
+      this.pendingComplete.set(id, resolve)
+      this.worker.postMessage({ type: 'complete', id, code, cursor } satisfies WorkerInbound)
+    })
+  }
+
   dispose(): void {
     this.worker.terminate()
     for (const p of this.pending.values()) {
       p.resolve({ outputs: [] })
     }
     this.pending.clear()
+    for (const r of this.pendingComplete.values()) {
+      r([])
+    }
+    this.pendingComplete.clear()
   }
 }
