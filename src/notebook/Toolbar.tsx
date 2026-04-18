@@ -7,6 +7,9 @@ interface ToolbarProps {
   onTitleChange: (title: string) => void
   onDownload: () => void
   onImportFile: (file: File) => void
+  onSave: () => void
+  saveDisabled?: boolean
+  dirty?: boolean
   onAddCodeCell: () => void
   onAddMarkdownCell: () => void
   onRunAll: () => void
@@ -47,6 +50,9 @@ export function Toolbar({
   onTitleChange,
   onDownload,
   onImportFile,
+  onSave,
+  saveDisabled = false,
+  dirty = false,
   onAddCodeCell,
   onAddMarkdownCell,
   onRunAll,
@@ -69,7 +75,21 @@ export function Toolbar({
         aria-label="Notebook title"
         title="Notebook title"
       />
+      {dirty && (
+        <span className="nb-toolbar-dirty" title="Unsaved changes">
+          ●
+        </span>
+      )}
       <div className="nb-toolbar-actions">
+        <button
+          className="nb-btn nb-btn-primary"
+          type="button"
+          onClick={onSave}
+          disabled={saveDisabled}
+          title="Save notebook to Cribl storage"
+        >
+          Save
+        </button>
         <button className="nb-btn" type="button" onClick={onDownload} title="Download as .ipynb">
           ⬇ Download
         </button>

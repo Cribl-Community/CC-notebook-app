@@ -28,6 +28,11 @@ export const initialState: NotebookState = {
   kernelStatus: 'loading',
 }
 
+/** Fresh code cell for a new in-memory notebook (new ids each call). */
+export function createEmptyNotebookCells(): NotebookState['cells'] {
+  return [makeCodeCell()]
+}
+
 export function notebookReducer(state: NotebookState, action: NotebookAction): NotebookState {
   switch (action.type) {
     case 'ADD_CELL': {
