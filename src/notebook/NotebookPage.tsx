@@ -1,4 +1,4 @@
-import { useReducer, useRef, useCallback, useEffect } from 'react'
+import { useReducer, useRef, useCallback, useEffect, useState } from 'react'
 import { PyodideKernel } from '../pyodide/PyodideKernel'
 import { notebookReducer, initialState } from './notebookReducer'
 import type { CellId, NotebookState } from './types'
@@ -6,6 +6,23 @@ import { Toolbar } from './Toolbar'
 import { CellList } from './CellList'
 
 export function NotebookPage() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      return (localStorage.getItem('nb-theme') as 'dark' | 'light') ?? 'dark'
+    } catch {
+      return 'dark'
+    }
+  })
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try {
+      localStorage.setItem('nb-theme', theme)
+    } catch {
+      // localStorage unavailable in sandboxed iframe — theme resets on reload
+    }
+  }, [theme])
+
   const [state, dispatch] = useReducer(notebookReducer, initialState)
   const kernelRef = useRef<PyodideKernel | null>(null)
   const runQueueRef = useRef<Promise<void>>(Promise.resolve())
@@ -115,6 +132,8 @@ export function NotebookPage() {
         onAddMarkdownCell={() => dispatch({ type: 'ADD_CELL', cellType: 'markdown' })}
         onRunAll={runAll}
         onRestart={restartKernel}
+        theme={theme}
+        onThemeChange={setTheme}
       />
       {state.kernelStatus === 'loading' && (
         <div className="nb-loading">Loading Python kernel…</div>

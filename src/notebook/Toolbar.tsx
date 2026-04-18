@@ -6,6 +6,8 @@ interface ToolbarProps {
   onAddMarkdownCell: () => void
   onRunAll: () => void
   onRestart: () => void
+  theme: 'dark' | 'light'
+  onThemeChange: (t: 'dark' | 'light') => void
 }
 
 function KernelIndicator({ status }: { status: KernelStatus }) {
@@ -39,6 +41,8 @@ export function Toolbar({
   onAddMarkdownCell,
   onRunAll,
   onRestart,
+  theme,
+  onThemeChange,
 }: ToolbarProps) {
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
   return (
@@ -58,6 +62,16 @@ export function Toolbar({
         <button className="nb-btn" onClick={onRestart} title="Restart kernel and clear outputs">
           ↺ Restart
         </button>
+        <div className="nb-toolbar-divider" />
+        <select
+          className="nb-theme-select"
+          value={theme}
+          onChange={(e) => onThemeChange(e.target.value as 'dark' | 'light')}
+          title="Select theme"
+        >
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
       </div>
       <KernelIndicator status={kernelStatus} />
     </div>
