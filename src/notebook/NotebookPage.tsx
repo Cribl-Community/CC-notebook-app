@@ -666,7 +666,7 @@ export function NotebookPage() {
                 onNewTab={handleNewTab}
               />
               <div className="nb-editor-shell">
-                <div className="nb-main">
+                <div className="nb-toolbar-rail">
                   <Toolbar
                     kernelStatus={state.kernelStatus}
                     title={state.title}
@@ -684,14 +684,16 @@ export function NotebookPage() {
                     theme={theme}
                     onThemeChange={setTheme}
                   />
-                  {state.kernelStatus === 'loading' && (
-                    <div className="nb-loading">Loading Python kernel…</div>
-                  )}
-                  {state.kernelStatus === 'error' && (
-                    <div className="nb-loading nb-loading--error">
-                      Kernel failed to load. Check console for details.
-                    </div>
-                  )}
+                </div>
+                {state.kernelStatus === 'loading' && (
+                  <div className="nb-loading">Loading Python kernel…</div>
+                )}
+                {state.kernelStatus === 'error' && (
+                  <div className="nb-loading nb-loading--error">
+                    Kernel failed to load. Check console for details.
+                  </div>
+                )}
+                <div className="nb-main">
                   <div className="nb-scroll">
                     <CellList
                       cells={state.cells}
