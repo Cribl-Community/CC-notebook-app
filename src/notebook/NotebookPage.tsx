@@ -2,8 +2,19 @@ import { useReducer, useRef, useCallback, useEffect, useState } from 'react'
 import { PyodideKernel } from '../pyodide/PyodideKernel'
 import { notebookReducer, initialState } from './notebookReducer'
 import type { CellId, NotebookState } from './types'
+import { parseIpynbJson, serializeNotebookToIpynbJson, titleToDownloadFilename } from './ipynb'
 import { Toolbar } from './Toolbar'
 import { CellList } from './CellList'
+
+function readStoredNotebookTitle(): string {
+  try {
+    const t = localStorage.getItem('nb-notebook-title')
+    if (t?.trim()) return t.trim()
+  } catch {
+    // localStorage unavailable
+  }
+  return initialState.title
+}
 
 export function NotebookPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -23,7 +34,11 @@ export function NotebookPage() {
     }
   }, [theme])
 
-  const [state, dispatch] = useReducer(notebookReducer, initialState)
+  const [state, dispatch] = useReducer(
+    notebookReducer,
+    undefined,
+    () => ({ ...initialState, title: readStoredNotebookTitle() }),
+  )
   const kernelRef = useRef<PyodideKernel | null>(null)
   const runQueueRef = useRef<Promise<void>>(Promise.resolve())
   const execCounterRef = useRef(0)
@@ -35,6 +50,14 @@ export function NotebookPage() {
   useEffect(() => {
     stateRef.current = state
   })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('nb-notebook-title', state.title)
+    } catch {
+      // ignore
+    }
+  }, [state.title])
 
   const initKernel = useCallback(() => {
     const myGen = ++genRef.current
@@ -48,7 +71,7 @@ export function NotebookPage() {
       .catch(() => {
         if (genRef.current === myGen) dispatch({ type: 'SET_KERNEL_STATUS', status: 'error' })
       })
-  }, [])
+  }, [dispatch])
 
   useEffect(() => {
     initKernel()
@@ -107,7 +130,7 @@ export function NotebookPage() {
         if (genRef.current === myGen) dispatch({ type: 'SET_KERNEL_STATUS', status: 'ready' })
       }
     })
-  }, [])
+  }, [dispatch])
 
   const runAll = useCallback(() => {
     stateRef.current.cells
@@ -122,13 +145,42 @@ export function NotebookPage() {
     execCounterRef.current = 0
     dispatch({ type: 'RESTART' })
     initKernel()
-  }, [initKernel])
+  }, [dispatch, initKernel])
+
+  const handleDownload = useCallback(() => {
+    const json = serializeNotebookToIpynbJson(state)
+    const blob = new Blob([json], { type: 'application/x-ipynb+json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = titleToDownloadFilename(state.title)
+    a.rel = 'noopener'
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [state])
+
+  const handleImportFile = useCallback((file: File) => {
+    void (async () => {
+      try {
+        const text = await file.text()
+        const { title, cells } = parseIpynbJson(text)
+        dispatch({ type: 'LOAD_NOTEBOOK', title, cells })
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to open notebook'
+        window.alert(msg)
+      }
+    })()
+  }, [dispatch])
 
   return (
     <div className="nb-page">
       <div className="nb-main">
         <Toolbar
           kernelStatus={state.kernelStatus}
+          title={state.title}
+          onTitleChange={(t) => dispatch({ type: 'SET_NOTEBOOK_TITLE', title: t })}
+          onDownload={handleDownload}
+          onImportFile={handleImportFile}
           onAddCodeCell={() => dispatch({ type: 'ADD_CELL', cellType: 'code' })}
           onAddMarkdownCell={() => dispatch({ type: 'ADD_CELL', cellType: 'markdown' })}
           onRunAll={runAll}

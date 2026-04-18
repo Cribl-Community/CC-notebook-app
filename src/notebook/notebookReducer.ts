@@ -21,6 +21,7 @@ function makeMarkdownCell(): MarkdownCell {
 }
 
 export const initialState: NotebookState = {
+  title: 'Untitled',
   cells: [makeCodeCell()],
   selectedId: null,
   executionCounter: 0,
@@ -149,6 +150,23 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         executionCounter: 0,
         kernelStatus: 'loading',
       }
+
+    case 'SET_NOTEBOOK_TITLE': {
+      const t = action.title.trim()
+      return { ...state, title: t.length > 0 ? t : 'Untitled' }
+    }
+
+    case 'LOAD_NOTEBOOK': {
+      const cells = action.cells.length > 0 ? action.cells : [makeCodeCell()]
+      const title = action.title.trim()
+      return {
+        ...state,
+        title: title.length > 0 ? title : 'Untitled',
+        cells,
+        selectedId: cells[0]?.id ?? null,
+        executionCounter: 0,
+      }
+    }
 
     default:
       return state

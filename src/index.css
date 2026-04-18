@@ -131,6 +131,31 @@ body {
   letter-spacing: 0.02em;
 }
 
+.nb-toolbar-title-input {
+  flex: 1;
+  min-width: 100px;
+  max-width: min(360px, 40vw);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--nb-text);
+  letter-spacing: 0.02em;
+  font-family: var(--mono);
+  background: var(--nb-bg-cell);
+  border: 1px solid var(--nb-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  outline: none;
+}
+
+.nb-toolbar-title-input:focus {
+  border-color: var(--nb-brand);
+  box-shadow: 0 0 0 1px var(--nb-brand-focus);
+}
+
+.nb-toolbar-file-input {
+  display: none;
+}
+
 .nb-toolbar-actions {
   display: flex;
   gap: 6px;
