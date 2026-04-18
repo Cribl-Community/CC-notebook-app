@@ -16,17 +16,17 @@ const CHECKS: Omit<Check, 'status' | 'detail'>[] = [
   {
     label: '1 + 1',
     code: '1 + 1',
-    expect: (r) => 'value' in r && r.value === '2',
+    expect: (r) => r.outputs.some((o) => o.output_type === 'execute_result' && o.data === '2'),
   },
   {
     label: 'sys.version',
     code: 'import sys; sys.version',
-    expect: (r) => 'value' in r && r.value.length > 0,
+    expect: (r) => r.outputs.some((o) => o.output_type === 'execute_result' && o.data.length > 0),
   },
   {
     label: 'sum(range(10))',
     code: 'sum(range(10))',
-    expect: (r) => 'value' in r && r.value === '45',
+    expect: (r) => r.outputs.some((o) => o.output_type === 'execute_result' && o.data === '45'),
   },
 ]
 
@@ -40,6 +40,18 @@ function statusColor(s: CheckStatus): string {
   if (s === 'pass') return '#22c55e'
   if (s === 'fail') return '#ef4444'
   return '#94a3b8'
+}
+
+function resultDetail(r: KernelResult): string {
+  return r.outputs
+    .map((o) =>
+      o.output_type === 'execute_result'
+        ? o.data
+        : o.output_type === 'stream'
+          ? o.text
+          : `${o.ename}: ${o.evalue}`,
+    )
+    .join(' ')
 }
 
 type Phase = 'loading' | 'running' | 'done' | 'error'
@@ -67,7 +79,7 @@ export default function PyodideSmokeTest() {
           const check = CHECKS[i]
           const result = await kernel.execute(check.code)
           const passed = check.expect(result)
-          const detail = 'value' in result ? result.value : result.error
+          const detail = resultDetail(result)
           setChecks((prev) =>
             prev.map((c, idx) =>
               idx === i ? { ...c, status: passed ? 'pass' : 'fail', detail } : c,
@@ -107,7 +119,7 @@ export default function PyodideSmokeTest() {
       </div>
 
       {phase === 'loading' && (
-        <div style={{ color: '#94a3b8' }}>Loading Pyodide from CDN…</div>
+        <div style={{ color: '#94a3b8' }}>Loading Pyodide…</div>
       )}
 
       {phase === 'error' && (

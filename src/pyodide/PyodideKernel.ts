@@ -1,4 +1,4 @@
-import type { KernelResult, WorkerInbound, WorkerOutbound } from './types'
+import type { CellOutput, KernelResult, WorkerInbound, WorkerOutbound } from './types'
 
 // Worker source as a classic-worker string (not ES module) so importScripts is available.
 // The pyodide URL is passed via the first 'init' message so the worker loads from
@@ -23,17 +23,35 @@ self.onmessage = async function(e) {
 
   if (msg.type === 'exec') {
     if (!pyodide) return;
+    const id = msg.id;
+    pyodide.setStdout({ batched: function(text) {
+      self.postMessage({ type: 'stream', id: id, name: 'stdout', text: text });
+    }});
+    pyodide.setStderr({ batched: function(text) {
+      self.postMessage({ type: 'stream', id: id, name: 'stderr', text: text });
+    }});
     try {
       const result = await pyodide.runPythonAsync(msg.code);
-      self.postMessage({ type: 'result', id: msg.id, value: String(result ?? '') });
+      self.postMessage({ type: 'result', id: id, value: String(result ?? '') });
     } catch (err) {
-      self.postMessage({ type: 'error', id: msg.id, message: err.message });
+      const message = err.message || String(err);
+      const lines = message.split('\\n');
+      const nonEmpty = lines.filter(function(l) { return l.trim().length > 0; });
+      const lastLine = nonEmpty.length > 0 ? nonEmpty[nonEmpty.length - 1] : '';
+      const colonIdx = lastLine.indexOf(': ');
+      const ename = colonIdx > 0 ? lastLine.slice(0, colonIdx) : 'Error';
+      const evalue = colonIdx > 0 ? lastLine.slice(colonIdx + 2) : lastLine;
+      self.postMessage({ type: 'error', id: id, ename: ename, evalue: evalue, traceback: lines });
     }
   }
 };
 `
 
-type Pending = { resolve: (r: KernelResult) => void }
+type Pending = {
+  outputs: CellOutput[]
+  onStream?: (name: 'stdout' | 'stderr', text: string) => void
+  resolve: (r: KernelResult) => void
+}
 
 export class PyodideKernel {
   readonly ready: Promise<void>
@@ -51,16 +69,38 @@ export class PyodideKernel {
       onFail = (msg) => reject(new Error(msg))
     })
 
-    this.worker.onmessage = (e: MessageEvent<WorkerOutbound | { type: 'init_error'; message: string }>) => {
+    this.worker.onmessage = (e: MessageEvent<WorkerOutbound>) => {
       const msg = e.data
       if (msg.type === 'ready') { onReady(); return }
       if (msg.type === 'init_error') { onFail(msg.message); return }
-      if (msg.type === 'result' || msg.type === 'error') {
+
+      if (msg.type === 'stream') {
+        const p = this.pending.get(msg.id)
+        if (!p) return
+        const output: CellOutput = { output_type: 'stream', name: msg.name, text: msg.text }
+        p.outputs.push(output)
+        p.onStream?.(msg.name, msg.text)
+        return
+      }
+
+      if (msg.type === 'result') {
         const p = this.pending.get(msg.id)
         if (!p) return
         this.pending.delete(msg.id)
-        if (msg.type === 'result') p.resolve({ value: msg.value })
-        else p.resolve({ error: msg.message })
+        if (msg.value !== '') {
+          p.outputs.push({ output_type: 'execute_result', data: msg.value })
+        }
+        p.resolve({ outputs: p.outputs })
+        return
+      }
+
+      if (msg.type === 'error') {
+        const p = this.pending.get(msg.id)
+        if (!p) return
+        this.pending.delete(msg.id)
+        p.outputs.push({ output_type: 'error', ename: msg.ename, evalue: msg.evalue, traceback: msg.traceback })
+        p.resolve({ outputs: p.outputs })
+        return
       }
     }
 
@@ -73,17 +113,23 @@ export class PyodideKernel {
     this.worker.postMessage(initMsg)
   }
 
-  execute(code: string): Promise<KernelResult> {
+  execute(
+    code: string,
+    onStream?: (name: 'stdout' | 'stderr', text: string) => void,
+  ): Promise<KernelResult> {
     const id = crypto.randomUUID()
-    const msg: WorkerInbound = { type: 'exec', id, code }
+    const outputs: CellOutput[] = []
     return new Promise<KernelResult>((resolve) => {
-      this.pending.set(id, { resolve })
-      this.worker.postMessage(msg)
+      this.pending.set(id, { outputs, onStream, resolve })
+      this.worker.postMessage({ type: 'exec', id, code } satisfies WorkerInbound)
     })
   }
 
   dispose(): void {
     this.worker.terminate()
+    for (const p of this.pending.values()) {
+      p.resolve({ outputs: [] })
+    }
     this.pending.clear()
   }
 }

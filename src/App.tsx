@@ -1,5 +1,5 @@
-import PyodideSmokeTest from './PyodideSmokeTest'
+import { NotebookPage } from './notebook/NotebookPage'
 
 export default function App() {
-  return <PyodideSmokeTest />
+  return <NotebookPage />
 }
