@@ -27,6 +27,8 @@ export type Cell = CodeCell | MarkdownCell
 export type KernelStatus = 'loading' | 'ready' | 'busy' | 'error'
 
 export interface NotebookState {
+  /** Display name without extension; used for download filename. */
+  title: string
   cells: Cell[]
   selectedId: CellId | null
   executionCounter: number
@@ -47,3 +49,5 @@ export type NotebookAction =
   | { type: 'SET_KERNEL_STATUS'; status: KernelStatus }
   | { type: 'MOVE_CELL'; id: CellId; direction: 'up' | 'down' }
   | { type: 'RESTART' }
+  | { type: 'SET_NOTEBOOK_TITLE'; title: string }
+  | { type: 'LOAD_NOTEBOOK'; title: string; cells: Cell[] }

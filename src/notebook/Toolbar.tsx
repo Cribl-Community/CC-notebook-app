@@ -1,7 +1,12 @@
+import { useRef } from 'react'
 import type { KernelStatus } from './types'
 
 interface ToolbarProps {
   kernelStatus: KernelStatus
+  title: string
+  onTitleChange: (title: string) => void
+  onDownload: () => void
+  onImportFile: (file: File) => void
   onAddCodeCell: () => void
   onAddMarkdownCell: () => void
   onRunAll: () => void
@@ -11,14 +16,14 @@ interface ToolbarProps {
 }
 
 function KernelIndicator({ status }: { status: KernelStatus }) {
-  const color =
+  const dotClass =
     status === 'ready'
-      ? '#22c55e'
+      ? 'nb-kernel-dot nb-kernel-dot--ready'
       : status === 'busy'
-        ? '#f59e0b'
+        ? 'nb-kernel-dot nb-kernel-dot--busy'
         : status === 'error'
-          ? '#ef4444'
-          : '#94a3b8'
+          ? 'nb-kernel-dot nb-kernel-dot--error'
+          : 'nb-kernel-dot nb-kernel-dot--loading'
   const label =
     status === 'ready'
       ? 'Ready'
@@ -29,7 +34,7 @@ function KernelIndicator({ status }: { status: KernelStatus }) {
           : 'Loading…'
   return (
     <span className="nb-kernel-status">
-      <span style={{ color, fontSize: 10, lineHeight: 1 }}>●</span>
+      <span className={dotClass}>●</span>
       <span>{label}</span>
     </span>
   )
@@ -37,6 +42,10 @@ function KernelIndicator({ status }: { status: KernelStatus }) {
 
 export function Toolbar({
   kernelStatus,
+  title,
+  onTitleChange,
+  onDownload,
+  onImportFile,
   onAddCodeCell,
   onAddMarkdownCell,
   onRunAll,
@@ -44,11 +53,46 @@ export function Toolbar({
   theme,
   onThemeChange,
 }: ToolbarProps) {
+  const fileRef = useRef<HTMLInputElement>(null)
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
+
   return (
     <div className="nb-toolbar">
-      <span className="nb-toolbar-title">Notebook</span>
+      <input
+        type="text"
+        className="nb-toolbar-title-input"
+        value={title}
+        onChange={(e) => onTitleChange(e.target.value)}
+        spellCheck={false}
+        aria-label="Notebook title"
+        title="Notebook title"
+      />
       <div className="nb-toolbar-actions">
+        <button className="nb-btn" type="button" onClick={onDownload} title="Download as .ipynb">
+          ⬇ Download
+        </button>
+        <button
+          className="nb-btn"
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          title="Open a Jupyter notebook file"
+        >
+          ⬆ Upload
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          className="nb-toolbar-file-input"
+          accept=".ipynb,application/json,.json"
+          aria-hidden
+          tabIndex={-1}
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) onImportFile(f)
+            e.target.value = ''
+          }}
+        />
+        <div className="nb-toolbar-divider" />
         <button className="nb-btn" onClick={onAddCodeCell} title="Add code cell at end">
           + Code
         </button>
