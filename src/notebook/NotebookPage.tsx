@@ -7,7 +7,7 @@ import { Toolbar } from './Toolbar'
 import { CellList } from './CellList'
 import { NotebookSidebar } from './NotebookSidebar'
 import { NotebookTabs } from './NotebookTabs'
-import { NotebookMenuBar } from './NotebookMenuBar'
+import { NotebookDialog } from './NotebookDialog'
 import { listMoveTargets } from './manifest'
 import type { Manifest } from './manifest'
 import {
@@ -29,6 +29,11 @@ import {
   saveNotebookState,
   storeManifest,
 } from './notebookLibrary'
+
+type DialogState =
+  | { kind: 'alert'; message: string }
+  | { kind: 'confirm'; message: string }
+  | { kind: 'prompt'; title: string; label: string; defaultValue: string; input: string }
 
 function readStoredNotebookTitle(): string | undefined {
   try {
@@ -70,6 +75,69 @@ export function NotebookPage() {
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const [movingId, setMovingId] = useState<string | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
+  const [dialog, setDialog] = useState<DialogState | null>(null)
+  const confirmRef = useRef<((ok: boolean) => void) | null>(null)
+  const promptRef = useRef<((value: string | null) => void) | null>(null)
+
+  const showAlert = useCallback((message: string) => {
+    setDialog({ kind: 'alert', message })
+  }, [])
+
+  const showConfirm = useCallback((message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      confirmRef.current = (ok: boolean) => {
+        confirmRef.current = null
+        resolve(ok)
+      }
+      setDialog({ kind: 'confirm', message })
+    })
+  }, [])
+
+  const showPrompt = useCallback(
+    (title: string, label: string, defaultValue: string): Promise<string | null> => {
+      return new Promise((resolve) => {
+        promptRef.current = (value: string | null) => {
+          promptRef.current = null
+          resolve(value)
+        }
+        setDialog({ kind: 'prompt', title, label, defaultValue, input: defaultValue })
+      })
+    },
+    [],
+  )
+
+  const dismissAlert = useCallback(() => setDialog(null), [])
+
+  const dialogConfirmOk = useCallback(() => {
+    confirmRef.current?.(true)
+    setDialog(null)
+  }, [])
+
+  const dialogConfirmCancel = useCallback(() => {
+    confirmRef.current?.(false)
+    setDialog(null)
+  }, [])
+
+  const dialogPromptSubmit = useCallback(() => {
+    setDialog((d) => {
+      if (d?.kind !== 'prompt') return d
+      const fn = promptRef.current
+      if (fn) {
+        promptRef.current = null
+        fn(d.input)
+      }
+      return null
+    })
+  }, [])
+
+  const dialogPromptCancel = useCallback(() => {
+    promptRef.current?.(null)
+    setDialog(null)
+  }, [])
+
+  const dialogPromptChange = useCallback((input: string) => {
+    setDialog((d) => (d?.kind === 'prompt' ? { ...d, input } : d))
+  }, [])
 
   const kernelsRef = useRef<Map<string, PyodideKernel>>(new Map())
   const tabGensRef = useRef<Map<string, number>>(new Map())
@@ -285,12 +353,20 @@ export function NotebookPage() {
     URL.revokeObjectURL(url)
   }, [state])
 
-  const handleCloseTab = useCallback((tabId: string) => {
-    const tab = workspaceRef.current.tabs.find((t) => t.id === tabId)
-    if (!tab) return
-    if (tabIsDirty(tab) && !window.confirm('Discard unsaved changes in this tab?')) return
-    dispatch({ type: 'CLOSE_TAB', tabId })
-  }, [])
+  const handleCloseTab = useCallback(
+    (tabId: string) => {
+      const tab = workspaceRef.current.tabs.find((t) => t.id === tabId)
+      if (!tab) return
+      if (tabIsDirty(tab)) {
+        void showConfirm('Discard unsaved changes in this tab?').then((ok) => {
+          if (ok) dispatch({ type: 'CLOSE_TAB', tabId })
+        })
+        return
+      }
+      dispatch({ type: 'CLOSE_TAB', tabId })
+    },
+    [showConfirm],
+  )
 
   const handleNewTab = useCallback(() => {
     dispatch({ type: 'ADD_TAB' })
@@ -318,7 +394,7 @@ export function NotebookPage() {
         } else {
           const result = await createNotebookWithPayload(manifest, selectedParentId, tab.notebook)
           if ('error' in result) {
-            window.alert(result.error)
+            showAlert(result.error)
             return
           }
           setManifest(result.manifest)
@@ -338,12 +414,12 @@ export function NotebookPage() {
         }
         await loadLibrary()
       } catch (e) {
-        window.alert(e instanceof Error ? e.message : 'Save failed')
+        showAlert(e instanceof Error ? e.message : 'Save failed')
       } finally {
         setSaveBusy(false)
       }
     })()
-  }, [loadLibrary, manifest, selectedParentId])
+  }, [loadLibrary, manifest, selectedParentId, showAlert])
 
   const handleNewNotebook = useCallback(() => {
     dispatch({ type: 'ADD_TAB' })
@@ -356,7 +432,7 @@ export function NotebookPage() {
       void (async () => {
         const raw = await fetchNotebookPayload(id)
         if (!raw) {
-          window.alert('Notebook not found in storage.')
+          showAlert('Notebook not found in storage.')
           void loadLibrary()
           return
         }
@@ -371,43 +447,46 @@ export function NotebookPage() {
           })
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to read notebook'
-          window.alert(msg)
+          showAlert(msg)
         }
       })()
     },
-    [loadLibrary],
+    [loadLibrary, showAlert],
   )
 
-  const handleNewFolder = useCallback(() => {
-    if (!manifest) return
-    const name = window.prompt('Folder name')
-    if (name === null) return
-    const result = manifestAddFolder(manifest, name, selectedParentId)
-    if ('error' in result) {
-      window.alert(result.error)
-      return
-    }
-    void (async () => {
-      try {
-        await storeManifest(result.manifest)
-        setManifest(result.manifest)
-        await loadLibrary()
-      } catch (e) {
-        window.alert(e instanceof Error ? e.message : 'Failed to create folder')
-      }
-    })()
-  }, [loadLibrary, manifest, selectedParentId])
+  const handleNewFolder = useCallback(
+    (parentId: string | null) => {
+      if (!manifest) return
+      void (async () => {
+        const name = await showPrompt('New folder', 'Folder name', '')
+        if (name === null) return
+        const result = manifestAddFolder(manifest, name, parentId)
+        if ('error' in result) {
+          showAlert(result.error)
+          return
+        }
+        try {
+          await storeManifest(result.manifest)
+          setManifest(result.manifest)
+          await loadLibrary()
+        } catch (e) {
+          showAlert(e instanceof Error ? e.message : 'Failed to create folder')
+        }
+      })()
+    },
+    [loadLibrary, manifest, showAlert, showPrompt],
+  )
 
   const handleRename = useCallback(
     (id: string, currentName: string) => {
       if (!manifest) return
-      const name = window.prompt('New name', currentName)
-      if (name === null) return
       void (async () => {
+        const name = await showPrompt('Rename', 'New name', currentName)
+        if (name === null) return
         try {
           const r = await renameEntryInKv(manifest, id, name)
           if ('error' in r) {
-            window.alert(r.error)
+            showAlert(r.error)
             return
           }
           setManifest(r.manifest)
@@ -418,41 +497,45 @@ export function NotebookPage() {
           }
           await loadLibrary()
         } catch (e) {
-          window.alert(e instanceof Error ? e.message : 'Rename failed')
+          showAlert(e instanceof Error ? e.message : 'Rename failed')
         }
       })()
     },
-    [dispatchNotebookForTab, loadLibrary, manifest],
+    [dispatchNotebookForTab, loadLibrary, manifest, showAlert, showPrompt],
   )
 
   const handleDelete = useCallback(
     (id: string, name: string, kind: 'folder' | 'notebook') => {
       if (!manifest) return
       const label = kind === 'folder' ? `folder “${name}” and everything inside it` : `“${name}”`
-      if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return
-      void (async () => {
-        try {
-          const r = manifestRemove(manifest, id)
-          if ('error' in r) {
-            window.alert(r.error)
-            return
-          }
-          await deleteNotebookPayloads(r.notebookIdsToDelete)
-          await storeManifest(r.manifest)
-          setManifest(r.manifest)
-          const deletedNotebookIds = new Set(r.notebookIdsToDelete)
-          for (const t of [...workspaceRef.current.tabs]) {
-            if (t.kvNotebookId && deletedNotebookIds.has(t.kvNotebookId)) {
-              dispatch({ type: 'CLOSE_TAB', tabId: t.id })
+      void showConfirm(`Delete ${label}? This cannot be undone.`).then((ok) => {
+        if (!ok) return
+        const m = manifest
+        if (!m) return
+        void (async () => {
+          try {
+            const r = manifestRemove(m, id)
+            if ('error' in r) {
+              showAlert(r.error)
+              return
             }
+            await deleteNotebookPayloads(r.notebookIdsToDelete)
+            await storeManifest(r.manifest)
+            setManifest(r.manifest)
+            const deletedNotebookIds = new Set(r.notebookIdsToDelete)
+            for (const t of [...workspaceRef.current.tabs]) {
+              if (t.kvNotebookId && deletedNotebookIds.has(t.kvNotebookId)) {
+                dispatch({ type: 'CLOSE_TAB', tabId: t.id })
+              }
+            }
+            await loadLibrary()
+          } catch (e) {
+            showAlert(e instanceof Error ? e.message : 'Delete failed')
           }
-          await loadLibrary()
-        } catch (e) {
-          window.alert(e instanceof Error ? e.message : 'Delete failed')
-        }
-      })()
+        })()
+      })
     },
-    [loadLibrary, manifest],
+    [loadLibrary, manifest, showAlert, showConfirm],
   )
 
   const handleConfirmMove = useCallback(
@@ -462,7 +545,7 @@ export function NotebookPage() {
         try {
           const r = manifestMove(manifest, itemId, newParentId)
           if ('error' in r) {
-            window.alert(r.error)
+            showAlert(r.error)
             return
           }
           await storeManifest(r.manifest)
@@ -470,11 +553,11 @@ export function NotebookPage() {
           setMovingId(null)
           await loadLibrary()
         } catch (e) {
-          window.alert(e instanceof Error ? e.message : 'Move failed')
+          showAlert(e instanceof Error ? e.message : 'Move failed')
         }
       })()
     },
-    [loadLibrary, manifest],
+    [loadLibrary, manifest, showAlert],
   )
 
   const handleImportFile = useCallback(
@@ -495,11 +578,11 @@ export function NotebookPage() {
           restartKernelForTab(tab.id)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to open notebook'
-          window.alert(msg)
+          showAlert(msg)
         }
       })()
     },
-    [restartKernelForTab],
+    [restartKernelForTab, showAlert],
   )
 
   const tabLabels = useMemo(
@@ -512,84 +595,130 @@ export function NotebookPage() {
     [workspace.tabs],
   )
 
-  if (!state || !activeTab) {
-    return (
-      <div className="nb-page">
-        <div className="nb-loading">Loading…</div>
-      </div>
-    )
+  const dialogProps =
+    dialog?.kind === 'prompt'
+      ? {
+          variant: 'prompt' as const,
+          title: dialog.title,
+          message: '',
+          promptLabel: dialog.label,
+          promptValue: dialog.input,
+        }
+      : dialog?.kind === 'confirm'
+        ? {
+            variant: 'confirm' as const,
+            message: dialog.message,
+          }
+        : {
+            variant: 'alert' as const,
+            message: dialog?.message ?? '',
+          }
+
+  const handleDialogPrimary = () => {
+    if (!dialog) return
+    if (dialog.kind === 'alert') dismissAlert()
+    else if (dialog.kind === 'confirm') dialogConfirmOk()
+    else dialogPromptSubmit()
   }
 
+  const handleDialogSecondary = () => {
+    if (!dialog) return
+    if (dialog.kind === 'confirm') dialogConfirmCancel()
+    else if (dialog.kind === 'prompt') dialogPromptCancel()
+  }
+
+  const ready = Boolean(state && activeTab)
+
   return (
-    <div className="nb-page">
-      <NotebookSidebar
-        items={manifest?.items ?? []}
-        loading={libraryLoading}
-        error={libraryError}
-        selectedNotebookId={activeTab.kvNotebookId}
-        selectedParentId={selectedParentId}
-        movingId={movingId}
-        onRefresh={() => void loadLibrary()}
-        onSelectParent={setSelectedParentId}
-        onOpenNotebook={handleOpenNotebook}
-        onNewNotebook={handleNewNotebook}
-        onNewFolder={handleNewFolder}
-        onRename={handleRename}
-        onStartMove={setMovingId}
-        onCancelMove={() => setMovingId(null)}
-        onConfirmMove={handleConfirmMove}
-        onDelete={handleDelete}
-        moveDestinations={moveDestinations}
-      />
-      <div className="nb-workspace">
-        <div className="nb-workspace-stack">
-          <NotebookMenuBar />
-          <NotebookTabs
-            tabs={tabLabels}
-            activeTabId={workspace.activeTabId}
-            onSelectTab={handleSelectTab}
-            onCloseTab={handleCloseTab}
-            onNewTab={handleNewTab}
-          />
-          <div className="nb-editor-shell">
-            <div className="nb-main">
-              <Toolbar
-                kernelStatus={state.kernelStatus}
-                title={state.title}
-                onTitleChange={(t) => dispatchNotebook({ type: 'SET_NOTEBOOK_TITLE', title: t })}
-                onDownload={handleDownload}
-                onImportFile={handleImportFile}
-                onSave={handleSave}
-                saveDisabled={saveBusy || libraryLoading || !manifest}
-                dirty={dirty}
-                onAddCodeCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'code' })}
-                onAddMarkdownCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'markdown' })}
-                onRunAll={runAll}
-                onClearAllOutputs={() => dispatchNotebook({ type: 'CLEAR_ALL_OUTPUTS' })}
-                onRestart={restartKernel}
-                theme={theme}
-                onThemeChange={setTheme}
+    <>
+      <div className="nb-app-frame">
+        <div className="nb-page">
+          {!ready ? (
+            <div className="nb-loading">Loading…</div>
+          ) : (
+            <>
+              <NotebookSidebar
+                items={manifest?.items ?? []}
+                loading={libraryLoading}
+                error={libraryError}
+                selectedNotebookId={activeTab.kvNotebookId}
+                selectedParentId={selectedParentId}
+                movingId={movingId}
+                onRefresh={() => void loadLibrary()}
+                onSelectParent={setSelectedParentId}
+                onOpenNotebook={handleOpenNotebook}
+                onNewNotebook={handleNewNotebook}
+                onNewFolder={handleNewFolder}
+                onRename={handleRename}
+                onStartMove={setMovingId}
+                onCancelMove={() => setMovingId(null)}
+                onConfirmMove={handleConfirmMove}
+                onDelete={handleDelete}
+                moveDestinations={moveDestinations}
               />
-              {state.kernelStatus === 'loading' && (
-                <div className="nb-loading">Loading Python kernel…</div>
-              )}
-              {state.kernelStatus === 'error' && (
-                <div className="nb-loading nb-loading--error">
-                  Kernel failed to load. Check console for details.
+          <div className="nb-workspace">
+            <div className="nb-workspace-stack">
+              <NotebookTabs
+                tabs={tabLabels}
+                activeTabId={workspace.activeTabId}
+                onSelectTab={handleSelectTab}
+                onCloseTab={handleCloseTab}
+                onNewTab={handleNewTab}
+              />
+              <div className="nb-editor-shell">
+                <div className="nb-main">
+                  <Toolbar
+                    kernelStatus={state.kernelStatus}
+                    title={state.title}
+                    onTitleChange={(t) => dispatchNotebook({ type: 'SET_NOTEBOOK_TITLE', title: t })}
+                    onDownload={handleDownload}
+                    onImportFile={handleImportFile}
+                    onSave={handleSave}
+                    saveDisabled={saveBusy || libraryLoading || !manifest}
+                    dirty={dirty}
+                    onAddCodeCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'code' })}
+                    onAddMarkdownCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'markdown' })}
+                    onRunAll={runAll}
+                    onClearAllOutputs={() => dispatchNotebook({ type: 'CLEAR_ALL_OUTPUTS' })}
+                    onRestart={restartKernel}
+                    theme={theme}
+                    onThemeChange={setTheme}
+                  />
+                  {state.kernelStatus === 'loading' && (
+                    <div className="nb-loading">Loading Python kernel…</div>
+                  )}
+                  {state.kernelStatus === 'error' && (
+                    <div className="nb-loading nb-loading--error">
+                      Kernel failed to load. Check console for details.
+                    </div>
+                  )}
+                  <div className="nb-scroll">
+                    <CellList
+                      cells={state.cells}
+                      selectedId={state.selectedId}
+                      dispatch={dispatchNotebook}
+                      onRun={runCell}
+                    />
+                  </div>
                 </div>
-              )}
-              <div className="nb-scroll">
-                <CellList
-                  cells={state.cells}
-                  selectedId={state.selectedId}
-                  dispatch={dispatchNotebook}
-                  onRun={runCell}
-                />
               </div>
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
-    </div>
+      <NotebookDialog
+        open={dialog !== null}
+        variant={dialogProps.variant}
+        title={'title' in dialogProps ? dialogProps.title : undefined}
+        message={'message' in dialogProps ? dialogProps.message : ''}
+        promptLabel={'promptLabel' in dialogProps ? dialogProps.promptLabel : undefined}
+        promptValue={dialog?.kind === 'prompt' ? dialog.input : ''}
+        onPromptValueChange={dialogPromptChange}
+        onPrimary={handleDialogPrimary}
+        onSecondary={dialog?.kind === 'alert' ? undefined : handleDialogSecondary}
+      />
+    </>
   )
 }

@@ -15,7 +15,8 @@ interface NotebookSidebarProps {
   onSelectParent: (folderId: string | null) => void
   onOpenNotebook: (id: string) => void
   onNewNotebook: () => void
-  onNewFolder: () => void
+  /** Creates a folder under the given parent (`null` = root). */
+  onNewFolder: (parentId: string | null) => void
   onRename: (id: string, currentName: string) => void
   onStartMove: (id: string) => void
   onCancelMove: () => void
@@ -148,7 +149,11 @@ export function NotebookSidebar({
           + New notebook
         </button>
         <div className="nb-sidebar-toolbar-row">
-          <button type="button" className="nb-btn nb-btn-sidebar" onClick={onNewFolder}>
+          <button
+            type="button"
+            className="nb-btn nb-btn-sidebar"
+            onClick={() => onNewFolder(selectedParentId)}
+          >
             New folder
           </button>
           <button
@@ -248,6 +253,20 @@ export function NotebookSidebar({
               </span>
               <span className="nb-sidebar-row-modified">{formatModified(item.updatedAt)}</span>
               <span className="nb-sidebar-row-actions">
+                {item.type === 'folder' && (
+                  <button
+                    type="button"
+                    className="nb-sidebar-mini"
+                    title="New folder inside"
+                    aria-label="New folder inside"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onNewFolder(item.id)
+                    }}
+                  >
+                    +
+                  </button>
+                )}
                 <button
                   type="button"
                   className="nb-sidebar-mini"

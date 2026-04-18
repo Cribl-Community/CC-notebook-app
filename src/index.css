@@ -82,7 +82,11 @@
 
 body {
   margin: 0;
-  background: var(--nb-bg);
+  background: color-mix(in srgb, var(--nb-bg) 88%, #000);
+}
+
+[data-theme='light'] body {
+  background: color-mix(in srgb, var(--nb-bg) 92%, #fff);
 }
 
 #root {
@@ -90,15 +94,39 @@ body {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: clamp(10px, 2.5vmin, 20px);
+  box-sizing: border-box;
 }
 
 /* ─── Notebook layout ──────────────────────────────────────────── */
+
+.nb-app-frame {
+  width: min(100%, 1420px);
+  max-height: min(920px, calc(100svh - 24px));
+  height: min(920px, calc(100svh - 24px));
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 8px;
+  border: 1px solid var(--nb-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+
+[data-theme='light'] .nb-app-frame {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
 
 .nb-page {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  height: 100svh;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   background: var(--nb-bg);
   font-family: var(--nb-ui-font);
   color: var(--nb-text);
@@ -122,36 +150,96 @@ body {
   width: 100%;
 }
 
-.nb-menubar {
+/* ─── Modal dialogs (replace window.alert / confirm / prompt in staging) ─ */
+
+.nb-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+  box-sizing: border-box;
+}
+
+.nb-dialog-panel {
+  width: min(100%, 400px);
+  max-height: min(90svh, 480px);
+  overflow: auto;
+  padding: 16px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--nb-border);
+  background: var(--nb-bg-toolbar);
+  color: var(--nb-text);
+  font-family: var(--nb-ui-font);
+  font-size: 13px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+}
+
+.nb-dialog-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--nb-text-heading);
+}
+
+.nb-dialog-message {
+  margin: 0 0 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.nb-dialog-message--muted {
+  color: var(--nb-text-muted);
+  font-size: 12px;
+}
+
+.nb-dialog-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.nb-dialog-label {
+  font-size: 12px;
+  color: var(--nb-text-muted);
+}
+
+.nb-dialog-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--nb-border);
+  border-radius: 4px;
+  background: var(--nb-bg-cell);
+  color: var(--nb-text);
+  font: inherit;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.nb-dialog-input:focus {
+  outline: 2px solid var(--nb-brand-focus);
+  outline-offset: 0;
+}
+
+.nb-dialog-actions {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0;
-  padding: 0 4px;
-  min-height: 28px;
-  flex-shrink: 0;
-  background: var(--nb-bg-toolbar);
-  border-bottom: 1px solid var(--nb-border);
-  font-size: 12px;
-  user-select: none;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
-.nb-menubar-item {
-  margin: 0;
-  padding: 4px 10px;
-  border: none;
-  border-radius: 2px;
-  background: transparent;
-  color: var(--nb-text-muted);
-  font: inherit;
-  font-family: var(--nb-ui-font);
-  cursor: default;
-  opacity: 0.85;
-}
-
-.nb-menubar-item:hover {
+.nb-dialog-btn-secondary {
+  border-color: var(--nb-border);
   background: var(--nb-bg-hover);
   color: var(--nb-text);
+}
+
+.nb-dialog-btn-primary {
+  min-width: 72px;
 }
 
 .nb-editor-shell {
