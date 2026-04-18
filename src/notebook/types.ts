@@ -43,6 +43,7 @@ export type NotebookAction =
   | { type: 'TOGGLE_MARKDOWN_EDIT'; id: CellId }
   | { type: 'SET_RUNNING'; id: CellId }
   | { type: 'APPEND_OUTPUT'; id: CellId; output: CellOutput }
+  | { type: 'REPLACE_OUTPUT_AT'; id: CellId; index: number; output: CellOutput }
   | { type: 'FINISH_CELL'; id: CellId; execution_count: number }
   | { type: 'ERROR_CELL'; id: CellId }
   | { type: 'CLEAR_OUTPUTS'; id: CellId }

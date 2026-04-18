@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSearchQuery, parseSearchJobCreateId, runCriblSearchJob } from './searchJobs'
+import {
+  normalizeSearchQuery,
+  parseSearchJobCreateId,
+  parseTotalRecordHint,
+  runCriblSearchJob,
+} from './searchJobs'
 
 describe('parseSearchJobCreateId', () => {
   it('reads top-level id', () => {
@@ -36,15 +41,25 @@ describe('normalizeSearchQuery', () => {
   })
 })
 
+describe('parseTotalRecordHint', () => {
+  it('reads common total keys', () => {
+    expect(parseTotalRecordHint({ total: 42 })).toBe(42)
+    expect(parseTotalRecordHint({ resultCount: 7 })).toBe(7)
+    expect(parseTotalRecordHint({ entry: [{ content: { eventCount: 99 } }] })).toBe(99)
+  })
+})
+
 describe('runCriblSearchJob mock', () => {
   it('returns rows without CRIBL_API_URL', async () => {
     const lines: string[] = []
-    const rows = await runCriblSearchJob({
+    const { rows, columns, totalRecords } = await runCriblSearchJob({
       query: 'dataset=x',
-      onProgress: (l) => lines.push(l),
+      onProgress: (ev) => lines.push(ev.label),
     })
     expect(rows.length).toBeGreaterThan(0)
     expect(lines.some((l) => l.includes('local stub'))).toBe(true)
     expect(rows[0]).toHaveProperty('query')
+    expect(columns.length).toBeGreaterThan(0)
+    expect(totalRecords).toBe(rows.length)
   })
 })

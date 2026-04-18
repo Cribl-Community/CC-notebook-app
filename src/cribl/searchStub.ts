@@ -9,6 +9,9 @@
  */
 
 import { normalizeSearchQuery } from './searchQuery'
+import type { CriblSearchJobResult, RunSearchJobOptions } from './searchJobs'
+import { DEFAULT_CRIBL_SEARCH_MAX_ROWS } from './searchJobs'
+import { deriveColumnNames } from './searchResultModel'
 
 export type LocalSearchStubWindowHook = {
   rows?: Record<string, unknown>[]
@@ -21,11 +24,6 @@ declare global {
   interface Window {
     __NB_LOCAL_SEARCH_STUB__?: LocalSearchStubWindowHook
   }
-}
-
-export type RunSearchStubOptions = {
-  query: string
-  onProgress?: (line: string) => void
 }
 
 const DEFAULT_ROWS: Record<string, unknown>[] = [
@@ -56,27 +54,34 @@ export function buildStubRowsForQuery(userQuery: string): Record<string, unknown
 /**
  * Simulates submit → run → complete progress lines and returns DataFrame-ready objects.
  */
-export async function runLocalSearchStub(options: RunSearchStubOptions): Promise<Record<string, unknown>[]> {
+export async function runLocalSearchStub(options: RunSearchJobOptions): Promise<CriblSearchJobResult> {
   const hook = getHook()
   const fail = hook?.failMessage?.trim()
   const delayPrepare = hook?.delayMs ?? 80
   const delayRun = hook?.delayMs ?? 120
 
   const q = normalizeSearchQuery(options.query)
-  options.onProgress?.('[local stub] preparing search…')
+  const cap = options.maxRows ?? DEFAULT_CRIBL_SEARCH_MAX_ROWS
+  options.onProgress?.({ fraction: 0.1, label: '[local stub] preparing search…' })
   await sleep(delayPrepare)
 
   if (fail) {
-    options.onProgress?.('[local stub] failed.')
+    options.onProgress?.({ fraction: 0.95, label: '[local stub] failed.' })
     throw new Error(fail)
   }
 
-  options.onProgress?.(`[local stub] running: ${q.slice(0, 120)}${q.length > 120 ? '…' : ''}`)
+  options.onProgress?.({
+    fraction: 0.45,
+    label: `[local stub] running: ${q.slice(0, 120)}${q.length > 120 ? '…' : ''}`,
+  })
   await sleep(delayRun)
 
-  const rows =
+  const rawRows =
     hook?.rows && hook.rows.length > 0 ? hook.rows.map((r) => ({ ...r })) : buildStubRowsForQuery(options.query)
+  const rows = rawRows.slice(0, cap)
+  const columns = deriveColumnNames(rows)
 
-  options.onProgress?.(`[local stub] done (${rows.length} row(s)).`)
-  return rows
+  options.onProgress?.({ fraction: 0.97, label: `[local stub] done (${rows.length} row(s)).` })
+
+  return { rows, columns, totalRecords: rows.length }
 }
