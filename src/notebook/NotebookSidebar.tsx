@@ -24,6 +24,34 @@ interface NotebookSidebarProps {
   moveDestinations: { id: string | null; label: string }[]
 }
 
+function formatModified(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  const diff = Date.now() - d.getTime()
+  if (diff < 60_000) return 'now'
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`
+  if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)}h ago`
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
+/** Folder path from root to `folderId` (exclusive of root). */
+function folderSegmentsTo(
+  items: ManifestItem[],
+  folderId: string | null,
+): { id: string; name: string }[] {
+  if (folderId === null) return []
+  const map = new Map(items.map((i) => [i.id, i]))
+  const segments: { id: string; name: string }[] = []
+  let id: string | null = folderId
+  while (id) {
+    const it = map.get(id)
+    if (!it || it.type !== 'folder') break
+    segments.unshift({ id: it.id, name: it.name })
+    id = it.parentId
+  }
+  return segments
+}
+
 export function NotebookSidebar({
   items,
   loading,
@@ -76,6 +104,21 @@ export function NotebookSidebar({
 
   const movingItem = movingId ? items.find((i) => i.id === movingId) : undefined
 
+  const breadcrumbFolderId = useMemo(() => {
+    if (selectedNotebookId) {
+      const nb = items.find((i) => i.id === selectedNotebookId && i.type === 'notebook')
+      return nb?.parentId ?? null
+    }
+    return selectedParentId
+  }, [items, selectedNotebookId, selectedParentId])
+
+  const breadcrumbSegments = useMemo(
+    () => folderSegmentsTo(items, breadcrumbFolderId),
+    [items, breadcrumbFolderId],
+  )
+
+  const showTableHead = items.length > 0
+
   return (
     <aside className="nb-sidebar" aria-label="Saved notebooks">
       <div className="nb-sidebar-header">
@@ -96,28 +139,64 @@ export function NotebookSidebar({
         </div>
       )}
       {error && <div className="nb-sidebar-error">{error}</div>}
-      <div className="nb-sidebar-actions">
-        <button type="button" className="nb-btn nb-btn-sidebar" onClick={onNewNotebook}>
-          + New
-        </button>
-        <button type="button" className="nb-btn nb-btn-sidebar" onClick={onNewFolder}>
-          + Folder
-        </button>
+      <div className="nb-sidebar-toolbar">
         <button
           type="button"
-          className={
-            'nb-btn nb-btn-sidebar' +
-            (selectedNotebookId === null && selectedParentId === null ? ' nb-btn-sidebar--sel' : '')
-          }
-          onClick={() => onSelectParent(null)}
-          title="Save new notebooks to the root"
+          className="nb-btn nb-btn-primary nb-btn-sidebar-primary"
+          onClick={onNewNotebook}
         >
-          📂 Root
+          + New notebook
         </button>
+        <div className="nb-sidebar-toolbar-row">
+          <button type="button" className="nb-btn nb-btn-sidebar" onClick={onNewFolder}>
+            New folder
+          </button>
+          <button
+            type="button"
+            className={
+              'nb-btn nb-btn-sidebar' +
+              (selectedNotebookId === null && selectedParentId === null ? ' nb-btn-sidebar--sel' : '')
+            }
+            onClick={() => onSelectParent(null)}
+            title="Save new notebooks to the root"
+          >
+            Root
+          </button>
+        </div>
       </div>
-      <p className="nb-sidebar-help">
-        Click a folder to choose where new notebooks are saved. Click a notebook to open it.
-      </p>
+      <nav className="nb-sidebar-breadcrumb" aria-label="Current folder">
+        <button
+          type="button"
+          className="nb-sidebar-crumb nb-sidebar-crumb--root"
+          onClick={() => onSelectParent(null)}
+          title="Root"
+        >
+          /
+        </button>
+        {breadcrumbSegments.map((seg) => (
+          <span key={seg.id} className="nb-sidebar-crumb-wrap">
+            <span className="nb-sidebar-crumb-sep" aria-hidden>
+              /
+            </span>
+            <button
+              type="button"
+              className="nb-sidebar-crumb"
+              onClick={() => onSelectParent(seg.id)}
+              title={seg.name}
+            >
+              {seg.name}
+            </button>
+          </span>
+        ))}
+      </nav>
+      <p className="nb-sidebar-help">Select a folder for new saves; click a notebook to open it.</p>
+      {showTableHead && (
+        <div className="nb-sidebar-table-head" aria-hidden>
+          <span className="nb-sidebar-table-head-name">Name</span>
+          <span className="nb-sidebar-table-head-modified">Modified</span>
+          <span className="nb-sidebar-table-head-actions" />
+        </div>
+      )}
       <div className="nb-sidebar-tree" role="tree">
         {loading && items.length === 0 && (
           <div className="nb-sidebar-empty">Loading…</div>
@@ -167,6 +246,7 @@ export function NotebookSidebar({
               <span className="nb-sidebar-row-label">
                 {item.type === 'folder' ? '📁' : '📓'} {item.name}
               </span>
+              <span className="nb-sidebar-row-modified">{formatModified(item.updatedAt)}</span>
               <span className="nb-sidebar-row-actions">
                 <button
                   type="button"

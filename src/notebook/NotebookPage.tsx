@@ -7,6 +7,7 @@ import { Toolbar } from './Toolbar'
 import { CellList } from './CellList'
 import { NotebookSidebar } from './NotebookSidebar'
 import { NotebookTabs } from './NotebookTabs'
+import { NotebookMenuBar } from './NotebookMenuBar'
 import { listMoveTargets } from './manifest'
 import type { Manifest } from './manifest'
 import {
@@ -541,7 +542,8 @@ export function NotebookPage() {
         moveDestinations={moveDestinations}
       />
       <div className="nb-workspace">
-        <div className="nb-main">
+        <div className="nb-workspace-stack">
+          <NotebookMenuBar />
           <NotebookTabs
             tabs={tabLabels}
             activeTabId={workspace.activeTabId}
@@ -549,38 +551,42 @@ export function NotebookPage() {
             onCloseTab={handleCloseTab}
             onNewTab={handleNewTab}
           />
-          <Toolbar
-            kernelStatus={state.kernelStatus}
-            title={state.title}
-            onTitleChange={(t) => dispatchNotebook({ type: 'SET_NOTEBOOK_TITLE', title: t })}
-            onDownload={handleDownload}
-            onImportFile={handleImportFile}
-            onSave={handleSave}
-            saveDisabled={saveBusy || libraryLoading || !manifest}
-            dirty={dirty}
-            onAddCodeCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'code' })}
-            onAddMarkdownCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'markdown' })}
-            onRunAll={runAll}
-            onClearAllOutputs={() => dispatchNotebook({ type: 'CLEAR_ALL_OUTPUTS' })}
-            onRestart={restartKernel}
-            theme={theme}
-            onThemeChange={setTheme}
-          />
-          {state.kernelStatus === 'loading' && (
-            <div className="nb-loading">Loading Python kernel…</div>
-          )}
-          {state.kernelStatus === 'error' && (
-            <div className="nb-loading nb-loading--error">
-              Kernel failed to load. Check console for details.
+          <div className="nb-editor-shell">
+            <div className="nb-main">
+              <Toolbar
+                kernelStatus={state.kernelStatus}
+                title={state.title}
+                onTitleChange={(t) => dispatchNotebook({ type: 'SET_NOTEBOOK_TITLE', title: t })}
+                onDownload={handleDownload}
+                onImportFile={handleImportFile}
+                onSave={handleSave}
+                saveDisabled={saveBusy || libraryLoading || !manifest}
+                dirty={dirty}
+                onAddCodeCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'code' })}
+                onAddMarkdownCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'markdown' })}
+                onRunAll={runAll}
+                onClearAllOutputs={() => dispatchNotebook({ type: 'CLEAR_ALL_OUTPUTS' })}
+                onRestart={restartKernel}
+                theme={theme}
+                onThemeChange={setTheme}
+              />
+              {state.kernelStatus === 'loading' && (
+                <div className="nb-loading">Loading Python kernel…</div>
+              )}
+              {state.kernelStatus === 'error' && (
+                <div className="nb-loading nb-loading--error">
+                  Kernel failed to load. Check console for details.
+                </div>
+              )}
+              <div className="nb-scroll">
+                <CellList
+                  cells={state.cells}
+                  selectedId={state.selectedId}
+                  dispatch={dispatchNotebook}
+                  onRun={runCell}
+                />
+              </div>
             </div>
-          )}
-          <div className="nb-scroll">
-            <CellList
-              cells={state.cells}
-              selectedId={state.selectedId}
-              dispatch={dispatchNotebook}
-              onRun={runCell}
-            />
           </div>
         </div>
       </div>
