@@ -1,5 +1,6 @@
 import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import { PyodideKernel } from '../pyodide/PyodideKernel'
+import type { CompletionItem } from '../pyodide/types'
 import { createEmptyNotebookCells } from './notebookReducer'
 import type { CellId, NotebookAction } from './types'
 import { parseIpynbJson, serializeNotebookToIpynbJson, titleToDownloadFilename } from './ipynb'
@@ -29,6 +30,12 @@ import {
   saveNotebookState,
   storeManifest,
 } from './notebookLibrary'
+import {
+  buildCriblSearchDataframeCode,
+  encodeRowsJsonForPythonBase64,
+  parseCriblSearchMagic,
+} from './criblSearchMagic'
+import { runCriblSearchJob } from '../cribl/searchJobs'
 
 type DialogState =
   | { kind: 'alert'; message: string }
@@ -48,9 +55,9 @@ function readStoredNotebookTitle(): string | undefined {
 export function NotebookPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
-      return (localStorage.getItem('nb-theme') as 'dark' | 'light') ?? 'dark'
+      return (localStorage.getItem('nb-theme') as 'dark' | 'light') ?? 'light'
     } catch {
-      return 'dark'
+      return 'light'
     }
   })
 
@@ -260,6 +267,24 @@ export function NotebookPage() {
     dispatch({ type: 'TAB_NOTEBOOK', tabId, action })
   }, [])
 
+  const completeCode = useCallback(
+    async (code: string, cursor: number): Promise<CompletionItem[] | null> => {
+      const tid = activeTabIdRef.current
+      const kernel = kernelsRef.current.get(tid)
+      if (!kernel) return null
+      const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+      const ks = tab?.notebook.kernelStatus
+      if (ks === 'loading' || ks === 'error') return null
+      try {
+        await kernel.ready
+      } catch {
+        return null
+      }
+      return kernel.complete(code, cursor)
+    },
+    [],
+  )
+
   const runCell = useCallback(
     (id: CellId) => {
       const tid = activeTabIdRef.current
@@ -287,6 +312,70 @@ export function NotebookPage() {
           const prevCount = tabExecCountersRef.current.get(tid) ?? 0
           const count = prevCount + 1
           tabExecCountersRef.current.set(tid, count)
+
+          const appendStream = (name: 'stdout' | 'stderr', text: string) => {
+            if (tabGensRef.current.get(tid) === myGen) {
+              dispatch({
+                type: 'TAB_NOTEBOOK',
+                tabId: tid,
+                action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'stream', name, text } },
+              })
+            }
+          }
+
+          const magic = parseCriblSearchMagic(source)
+          if (magic.kind === 'error') {
+            appendStream('stderr', `${magic.message}\n`)
+            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
+            return
+          }
+
+          if (magic.kind === 'cribl_search') {
+            const { varName, preview, query } = magic.value
+            try {
+              const rows = await runCriblSearchJob({
+                query,
+                onProgress: (line) => appendStream('stdout', `${line}\n`),
+              })
+              if (tabGensRef.current.get(tid) !== myGen) return
+
+              const b64 = encodeRowsJsonForPythonBase64(rows)
+              const code = buildCriblSearchDataframeCode(varName, b64, preview)
+              const result = await kernel.execute(code, (name, text) => {
+                if (tabGensRef.current.get(tid) === myGen) {
+                  dispatch({
+                    type: 'TAB_NOTEBOOK',
+                    tabId: tid,
+                    action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'stream', name, text } },
+                  })
+                }
+              })
+
+              if (tabGensRef.current.get(tid) !== myGen) return
+
+              for (const output of result.outputs) {
+                if (output.output_type !== 'stream') {
+                  dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'APPEND_OUTPUT', id, output } })
+                }
+              }
+
+              const hasError = result.outputs.some((o) => o.output_type === 'error')
+              if (hasError) {
+                dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
+              } else {
+                dispatch({
+                  type: 'TAB_NOTEBOOK',
+                  tabId: tid,
+                  action: { type: 'FINISH_CELL', id, execution_count: count },
+                })
+              }
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e)
+              appendStream('stderr', `${msg}\n`)
+              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
+            }
+            return
+          }
 
           const result = await kernel.execute(source, (name, text) => {
             if (tabGensRef.current.get(tid) === myGen) {
@@ -700,6 +789,8 @@ export function NotebookPage() {
                       selectedId={state.selectedId}
                       dispatch={dispatchNotebook}
                       onRun={runCell}
+                      theme={theme}
+                      completeCode={completeCode}
                     />
                   </div>
                 </div>

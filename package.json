@@ -1,7 +1,7 @@
 {
   "name": "notebook-app",
   "private": true,
-  "version": "1.0.14",
+  "version": "1.0.17",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -13,6 +13,13 @@
     "package": "npm run build && node scripts/package.mjs"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.0",
+    "@codemirror/commands": "^6.10.1",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/language": "^6.11.3",
+    "@codemirror/state": "^6.5.4",
+    "@codemirror/view": "^6.39.11",
+    "@lezer/highlight": "^1.2.3",
     "dompurify": "^3.4.0",
     "marked": "^18.0.1",
     "react": "^19.2.4",
