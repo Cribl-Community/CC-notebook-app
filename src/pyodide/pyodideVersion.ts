@@ -10,7 +10,8 @@ export const PYODIDE_PACKAGE_BASE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYO
 /**
  * TEMP: ship pandas/matplotlib wheels under ./pyodide/full/ (see scripts/vendor-pyodide-wheels.mjs)
  * so the pack proxy does not need to reach jsDelivr. Set to false and drop the vendor step once
- * config/proxies.yml + proxy routing work again.
+ * config/proxies.yml + proxy routing work again. (UI/theme changes do not affect wheel size;
+ * `npm run package` enforces a 30 MiB cap on the release tarball.)
  */
 export const VENDOR_PYODIDE_FULL = true as const
 

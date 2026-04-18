@@ -1,21 +1,41 @@
-:root {
-  --mono: ui-monospace, 'Cascadia Code', Consolas, 'Courier New', monospace;
+/*
+ * Color tokens align with JupyterLab default themes:
+ * packages/theme-dark-extension/style/variables.css
+ * packages/theme-light-extension/style/variables.css
+ */
 
-  /* ── Structural color tokens (dark theme defaults) ── */
-  --nb-bg:            #0f1117;
-  --nb-bg-toolbar:    #16171d;
-  --nb-bg-cell:       #1a1b26;
-  --nb-bg-cell-alt:   #13141a;
-  --nb-bg-hover:      #2a2d3a;
-  --nb-text:          #e2e8f0;
-  --nb-text-heading:  #f1f5f9;
-  --nb-text-muted:    #94a3b8;
-  --nb-text-dim:      #64748b;
-  --nb-border:        #2e303a;
-  --nb-border-hover:  #4a4d5a;
-  --nb-border-cell:   #3a3d4a;
-  --nb-border-dashed: #3a4a5a;
-  --nb-placeholder:   #3a3d4a;
+:root {
+  --mono: menlo, consolas, 'DejaVu Sans Mono', 'Cascadia Code', 'Courier New', monospace;
+  --nb-page-max-width: 980px;
+
+  /* Layout & surfaces (dark: --jp-layout-color0/1, toolbar, cell editor) */
+  --nb-bg: #111111;
+  --nb-bg-toolbar: #212121;
+  --nb-bg-cell: #212121;
+  --nb-bg-cell-alt: #424242;
+  --nb-bg-hover: #424242;
+  --nb-text: rgba(255, 255, 255, 0.87);
+  --nb-text-heading: rgba(255, 255, 255, 1);
+  --nb-text-muted: rgba(255, 255, 255, 0.54);
+  --nb-text-dim: rgba(255, 255, 255, 0.38);
+  --nb-border: #616161;
+  --nb-border-hover: #757575;
+  --nb-border-cell: #616161;
+  --nb-border-dashed: #757575;
+  --nb-placeholder: rgba(255, 255, 255, 0.38);
+
+  --nb-brand: #2196f3;
+  --nb-brand-focus: rgba(33, 150, 243, 0.24);
+  --nb-cell-prompt: #307fc1;
+  --nb-success: #4caf50;
+  --nb-warn: #ff9800;
+  --nb-error: #f44336;
+  --nb-error-muted: #e57373;
+  --nb-error-bg: rgba(244, 67, 54, 0.28);
+  --nb-error-border: rgba(244, 67, 54, 0.45);
+  --nb-link: #64b5f6;
+  --nb-link-visited: #ba68c8;
+  --nb-md-accent: #ba68c8;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -23,21 +43,34 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-[data-theme="light"] {
-  --nb-bg:            #f8fafc;
-  --nb-bg-toolbar:    #f1f5f9;
-  --nb-bg-cell:       #ffffff;
-  --nb-bg-cell-alt:   #f1f5f9;
-  --nb-bg-hover:      #e2e8f0;
-  --nb-text:          #1e293b;
-  --nb-text-heading:  #0f172a;
-  --nb-text-muted:    #64748b;
-  --nb-text-dim:      #94a3b8;
-  --nb-border:        #e2e8f0;
-  --nb-border-hover:  #cbd5e1;
-  --nb-border-cell:   #d1d5db;
-  --nb-border-dashed: #94a3b8;
-  --nb-placeholder:   #94a3b8;
+[data-theme='light'] {
+  --nb-bg: #eeeeee;
+  --nb-bg-toolbar: #ffffff;
+  --nb-bg-cell: #ffffff;
+  --nb-bg-cell-alt: #f5f5f5;
+  --nb-bg-hover: #e0e0e0;
+  --nb-text: rgba(0, 0, 0, 0.87);
+  --nb-text-heading: rgba(0, 0, 0, 0.87);
+  --nb-text-muted: rgba(0, 0, 0, 0.54);
+  --nb-text-dim: rgba(0, 0, 0, 0.38);
+  --nb-border: #bdbdbd;
+  --nb-border-hover: #9e9e9e;
+  --nb-border-cell: #e0e0e0;
+  --nb-border-dashed: #bdbdbd;
+  --nb-placeholder: rgba(0, 0, 0, 0.38);
+
+  --nb-brand: #1976d2;
+  --nb-brand-focus: rgba(25, 118, 210, 0.35);
+  --nb-cell-prompt: #307fc1;
+  --nb-success: #388e3c;
+  --nb-warn: #f57c00;
+  --nb-error: #d32f2f;
+  --nb-error-muted: #e57373;
+  --nb-error-bg: #fdd;
+  --nb-error-border: rgba(211, 47, 47, 0.45);
+  --nb-link: #0d47a1;
+  --nb-link-visited: #7b1fa2;
+  --nb-md-accent: #7b1fa2;
 }
 
 * {
@@ -66,6 +99,16 @@ body {
   font-family: var(--mono);
   color: var(--nb-text);
   overflow: hidden;
+}
+
+.nb-main {
+  width: 100%;
+  max-width: var(--nb-page-max-width);
+  margin-inline: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ─── Toolbar ──────────────────────────────────────────────────── */
@@ -104,17 +147,39 @@ body {
   font-family: var(--mono);
 }
 
+.nb-kernel-dot {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.nb-kernel-dot--ready {
+  color: var(--nb-success);
+}
+
+.nb-kernel-dot--busy {
+  color: var(--nb-warn);
+}
+
+.nb-kernel-dot--error {
+  color: var(--nb-error);
+}
+
+.nb-kernel-dot--loading {
+  color: var(--nb-text-muted);
+}
+
 /* ─── Scroll area ──────────────────────────────────────────────── */
 
 .nb-scroll {
   flex: 1;
   overflow-y: auto;
   padding: 20px 0 40px;
+  min-height: 0;
 }
 
 .nb-cell-list {
-  max-width: 860px;
-  margin: 0 auto;
+  max-width: none;
+  margin: 0;
   padding: 0 16px;
 }
 
@@ -131,7 +196,7 @@ body {
 }
 
 .nb-cell--selected {
-  border-color: #4c9be8;
+  border-color: var(--nb-brand);
 }
 
 .nb-cell:not(.nb-cell--selected):hover {
@@ -142,7 +207,7 @@ body {
   width: 56px;
   flex-shrink: 0;
   padding: 10px 8px 8px;
-  color: #4c9be8;
+  color: var(--nb-cell-prompt);
   font-size: 12px;
   font-family: var(--mono);
   text-align: right;
@@ -195,7 +260,7 @@ body {
   resize: none;
   min-height: 40px;
   tab-size: 4;
-  caret-color: #4c9be8;
+  caret-color: var(--nb-brand);
 }
 
 .nb-cell-editor::placeholder {
@@ -219,17 +284,22 @@ body {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-all;
+  color: var(--nb-text);
+}
+
+.nb-output-stream--stderr {
+  color: var(--nb-error-muted);
 }
 
 .nb-output-error {
-  border: 1px solid rgba(239, 68, 68, 0.4);
+  border: 1px solid var(--nb-error-border);
   border-radius: 4px;
   padding: 8px 12px;
-  background: rgba(239, 68, 68, 0.06);
+  background: var(--nb-error-bg);
 }
 
 .nb-output-error-header {
-  color: #f87171;
+  color: var(--nb-error);
   font-size: 13px;
   font-weight: 600;
   margin-bottom: 6px;
@@ -237,9 +307,9 @@ body {
 }
 
 .nb-output-traceback {
-  color: #fca5a5;
+  color: var(--nb-error-muted);
   font-size: 12px;
-  opacity: 0.8;
+  opacity: 0.95;
 }
 
 /* ─── Add-cell-between strip ───────────────────────────────────── */
@@ -261,7 +331,7 @@ body {
   background: transparent;
   border: 1px dashed var(--nb-border-dashed);
   border-radius: 4px;
-  color: #4c9be8;
+  color: var(--nb-brand);
   cursor: pointer;
   font-size: 14px;
   padding: 0 24px;
@@ -270,8 +340,8 @@ body {
 }
 
 .nb-add-between-btn:hover {
-  background: rgba(76, 155, 232, 0.08);
-  border-color: #4c9be8;
+  background: var(--nb-brand-focus);
+  border-color: var(--nb-brand);
 }
 
 /* ─── Shared button styles ─────────────────────────────────────── */
@@ -301,14 +371,14 @@ body {
 }
 
 .nb-btn-run {
-  color: #22c55e;
-  border-color: rgba(34, 197, 94, 0.3);
+  color: var(--nb-success);
+  border-color: color-mix(in srgb, var(--nb-success) 35%, transparent);
 }
 
 .nb-btn-run:hover:not(:disabled) {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.6);
-  color: #22c55e;
+  background: color-mix(in srgb, var(--nb-success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--nb-success) 55%, transparent);
+  color: var(--nb-success);
 }
 
 .nb-btn-move {
@@ -318,14 +388,14 @@ body {
 }
 
 .nb-btn-delete {
-  color: #ef4444;
-  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--nb-error);
+  border-color: color-mix(in srgb, var(--nb-error) 35%, transparent);
 }
 
 .nb-btn-delete:hover:not(:disabled) {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: rgba(239, 68, 68, 0.6);
-  color: #ef4444;
+  background: color-mix(in srgb, var(--nb-error) 12%, transparent);
+  border-color: color-mix(in srgb, var(--nb-error) 55%, transparent);
+  color: var(--nb-error);
 }
 
 /* ─── Loading / error states ───────────────────────────────────── */
@@ -341,7 +411,7 @@ body {
 }
 
 .nb-loading--error {
-  color: #f87171;
+  color: var(--nb-error);
 }
 
 /* ─── Toolbar divider ──────────────────────────────────────────── */
@@ -357,31 +427,31 @@ body {
 /* ─── Markdown cell button variants ───────────────────────────── */
 
 .nb-btn-md {
-  color: #a78bfa;
-  border-color: rgba(167, 139, 250, 0.3);
+  color: var(--nb-md-accent);
+  border-color: color-mix(in srgb, var(--nb-md-accent) 35%, transparent);
 }
 
 .nb-btn-md:hover:not(:disabled) {
-  background: rgba(167, 139, 250, 0.08);
-  border-color: rgba(167, 139, 250, 0.6);
-  color: #a78bfa;
+  background: color-mix(in srgb, var(--nb-md-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--nb-md-accent) 55%, transparent);
+  color: var(--nb-md-accent);
 }
 
 .nb-btn-md-done {
-  color: #22c55e;
-  border-color: rgba(34, 197, 94, 0.3);
+  color: var(--nb-success);
+  border-color: color-mix(in srgb, var(--nb-success) 35%, transparent);
 }
 
 .nb-btn-md-done:hover:not(:disabled) {
-  background: rgba(34, 197, 94, 0.08);
-  border-color: rgba(34, 197, 94, 0.6);
-  color: #22c55e;
+  background: color-mix(in srgb, var(--nb-success) 12%, transparent);
+  border-color: color-mix(in srgb, var(--nb-success) 55%, transparent);
+  color: var(--nb-success);
 }
 
 /* ─── Markdown cell gutter ─────────────────────────────────────── */
 
 .nb-cell-gutter--md {
-  color: #a78bfa;
+  color: var(--nb-md-accent);
   font-size: 11px;
   font-style: italic;
 }
@@ -391,7 +461,8 @@ body {
 .nb-md-rendered {
   padding: 10px 16px 12px;
   color: var(--nb-text);
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', helvetica, arial,
+    sans-serif;
   font-size: 14px;
   line-height: 1.7;
 }
@@ -408,10 +479,22 @@ body {
   margin: 0.75em 0 0.4em;
 }
 
-.nb-md-rendered h1 { font-size: 1.6em; border-bottom: 1px solid var(--nb-border); padding-bottom: 0.25em; }
-.nb-md-rendered h2 { font-size: 1.3em; border-bottom: 1px solid var(--nb-border); padding-bottom: 0.2em; }
-.nb-md-rendered h3 { font-size: 1.1em; }
-.nb-md-rendered h4 { font-size: 1em; }
+.nb-md-rendered h1 {
+  font-size: 1.6em;
+  border-bottom: 1px solid var(--nb-border);
+  padding-bottom: 0.25em;
+}
+.nb-md-rendered h2 {
+  font-size: 1.3em;
+  border-bottom: 1px solid var(--nb-border);
+  padding-bottom: 0.2em;
+}
+.nb-md-rendered h3 {
+  font-size: 1.1em;
+}
+.nb-md-rendered h4 {
+  font-size: 1em;
+}
 
 .nb-md-rendered p {
   margin: 0.5em 0;
@@ -428,8 +511,12 @@ body {
 }
 
 .nb-md-rendered a {
-  color: #60a5fa;
+  color: var(--nb-link);
   text-decoration: underline;
+}
+
+.nb-md-rendered a:visited {
+  color: var(--nb-link-visited);
 }
 
 .nb-md-rendered code {
@@ -439,7 +526,7 @@ body {
   border: 1px solid var(--nb-border-cell);
   border-radius: 3px;
   padding: 1px 5px;
-  color: #c084fc;
+  color: var(--nb-text);
 }
 
 .nb-md-rendered pre {
@@ -461,7 +548,7 @@ body {
 }
 
 .nb-md-rendered blockquote {
-  border-left: 3px solid #4c9be8;
+  border-left: 3px solid var(--nb-brand);
   margin: 0.75em 0;
   padding: 4px 0 4px 14px;
   color: var(--nb-text-muted);
@@ -489,12 +576,12 @@ body {
 
 .nb-md-rendered th {
   background: var(--nb-bg-cell);
-  color: #c084fc;
+  color: var(--nb-text-heading);
   font-weight: 600;
 }
 
 .nb-md-rendered tr:nth-child(even) td {
-  background: rgba(128, 128, 128, 0.05);
+  background: color-mix(in srgb, var(--nb-text) 5%, transparent);
 }
 
 /* ─── Markdown editor textarea ─────────────────────────────────── */

@@ -11,14 +11,14 @@ interface ToolbarProps {
 }
 
 function KernelIndicator({ status }: { status: KernelStatus }) {
-  const color =
+  const dotClass =
     status === 'ready'
-      ? '#22c55e'
+      ? 'nb-kernel-dot nb-kernel-dot--ready'
       : status === 'busy'
-        ? '#f59e0b'
+        ? 'nb-kernel-dot nb-kernel-dot--busy'
         : status === 'error'
-          ? '#ef4444'
-          : '#94a3b8'
+          ? 'nb-kernel-dot nb-kernel-dot--error'
+          : 'nb-kernel-dot nb-kernel-dot--loading'
   const label =
     status === 'ready'
       ? 'Ready'
@@ -29,7 +29,7 @@ function KernelIndicator({ status }: { status: KernelStatus }) {
           : 'Loading…'
   return (
     <span className="nb-kernel-status">
-      <span style={{ color, fontSize: 10, lineHeight: 1 }}>●</span>
+      <span className={dotClass}>●</span>
       <span>{label}</span>
     </span>
   )

@@ -1,20 +1,14 @@
 import type { CellOutput as CellOutputType, StreamOutput, ExecuteResult, ErrorOutput } from '../pyodide/types'
 
 function StreamOutputView({ output }: { output: StreamOutput }) {
-  const color = output.name === 'stderr' ? '#f87171' : '#e2e8f0'
+  const stderr = output.name === 'stderr'
   return (
-    <pre className="nb-output-pre" style={{ color }}>
-      {output.text}
-    </pre>
+    <pre className={`nb-output-pre${stderr ? ' nb-output-stream--stderr' : ''}`}>{output.text}</pre>
   )
 }
 
 function ExecuteResultView({ output }: { output: ExecuteResult }) {
-  return (
-    <pre className="nb-output-pre" style={{ color: '#e2e8f0' }}>
-      {output.data}
-    </pre>
-  )
+  return <pre className="nb-output-pre">{output.data}</pre>
 }
 
 function ErrorOutputView({ output }: { output: ErrorOutput }) {

@@ -126,30 +126,32 @@ export function NotebookPage() {
 
   return (
     <div className="nb-page">
-      <Toolbar
-        kernelStatus={state.kernelStatus}
-        onAddCodeCell={() => dispatch({ type: 'ADD_CELL', cellType: 'code' })}
-        onAddMarkdownCell={() => dispatch({ type: 'ADD_CELL', cellType: 'markdown' })}
-        onRunAll={runAll}
-        onRestart={restartKernel}
-        theme={theme}
-        onThemeChange={setTheme}
-      />
-      {state.kernelStatus === 'loading' && (
-        <div className="nb-loading">Loading Python kernel…</div>
-      )}
-      {state.kernelStatus === 'error' && (
-        <div className="nb-loading nb-loading--error">
-          Kernel failed to load. Check console for details.
-        </div>
-      )}
-      <div className="nb-scroll">
-        <CellList
-          cells={state.cells}
-          selectedId={state.selectedId}
-          dispatch={dispatch}
-          onRun={runCell}
+      <div className="nb-main">
+        <Toolbar
+          kernelStatus={state.kernelStatus}
+          onAddCodeCell={() => dispatch({ type: 'ADD_CELL', cellType: 'code' })}
+          onAddMarkdownCell={() => dispatch({ type: 'ADD_CELL', cellType: 'markdown' })}
+          onRunAll={runAll}
+          onRestart={restartKernel}
+          theme={theme}
+          onThemeChange={setTheme}
         />
+        {state.kernelStatus === 'loading' && (
+          <div className="nb-loading">Loading Python kernel…</div>
+        )}
+        {state.kernelStatus === 'error' && (
+          <div className="nb-loading nb-loading--error">
+            Kernel failed to load. Check console for details.
+          </div>
+        )}
+        <div className="nb-scroll">
+          <CellList
+            cells={state.cells}
+            selectedId={state.selectedId}
+            dispatch={dispatch}
+            onRun={runCell}
+          />
+        </div>
       </div>
     </div>
   )
