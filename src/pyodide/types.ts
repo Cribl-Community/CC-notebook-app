@@ -1,5 +1,5 @@
 export type WorkerInbound =
-  | { type: 'init'; pyodideBaseUrl: string }
+  | { type: 'init'; pyodideBaseUrl: string; pyodidePackageBaseUrl: string }
   | { type: 'exec'; id: string; code: string }
 
 export type WorkerOutbound =

@@ -1,4 +1,5 @@
 import type { CellOutput, KernelResult, WorkerInbound, WorkerOutbound } from './types'
+import { PYODIDE_PACKAGE_BASE_URL } from './pyodideVersion'
 
 // Worker source as a classic-worker string (not ES module) so importScripts is available.
 // The pyodide URL is passed via the first 'init' message so the worker loads from
@@ -13,7 +14,10 @@ self.onmessage = async function(e) {
   if (msg.type === 'init') {
     try {
       importScripts(msg.pyodideBaseUrl + 'pyodide.js');
-      pyodide = await loadPyodide({ indexURL: msg.pyodideBaseUrl });
+      pyodide = await loadPyodide({
+        indexURL: msg.pyodideBaseUrl,
+        packageBaseUrl: msg.pyodidePackageBaseUrl,
+      });
       self.postMessage({ type: 'ready' });
     } catch (err) {
       self.postMessage({ type: 'init_error', message: err.message });
@@ -31,6 +35,7 @@ self.onmessage = async function(e) {
       self.postMessage({ type: 'stream', id: id, name: 'stderr', text: text });
     }});
     try {
+      await pyodide.loadPackagesFromImports(msg.code);
       const result = await pyodide.runPythonAsync(msg.code);
       self.postMessage({ type: 'result', id: id, value: String(result ?? '') });
     } catch (err) {
@@ -109,7 +114,11 @@ export class PyodideKernel {
     // Resolve the pyodide base URL from the app's own origin so the worker
     // loads static files from the same host instead of an external CDN.
     const pyodideBaseUrl = new URL('./pyodide/', window.location.href).href
-    const initMsg: WorkerInbound = { type: 'init', pyodideBaseUrl }
+    const initMsg: WorkerInbound = {
+      type: 'init',
+      pyodideBaseUrl,
+      pyodidePackageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
+    }
     this.worker.postMessage(initMsg)
   }
 

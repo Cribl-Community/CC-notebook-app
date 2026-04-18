@@ -28,6 +28,14 @@ const CHECKS: Omit<Check, 'status' | 'detail'>[] = [
     code: 'sum(range(10))',
     expect: (r) => r.outputs.some((o) => o.output_type === 'execute_result' && o.data === '45'),
   },
+  {
+    label: 'import matplotlib',
+    code: 'import matplotlib; matplotlib.__version__',
+    expect: (r) =>
+      r.outputs.some(
+        (o) => o.output_type === 'execute_result' && o.data.length > 0 && /^\d/.test(o.data.trim()),
+      ),
+  },
 ]
 
 function statusIcon(s: CheckStatus) {
