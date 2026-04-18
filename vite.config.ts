@@ -1,8 +1,25 @@
 import { defineConfig, type IndexHtmlTransformContext, type IndexHtmlTransformResult, type ViteDevServer } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readFileSync } from 'node:fs'
-import { join } from 'path'
+import { cp, mkdir } from 'node:fs/promises'
+import { join, resolve } from 'path'
 import react from '@vitejs/plugin-react'
+
+// Copies the minimal pyodide runtime files needed for in-browser execution
+// into public/pyodide/ so they're served from the app's own origin (not CDN).
+// This lets blob workers call importScripts against the app host instead of an
+// external domain, which is required in Cribl's sandboxed iframe environment.
+const PYODIDE_FILES = ['pyodide.js', 'pyodide.asm.js', 'pyodide.asm.wasm', 'python_stdlib.zip', 'pyodide-lock.json']
+
+const pyodideStaticPlugin = () => ({
+  name: 'pyodide-static',
+  async buildStart() {
+    const src = resolve('node_modules/pyodide')
+    const dest = resolve('public/pyodide')
+    await mkdir(dest, { recursive: true })
+    await Promise.all(PYODIDE_FILES.map((f) => cp(join(src, f), join(dest, f))))
+  },
+})
 // @ts-expect-error — .mjs module lacks type declarations
 import { servePackageTgz } from './scripts/pkgutil.mjs'
 
@@ -62,7 +79,7 @@ const injectScriptFromQueryPlugin = () => {
 };
 
 export default defineConfig({
-  plugins: [react(), packageEndpointPlugin(), injectScriptFromQueryPlugin()],
+  plugins: [react(), packageEndpointPlugin(), injectScriptFromQueryPlugin(), pyodideStaticPlugin()],
   base: './',
   server: {
     cors: true,
