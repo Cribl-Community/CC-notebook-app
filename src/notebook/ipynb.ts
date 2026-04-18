@@ -10,13 +10,78 @@ function normalizeSource(source: unknown): string {
   return ''
 }
 
+/** Jupyter nbformat often stores stream text as a string or list of strings. */
+function normalizeNbformatText(text: unknown): string {
+  if (typeof text === 'string') return text
+  if (Array.isArray(text)) return text.filter((x): x is string => typeof x === 'string').join('')
+  return ''
+}
+
+function parseExecutionCount(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  return null
+}
+
+function textPlainFromMimeBundle(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null
+  const d = data as Record<string, unknown>
+  const tp = d['text/plain']
+  if (typeof tp === 'string') return tp
+  if (Array.isArray(tp)) return tp.filter((x): x is string => typeof x === 'string').join('')
+  return null
+}
+
+function parseNbformatOutput(raw: unknown): CellOutput | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  const ot = o.output_type
+  if (ot === 'stream') {
+    const name = o.name
+    if (name !== 'stdout' && name !== 'stderr') return null
+    return {
+      output_type: 'stream',
+      name,
+      text: normalizeNbformatText(o.text),
+    }
+  }
+  if (ot === 'execute_result' || ot === 'display_data') {
+    const plain = textPlainFromMimeBundle(o.data)
+    if (plain === null) return null
+    return { output_type: 'execute_result', data: plain }
+  }
+  if (ot === 'error') {
+    const ename = typeof o.ename === 'string' ? o.ename : 'Error'
+    const evalue = typeof o.evalue === 'string' ? o.evalue : ''
+    const tb = o.traceback
+    let traceback: string[]
+    if (Array.isArray(tb)) {
+      traceback = tb.filter((x): x is string => typeof x === 'string')
+    } else if (typeof tb === 'string') {
+      traceback = tb.split('\n')
+    } else {
+      traceback = []
+    }
+    return { output_type: 'error', ename, evalue, traceback }
+  }
+  return null
+}
+
 function parseCodeCell(cell: Record<string, unknown>): CodeCell {
+  const outputs: CellOutput[] = []
+  const rawOut = cell.outputs
+  if (Array.isArray(rawOut)) {
+    for (const item of rawOut) {
+      const parsed = parseNbformatOutput(item)
+      if (parsed) outputs.push(parsed)
+    }
+  }
+
   return {
     id: crypto.randomUUID(),
     cell_type: 'code',
     source: normalizeSource(cell.source),
-    outputs: [],
-    execution_count: null,
+    outputs,
+    execution_count: parseExecutionCount(cell.execution_count),
     execution_state: 'idle',
   }
 }
@@ -68,7 +133,8 @@ export type IpynbParseResult = { title: string; cells: Cell[] }
 
 /**
  * Parses a Jupyter notebook file (nbformat 4). Unsupported cell types are skipped.
- * Imported code cells have cleared outputs and execution counts (fresh kernel state).
+ * Code cell outputs and execution counts are loaded from the file (stream, text/plain
+ * results, and errors). Other mime types and output kinds are skipped.
  */
 export function parseIpynbJson(text: string, options?: IpynbParseOptions): IpynbParseResult {
   let root: unknown
