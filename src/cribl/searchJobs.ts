@@ -4,6 +4,10 @@
  */
 
 import { getCriblApiBase } from './kvstore'
+import { normalizeSearchQuery } from './searchQuery'
+import { runLocalSearchStub } from './searchStub'
+
+export { normalizeSearchQuery } from './searchQuery'
 
 const SEARCH_GROUP = 'default_search'
 const POLL_MS = 450
@@ -11,14 +15,6 @@ const MAX_POLLS = 200
 
 function searchBasePath(apiBase: string): string {
   return `${apiBase}/m/${SEARCH_GROUP}/search`
-}
-
-/** Prepends the `cribl` operator when missing (Search API expects it). */
-export function normalizeSearchQuery(query: string): string {
-  const q = query.trim()
-  if (!q) return q
-  if (/^cribl\b/i.test(q)) return q
-  return `cribl ${q}`
 }
 
 function sleep(ms: number): Promise<void> {
@@ -81,11 +77,6 @@ function extractResultRows(data: unknown): Record<string, unknown>[] {
   return []
 }
 
-const MOCK_ROWS: Record<string, unknown>[] = [
-  { _time: '2025-01-01T00:00:00.000Z', host: 'mock-a', _raw: 'sample event 1' },
-  { _time: '2025-01-01T00:01:00.000Z', host: 'mock-b', _raw: 'sample event 2' },
-]
-
 export type RunSearchJobOptions = {
   query: string
   onProgress?: (line: string) => void
@@ -100,12 +91,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<R
   const q = normalizeSearchQuery(options.query)
 
   if (!base) {
-    options.onProgress?.('Cribl Search (offline mock): preparing…')
-    await sleep(80)
-    options.onProgress?.('Cribl Search (offline mock): running…')
-    await sleep(120)
-    options.onProgress?.('Cribl Search (offline mock): done.')
-    return MOCK_ROWS.map((r) => ({ ...r }))
+    return runLocalSearchStub(options)
   }
 
   const root = searchBasePath(base)

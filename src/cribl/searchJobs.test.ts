@@ -20,6 +20,7 @@ describe('runCriblSearchJob mock', () => {
       onProgress: (l) => lines.push(l),
     })
     expect(rows.length).toBeGreaterThan(0)
-    expect(lines.some((l) => l.includes('mock'))).toBe(true)
+    expect(lines.some((l) => l.includes('local stub'))).toBe(true)
+    expect(rows[0]).toHaveProperty('query')
   })
 })
