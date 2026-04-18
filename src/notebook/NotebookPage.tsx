@@ -55,9 +55,9 @@ function readStoredNotebookTitle(): string | undefined {
 export function NotebookPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
-      return (localStorage.getItem('nb-theme') as 'dark' | 'light') ?? 'dark'
+      return (localStorage.getItem('nb-theme') as 'dark' | 'light') ?? 'light'
     } catch {
-      return 'dark'
+      return 'light'
     }
   })
 
