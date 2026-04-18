@@ -125,6 +125,14 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ),
       }
 
+    case 'CLEAR_ALL_OUTPUTS':
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell =>
+          c.cell_type === 'code' ? { ...c, outputs: [], execution_count: null } : c,
+        ),
+      }
+
     case 'MOVE_CELL': {
       const idx = state.cells.findIndex((c) => c.id === action.id)
       if (idx === -1) return state
