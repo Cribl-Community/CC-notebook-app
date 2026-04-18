@@ -69,6 +69,21 @@ api.example.com:
 
 Sensitive headers (`cookie`, `authorization`, `host`, etc.) are always stripped from the original request — use `headers.inject` for auth. Header values support string literals (`"'static'"`) and KV lookups (`kv.myKey`).
 
+**Pyodide packages:** The kernel loads the interpreter from the app origin, but extra packages (for example after `import matplotlib`) are fetched from `cdn.jsdelivr.net` using `packageBaseUrl` in `src/pyodide/PyodideKernel.ts`. That domain must stay listed in `config/proxies.yml`. When upgrading the `pyodide` npm package, update `src/pyodide/pyodideVersion.ts` and the allowlisted path in `proxies.yml` to the same release.
+
+### Local Testing (Pyodide Kernel)
+
+```bash
+npm run dev
+```
+
+- Standard dev (same-origin): `http://localhost:5173`
+  - Shows the Pyodide smoke test in DEV mode; all checks should pass (the `matplotlib` case may be slow the first time while wheels download from jsDelivr).
+- Null-origin sandbox test (simulates Cribl App Platform iframe): `http://localhost:5173/sandbox-test.html`
+  - Embeds the app in `<iframe sandbox="allow-scripts">` (no `allow-same-origin`).
+  - `window.location.origin` inside the iframe will be `"null"`.
+  - The smoke test should still pass — proving the kernel works under null-origin constraints.
+
 ### Build System
 
 Vite config includes two custom plugins:

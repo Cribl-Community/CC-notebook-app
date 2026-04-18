@@ -1,23 +1,7 @@
-# External API declaration. Declare domains your app needs to reach.
-# At install time, admins see exactly which endpoints the app will use.
+# External domains the app reaches via fetch(). Declared for install-time review and pack proxy routing.
+# Pyodide loads extra wheels from the official jsDelivr full distribution (see src/pyodide/pyodideVersion.ts).
 
-api.example.com:
+cdn.jsdelivr.net:
   paths:
     allowlist:
-      - /v1/
-      - /api/public/
-    blocklist:
-      - /v1/internal/
-      - /api/admin/
-  headers:
-    inject:
-      Authorization: '`Bearer ${C.kv.api_key}`'
-      X-API-Version: '2024-01'
-    allowlist:
-      - Content-Type
-      - x-request-id
-      - x-*
-    blocklist:
-      - X-Sensitive-Header
-      - Cookie
-  timeout: 30000
+      - /pyodide/v0.29.3/
