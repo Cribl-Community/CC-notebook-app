@@ -4,4 +4,20 @@
  */
 export const PYODIDE_RELEASE = '0.29.3' as const
 
+/** CDN fallback when {@link VENDOR_PYODIDE_FULL} is false. */
 export const PYODIDE_PACKAGE_BASE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_RELEASE}/full/` as const
+
+/**
+ * TEMP: ship pandas/matplotlib wheels under ./pyodide/full/ (see scripts/vendor-pyodide-wheels.mjs)
+ * so the pack proxy does not need to reach jsDelivr. Set to false and drop the vendor step once
+ * config/proxies.yml + proxy routing work again.
+ */
+export const VENDOR_PYODIDE_FULL = true as const
+
+/** Base URL for Pyodide to fetch extra wheels (same-origin vendor dir or jsDelivr). */
+export function getPyodidePackageBaseUrl(): string {
+  if (VENDOR_PYODIDE_FULL) {
+    return new URL('./pyodide/full/', window.location.href).href
+  }
+  return PYODIDE_PACKAGE_BASE_URL
+}

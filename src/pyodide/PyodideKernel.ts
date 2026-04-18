@@ -1,5 +1,5 @@
 import type { CellOutput, KernelResult, WorkerInbound, WorkerOutbound } from './types'
-import { PYODIDE_PACKAGE_BASE_URL } from './pyodideVersion'
+import { getPyodidePackageBaseUrl } from './pyodideVersion'
 
 // Worker source as a classic-worker string (not ES module) so importScripts is available.
 // The pyodide URL is passed via the first 'init' message so the worker loads from
@@ -117,7 +117,7 @@ export class PyodideKernel {
     const initMsg: WorkerInbound = {
       type: 'init',
       pyodideBaseUrl,
-      pyodidePackageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
+      pyodidePackageBaseUrl: getPyodidePackageBaseUrl(),
     }
     this.worker.postMessage(initMsg)
   }

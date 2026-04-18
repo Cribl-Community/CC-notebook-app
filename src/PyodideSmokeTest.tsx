@@ -36,6 +36,14 @@ const CHECKS: Omit<Check, 'status' | 'detail'>[] = [
         (o) => o.output_type === 'execute_result' && o.data.length > 0 && /^\d/.test(o.data.trim()),
       ),
   },
+  {
+    label: 'import pandas',
+    code: 'import pandas as pd; pd.__version__',
+    expect: (r) =>
+      r.outputs.some(
+        (o) => o.output_type === 'execute_result' && o.data.length > 0 && /^\d/.test(o.data.trim()),
+      ),
+  },
 ]
 
 function statusIcon(s: CheckStatus) {
