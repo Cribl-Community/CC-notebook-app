@@ -7,9 +7,13 @@ interface ToolbarProps {
   onTitleChange: (title: string) => void
   onDownload: () => void
   onImportFile: (file: File) => void
+  onSave: () => void
+  saveDisabled?: boolean
+  dirty?: boolean
   onAddCodeCell: () => void
   onAddMarkdownCell: () => void
   onRunAll: () => void
+  onClearAllOutputs: () => void
   onRestart: () => void
   theme: 'dark' | 'light'
   onThemeChange: (t: 'dark' | 'light') => void
@@ -46,9 +50,13 @@ export function Toolbar({
   onTitleChange,
   onDownload,
   onImportFile,
+  onSave,
+  saveDisabled = false,
+  dirty = false,
   onAddCodeCell,
   onAddMarkdownCell,
   onRunAll,
+  onClearAllOutputs,
   onRestart,
   theme,
   onThemeChange,
@@ -67,7 +75,21 @@ export function Toolbar({
         aria-label="Notebook title"
         title="Notebook title"
       />
+      {dirty && (
+        <span className="nb-toolbar-dirty" title="Unsaved changes">
+          ●
+        </span>
+      )}
       <div className="nb-toolbar-actions">
+        <button
+          className="nb-btn nb-btn-primary"
+          type="button"
+          onClick={onSave}
+          disabled={saveDisabled}
+          title="Save notebook to Cribl storage"
+        >
+          Save
+        </button>
         <button className="nb-btn" type="button" onClick={onDownload} title="Download as .ipynb">
           ⬇ Download
         </button>
@@ -102,6 +124,15 @@ export function Toolbar({
         <div className="nb-toolbar-divider" />
         <button className="nb-btn" onClick={onRunAll} disabled={busy} title="Run all code cells">
           ▶▶ Run All
+        </button>
+        <button
+          className="nb-btn"
+          type="button"
+          onClick={onClearAllOutputs}
+          disabled={busy}
+          title="Clear outputs from all code cells"
+        >
+          ⊗ Clear outputs
         </button>
         <button className="nb-btn" onClick={onRestart} title="Restart kernel and clear outputs">
           ↺ Restart

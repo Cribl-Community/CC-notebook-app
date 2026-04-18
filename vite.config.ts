@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig, type IndexHtmlTransformContext, type IndexHtmlTransformResult, type ViteDevServer } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { readFileSync } from 'node:fs'
@@ -87,6 +88,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-  }
+  },
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+  },
 })
 
