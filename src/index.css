@@ -41,6 +41,25 @@
   --nb-link-visited: #ba68c8;
   --nb-md-accent: #ba68c8;
 
+  /* CodeMirror / Jupyter mirror-editor (dark) */
+  --nb-cm-keyword-strong: #6ebf6e;
+  --nb-cm-keyword: #6ebf6e;
+  --nb-cm-operator-keyword: #c586c0;
+  --nb-cm-string: #ce9178;
+  --nb-cm-comment: #7d9c7d;
+  --nb-cm-number: #b5cea8;
+  --nb-cm-bool-null: #569cd6;
+  --nb-cm-name: #d4d4d4;
+  --nb-cm-def-name: #4ec9b0;
+  --nb-cm-function: #dcdcaa;
+  --nb-cm-property: #9cdcfe;
+  --nb-cm-operator: #d4d4d4;
+  --nb-cm-punctuation: #d4d4d4;
+  --nb-cm-meta: #c586c0;
+  --nb-cm-bracket-match-bg: rgba(100, 180, 255, 0.28);
+  --nb-cm-bracket-match-outline: rgba(100, 180, 255, 0.55);
+  --nb-cm-invalid: #f44747;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -76,6 +95,25 @@
   --nb-link: #0d47a1;
   --nb-link-visited: #7b1fa2;
   --nb-md-accent: #7b1fa2;
+
+  /* CodeMirror / Jupyter mirror-editor (light) */
+  --nb-cm-keyword-strong: #008000;
+  --nb-cm-keyword: #008000;
+  --nb-cm-operator-keyword: #7928a1;
+  --nb-cm-string: #ba2121;
+  --nb-cm-comment: #408080;
+  --nb-cm-number: #098658;
+  --nb-cm-bool-null: #008000;
+  --nb-cm-name: rgba(0, 0, 0, 0.87);
+  --nb-cm-def-name: #0000ff;
+  --nb-cm-function: #0000ff;
+  --nb-cm-property: rgba(0, 0, 0, 0.87);
+  --nb-cm-operator: rgba(0, 0, 0, 0.87);
+  --nb-cm-punctuation: rgba(0, 0, 0, 0.87);
+  --nb-cm-meta: #7928a1;
+  --nb-cm-bracket-match-bg: rgba(0, 123, 255, 0.16);
+  --nb-cm-bracket-match-outline: rgba(0, 123, 255, 0.45);
+  --nb-cm-invalid: #b00020;
 }
 
 * {

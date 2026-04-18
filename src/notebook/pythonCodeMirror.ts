@@ -8,9 +8,45 @@ import {
 } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { python } from '@codemirror/lang-python'
-import { indentOnInput } from '@codemirror/language'
+import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language'
+import { tags } from '@lezer/highlight'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import type { CompletionItem } from '../pyodide/types'
+
+/** Jupyter-like Python token colors (CSS vars in index.css). Lezer maps `as` and `print` to the same tag. */
+const jupyterPythonHighlight = HighlightStyle.define([
+  { tag: tags.moduleKeyword, color: 'var(--nb-cm-keyword-strong)', fontWeight: 'bold' },
+  { tag: tags.controlKeyword, color: 'var(--nb-cm-keyword-strong)', fontWeight: 'bold' },
+  { tag: tags.definitionKeyword, color: 'var(--nb-cm-keyword-strong)', fontWeight: 'bold' },
+  { tag: tags.operatorKeyword, color: 'var(--nb-cm-operator-keyword)', fontWeight: 'bold' },
+  { tag: tags.keyword, color: 'var(--nb-cm-keyword)' },
+  { tag: tags.string, color: 'var(--nb-cm-string)' },
+  { tag: tags.special(tags.string), color: 'var(--nb-cm-string)' },
+  { tag: tags.escape, color: 'var(--nb-cm-string)' },
+  { tag: tags.lineComment, color: 'var(--nb-cm-comment)', fontStyle: 'italic' },
+  { tag: tags.blockComment, color: 'var(--nb-cm-comment)', fontStyle: 'italic' },
+  { tag: tags.docComment, color: 'var(--nb-cm-comment)', fontStyle: 'italic' },
+  { tag: tags.number, color: 'var(--nb-cm-number)' },
+  { tag: tags.bool, color: 'var(--nb-cm-bool-null)' },
+  { tag: tags.null, color: 'var(--nb-cm-bool-null)' },
+  { tag: tags.definition(tags.className), color: 'var(--nb-cm-def-name)', fontWeight: 'bold' },
+  { tag: tags.definition(tags.variableName), color: 'var(--nb-cm-def-name)', fontWeight: 'bold' },
+  { tag: tags.className, color: 'var(--nb-cm-def-name)' },
+  { tag: tags.function(tags.variableName), color: 'var(--nb-cm-function)' },
+  { tag: tags.function(tags.propertyName), color: 'var(--nb-cm-function)' },
+  { tag: tags.propertyName, color: 'var(--nb-cm-property)' },
+  { tag: tags.variableName, color: 'var(--nb-cm-name)' },
+  { tag: tags.namespace, color: 'var(--nb-cm-name)' },
+  { tag: tags.meta, color: 'var(--nb-cm-meta)' },
+  { tag: tags.modifier, color: 'var(--nb-cm-keyword-strong)' },
+  { tag: tags.operator, color: 'var(--nb-cm-operator)' },
+  { tag: tags.punctuation, color: 'var(--nb-cm-punctuation)' },
+  { tag: tags.brace, color: 'var(--nb-cm-punctuation)' },
+  { tag: tags.squareBracket, color: 'var(--nb-cm-punctuation)' },
+  { tag: tags.paren, color: 'var(--nb-cm-punctuation)' },
+  { tag: tags.separator, color: 'var(--nb-cm-punctuation)' },
+  { tag: tags.invalid, color: 'var(--nb-cm-invalid)' },
+])
 
 /** Same line-based rule as `notebook_complete.py` for `from`/`to` in the editor. */
 export function completionReplaceBounds(code: string, pos: number): { from: number; to: number } {
@@ -88,6 +124,15 @@ export function createPythonCellExtensions(options: {
       '.cm-gutters': {
         display: 'none',
       },
+      '.cm-matchingBracket': {
+        backgroundColor: 'var(--nb-cm-bracket-match-bg)',
+        outline: '1px solid var(--nb-cm-bracket-match-outline)',
+        borderRadius: '2px',
+      },
+      '.cm-nonmatchingBracket': {
+        backgroundColor: 'var(--nb-error-bg)',
+        outline: '1px solid var(--nb-error-border)',
+      },
       '.cm-completionList': {
         fontFamily: 'var(--mono)',
       },
@@ -157,6 +202,8 @@ export function createPythonCellExtensions(options: {
   return [
     cellTheme,
     python(),
+    syntaxHighlighting(jupyterPythonHighlight),
+    bracketMatching(),
     indentOnInput(),
     history(),
     EditorState.tabSize.of(4),
