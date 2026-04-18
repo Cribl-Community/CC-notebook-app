@@ -9,6 +9,8 @@ interface CodeCellProps {
   onRun: () => void
   onDelete: () => void
   onChange: (source: string) => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }
 
 function GutterLabel({ cell }: { cell: CellData }) {
@@ -17,7 +19,7 @@ function GutterLabel({ cell }: { cell: CellData }) {
   return <span>[ ]</span>
 }
 
-export function CodeCell({ cell, isSelected, onSelect, onRun, onDelete, onChange }: CodeCellProps) {
+export function CodeCell({ cell, isSelected, onSelect, onRun, onDelete, onChange, onMoveUp, onMoveDown }: CodeCellProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -63,6 +65,22 @@ export function CodeCell({ cell, isSelected, onSelect, onRun, onDelete, onChange
             title="Run cell (Shift+Enter)"
           >
             {isRunning ? '◼' : '▶'}
+          </button>
+          <button
+            className="nb-btn nb-btn-move"
+            onClick={(e) => { e.stopPropagation(); onMoveUp?.() }}
+            disabled={!onMoveUp}
+            title="Move cell up"
+          >
+            ▲
+          </button>
+          <button
+            className="nb-btn nb-btn-move"
+            onClick={(e) => { e.stopPropagation(); onMoveDown?.() }}
+            disabled={!onMoveDown}
+            title="Move cell down"
+          >
+            ▼
           </button>
           <button
             className="nb-btn nb-btn-delete"

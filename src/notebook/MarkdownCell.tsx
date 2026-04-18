@@ -10,6 +10,8 @@ interface MarkdownCellProps {
   onToggleEdit: () => void
   onDelete: () => void
   onChange: (source: string) => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }
 
 function renderMarkdown(source: string): string {
@@ -24,6 +26,8 @@ export function MarkdownCell({
   onToggleEdit,
   onDelete,
   onChange,
+  onMoveUp,
+  onMoveDown,
 }: MarkdownCellProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -71,6 +75,22 @@ export function MarkdownCell({
               title="Render (Shift+Enter)"
             >
               ✓ Done
+            </button>
+            <button
+              className="nb-btn nb-btn-move"
+              onClick={(e) => { e.stopPropagation(); onMoveUp?.() }}
+              disabled={!onMoveUp}
+              title="Move cell up"
+            >
+              ▲
+            </button>
+            <button
+              className="nb-btn nb-btn-move"
+              onClick={(e) => { e.stopPropagation(); onMoveDown?.() }}
+              disabled={!onMoveDown}
+              title="Move cell down"
+            >
+              ▼
             </button>
             <button
               className="nb-btn nb-btn-delete"
@@ -121,6 +141,22 @@ export function MarkdownCell({
             title="Edit markdown"
           >
             ✎ Edit
+          </button>
+          <button
+            className="nb-btn nb-btn-move"
+            onClick={(e) => { e.stopPropagation(); onMoveUp?.() }}
+            disabled={!onMoveUp}
+            title="Move cell up"
+          >
+            ▲
+          </button>
+          <button
+            className="nb-btn nb-btn-move"
+            onClick={(e) => { e.stopPropagation(); onMoveDown?.() }}
+            disabled={!onMoveDown}
+            title="Move cell down"
+          >
+            ▼
           </button>
           <button
             className="nb-btn nb-btn-delete"

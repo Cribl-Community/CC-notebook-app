@@ -45,4 +45,5 @@ export type NotebookAction =
   | { type: 'ERROR_CELL'; id: CellId }
   | { type: 'CLEAR_OUTPUTS'; id: CellId }
   | { type: 'SET_KERNEL_STATUS'; status: KernelStatus }
+  | { type: 'MOVE_CELL'; id: CellId; direction: 'up' | 'down' }
   | { type: 'RESTART' }

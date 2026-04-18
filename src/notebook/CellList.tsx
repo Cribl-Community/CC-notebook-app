@@ -12,7 +12,7 @@ interface CellListProps {
 export function CellList({ cells, selectedId, dispatch, onRun }: CellListProps) {
   return (
     <div className="nb-cell-list">
-      {cells.map((cell) => (
+      {cells.map((cell, index) => (
         <div key={cell.id}>
           {cell.cell_type === 'code' ? (
             <CodeCell
@@ -22,6 +22,8 @@ export function CellList({ cells, selectedId, dispatch, onRun }: CellListProps) 
               onRun={() => onRun(cell.id)}
               onDelete={() => dispatch({ type: 'DELETE_CELL', id: cell.id })}
               onChange={(source) => dispatch({ type: 'UPDATE_SOURCE', id: cell.id, source })}
+              onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
+              onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
             />
           ) : (
             <MarkdownCell
@@ -31,6 +33,8 @@ export function CellList({ cells, selectedId, dispatch, onRun }: CellListProps) 
               onToggleEdit={() => dispatch({ type: 'TOGGLE_MARKDOWN_EDIT', id: cell.id })}
               onDelete={() => dispatch({ type: 'DELETE_CELL', id: cell.id })}
               onChange={(source) => dispatch({ type: 'UPDATE_SOURCE', id: cell.id, source })}
+              onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
+              onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
             />
           )}
           <div className="nb-add-between">

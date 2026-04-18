@@ -124,6 +124,17 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ),
       }
 
+    case 'MOVE_CELL': {
+      const idx = state.cells.findIndex((c) => c.id === action.id)
+      if (idx === -1) return state
+      if (action.direction === 'up' && idx === 0) return state
+      if (action.direction === 'down' && idx === state.cells.length - 1) return state
+      const cells = [...state.cells]
+      const swapIdx = action.direction === 'up' ? idx - 1 : idx + 1
+      ;[cells[idx], cells[swapIdx]] = [cells[swapIdx], cells[idx]]
+      return { ...state, cells }
+    }
+
     case 'SET_KERNEL_STATUS':
       return { ...state, kernelStatus: action.status }
 

@@ -278,6 +278,12 @@ body {
   color: #22c55e;
 }
 
+.nb-btn-move {
+  padding: 3px 6px;
+  font-size: 9px;
+  line-height: 1;
+}
+
 .nb-btn-delete {
   color: #ef4444;
   border-color: rgba(239, 68, 68, 0.3);
