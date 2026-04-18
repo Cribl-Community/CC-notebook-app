@@ -21,11 +21,51 @@ function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
 }
 
-function pickJobId(data: unknown): string | null {
+function asJobIdString(v: unknown): string | null {
+  if (typeof v === 'string' && v.trim().length > 0) return v.trim()
+  if (typeof v === 'number' && Number.isFinite(v)) return String(v)
+  return null
+}
+
+/**
+ * Cribl Search job create responses vary: top-level `id`, or `items[0].id`,
+ * or Splunk-style `entry[0].content.sid` / `entry[0].name`.
+ */
+export function parseSearchJobCreateId(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null
   const o = data as Record<string, unknown>
-  const id = o.id ?? o.sid ?? o.jobId ?? o.job_id
-  return typeof id === 'string' && id.length > 0 ? id : null
+
+  const top =
+    asJobIdString(o.id) ??
+    asJobIdString(o.sid) ??
+    asJobIdString(o.jobId) ??
+    asJobIdString(o.job_id)
+  if (top) return top
+
+  const items = o.items
+  if (Array.isArray(items) && items[0] && typeof items[0] === 'object') {
+    const it = items[0] as Record<string, unknown>
+    const fromItem =
+      asJobIdString(it.id) ?? asJobIdString(it.sid) ?? asJobIdString(it.jobId) ?? asJobIdString(it.job_id)
+    if (fromItem) return fromItem
+  }
+
+  const entry = o.entry
+  if (Array.isArray(entry) && entry[0] && typeof entry[0] === 'object') {
+    const e0 = entry[0] as Record<string, unknown>
+    const content = e0.content
+    if (content && typeof content === 'object') {
+      const c = content as Record<string, unknown>
+      const fromContent =
+        asJobIdString(c.sid) ?? asJobIdString(c.id) ?? asJobIdString(c.job_id) ?? asJobIdString(c.jobId)
+      if (fromContent) return fromContent
+    }
+    const fromEntry =
+      asJobIdString(e0.id) ?? asJobIdString(e0.sid) ?? asJobIdString(e0.name) ?? asJobIdString(e0.title)
+    if (fromEntry) return fromEntry
+  }
+
+  return null
 }
 
 function parseJobPhase(data: unknown): 'running' | 'completed' | 'failed' {
@@ -114,9 +154,13 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<R
   }
 
   const created: unknown = await createRes.json()
-  const jobId = pickJobId(created)
+  const jobId = parseSearchJobCreateId(created)
   if (!jobId) {
-    throw new Error('Search job create response missing job id.')
+    const preview =
+      typeof created === 'object' && created !== null
+        ? JSON.stringify(created).slice(0, 500)
+        : String(created)
+    throw new Error(`Search job create response missing job id. Body preview: ${preview}`)
   }
 
   options.onProgress?.(`Job ${jobId}: queued…`)

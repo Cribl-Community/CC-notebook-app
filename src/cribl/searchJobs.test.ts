@@ -1,5 +1,29 @@
 import { describe, it, expect } from 'vitest'
-import { normalizeSearchQuery, runCriblSearchJob } from './searchJobs'
+import { normalizeSearchQuery, parseSearchJobCreateId, runCriblSearchJob } from './searchJobs'
+
+describe('parseSearchJobCreateId', () => {
+  it('reads top-level id', () => {
+    expect(parseSearchJobCreateId({ id: 'job-abc' })).toBe('job-abc')
+  })
+
+  it('reads items[0].id (Cribl list wrapper)', () => {
+    expect(parseSearchJobCreateId({ items: [{ id: '1349305736255.Acp7er', query: 'cribl ...' }] })).toBe(
+      '1349305736255.Acp7er',
+    )
+  })
+
+  it('reads entry[0].content.sid', () => {
+    expect(
+      parseSearchJobCreateId({
+        entry: [{ content: { sid: 'sid-123', isDone: false } }],
+      }),
+    ).toBe('sid-123')
+  })
+
+  it('coerces numeric id', () => {
+    expect(parseSearchJobCreateId({ id: 42 })).toBe('42')
+  })
+})
 
 describe('normalizeSearchQuery', () => {
   it('prepends cribl when missing', () => {
