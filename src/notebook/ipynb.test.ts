@@ -112,6 +112,43 @@ describe('parseIpynbJson', () => {
   })
 })
 
+describe('serializeNotebookToIpynbJson cribl_search', () => {
+  it('round-trips cribl_search display_data', () => {
+    const criblOut = {
+      output_type: 'cribl_search' as const,
+      payload: {
+        kind: 'completed' as const,
+        columns: ['_raw'],
+        rows: [{ _raw: 'e1' }],
+        recordsReturned: 1,
+        totalRecords: null as number | null,
+      },
+    }
+    const state: NotebookState = {
+      title: 'T',
+      cells: [
+        {
+          id: 'c1',
+          cell_type: 'code',
+          source: '%%cribl_search\nq\n',
+          outputs: [criblOut],
+          execution_count: 1,
+          execution_state: 'idle',
+        },
+      ],
+      selectedId: null,
+      executionCounter: 0,
+      kernelStatus: 'ready',
+    }
+    const json = serializeNotebookToIpynbJson(state)
+    const { cells } = parseIpynbJson(json)
+    const c = cells[0]
+    expect(c?.cell_type).toBe('code')
+    if (c?.cell_type !== 'code') return
+    expect(c.outputs).toEqual([criblOut])
+  })
+})
+
 describe('serializeNotebookToIpynbJson round-trip', () => {
   function minimalState(overrides: Partial<NotebookState> = {}): NotebookState {
     return {

@@ -99,6 +99,25 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ),
       }
 
+    case 'REPLACE_OUTPUT_AT': {
+      const { index, output } = action
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell =>
+          c.id === action.id && c.cell_type === 'code'
+            ? (() => {
+                const next = [...c.outputs]
+                if (index >= 0 && index < next.length) {
+                  next[index] = output
+                  return { ...c, outputs: next }
+                }
+                return c
+              })()
+            : c,
+        ),
+      }
+    }
+
     case 'FINISH_CELL':
       return {
         ...state,

@@ -1,5 +1,5 @@
 import type { Cell, CodeCell, MarkdownCell, NotebookState } from './types'
-import type { CellOutput } from '../pyodide/types'
+import { CRIBL_SEARCH_MIME, type CellOutput, type CriblSearchPayload } from '../pyodide/types'
 
 const NBFORMAT = 4
 const NBFORMAT_MINOR = 5
@@ -31,6 +31,39 @@ function textPlainFromMimeBundle(data: unknown): string | null {
   return null
 }
 
+function criblPayloadFromDisplayData(data: unknown): CriblSearchPayload | null {
+  if (!data || typeof data !== 'object') return null
+  const d = data as Record<string, unknown>
+  const raw = d[CRIBL_SEARCH_MIME]
+  if (typeof raw !== 'string' || raw.length === 0) return null
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!parsed || typeof parsed !== 'object') return null
+    const p = parsed as { kind?: unknown }
+    if (p.kind === 'running' || p.kind === 'completed' || p.kind === 'failed') {
+      return parsed as CriblSearchPayload
+    }
+  } catch {
+    return null
+  }
+  return null
+}
+
+function criblSearchPlainSummary(payload: CriblSearchPayload): string {
+  if (payload.kind === 'running') {
+    return `Cribl Search: ${payload.label}`
+  }
+  if (payload.kind === 'failed') {
+    return `Cribl Search failed: ${payload.message}`
+  }
+  const total =
+    payload.totalRecords != null && payload.totalRecords !== payload.recordsReturned
+      ? `${payload.recordsReturned} records (${payload.totalRecords} total). Columns: ${payload.columns.join(', ')}`
+      : `${payload.recordsReturned} records. Columns: ${payload.columns.join(', ')}`
+  const tableNote = payload.showTable === false ? ' Table not shown (preview=false).' : ''
+  return `Cribl Search: ${total}${tableNote}`
+}
+
 function parseNbformatOutput(raw: unknown): CellOutput | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Record<string, unknown>
@@ -44,7 +77,16 @@ function parseNbformatOutput(raw: unknown): CellOutput | null {
       text: normalizeNbformatText(o.text),
     }
   }
-  if (ot === 'execute_result' || ot === 'display_data') {
+  if (ot === 'display_data') {
+    const cribl = criblPayloadFromDisplayData(o.data)
+    if (cribl) {
+      return { output_type: 'cribl_search', payload: cribl }
+    }
+    const plain = textPlainFromMimeBundle(o.data)
+    if (plain === null) return null
+    return { output_type: 'execute_result', data: plain }
+  }
+  if (ot === 'execute_result') {
     const plain = textPlainFromMimeBundle(o.data)
     if (plain === null) return null
     return { output_type: 'execute_result', data: plain }
@@ -208,6 +250,17 @@ function errorOutputToNbformat(o: Extract<CellOutput, { output_type: 'error' }>)
   }
 }
 
+function criblSearchToNbformat(o: Extract<CellOutput, { output_type: 'cribl_search' }>) {
+  return {
+    output_type: 'display_data' as const,
+    data: {
+      'text/plain': criblSearchPlainSummary(o.payload),
+      [CRIBL_SEARCH_MIME]: JSON.stringify(o.payload),
+    },
+    metadata: {},
+  }
+}
+
 function outputsToNbformat(outputs: CellOutput[], execution_count: number | null): unknown[] {
   const out: unknown[] = []
   for (const o of outputs) {
@@ -215,6 +268,8 @@ function outputsToNbformat(outputs: CellOutput[], execution_count: number | null
       out.push(streamOutputToNbformat(o))
     } else if (o.output_type === 'execute_result') {
       out.push(executeResultToNbformat(o, execution_count))
+    } else if (o.output_type === 'cribl_search') {
+      out.push(criblSearchToNbformat(o))
     } else if (o.output_type === 'error') {
       out.push(errorOutputToNbformat(o))
     }

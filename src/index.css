@@ -1376,3 +1376,234 @@ body {
   border-color: var(--nb-border-hover);
   color: var(--nb-text);
 }
+
+/* ─── Cribl Search cell output ─────────────────────────────────── */
+
+.nb-cribl-root {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--nb-text);
+  margin: 6px 0 0;
+  max-width: 100%;
+}
+
+.nb-cribl-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nb-cribl-progress-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--nb-bg-cell-alt);
+  border: 1px solid var(--nb-border-cell);
+  overflow: hidden;
+}
+
+.nb-cribl-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--nb-brand), color-mix(in srgb, var(--nb-brand) 70%, var(--nb-success)));
+  border-radius: 2px;
+  transition: width 0.2s ease;
+}
+
+.nb-cribl-progress-label {
+  color: var(--nb-text-muted);
+  font-size: 11px;
+}
+
+.nb-cribl-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.nb-cribl-status--ok {
+  color: var(--nb-success);
+}
+
+.nb-cribl-status--failed {
+  color: var(--nb-error);
+}
+
+.nb-cribl-status-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25em;
+  height: 1.25em;
+  border-radius: 50%;
+  font-size: 0.85em;
+  line-height: 1;
+  border: 2px solid currentcolor;
+}
+
+.nb-cribl-meta {
+  margin-bottom: 10px;
+  color: var(--nb-text-muted);
+  font-size: 11px;
+}
+
+.nb-cribl-meta-line {
+  margin-bottom: 4px;
+}
+
+.nb-cribl-meta-line--dim {
+  color: var(--nb-text-dim);
+  font-style: italic;
+}
+
+.nb-cribl-meta-k {
+  font-weight: 600;
+  color: var(--nb-text);
+  margin-right: 6px;
+}
+
+.nb-cribl-meta-v {
+  color: var(--nb-link);
+  word-break: break-word;
+}
+
+.nb-cribl-fail-msg {
+  margin: 6px 0 0;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.nb-cribl-table-outer {
+  border: 1px solid var(--nb-border-cell);
+  border-radius: 4px;
+  background: var(--nb-bg-cell);
+  color: var(--nb-text);
+}
+
+.nb-cribl-table-wrap {
+  min-width: 0;
+  overflow: auto;
+}
+
+.nb-cribl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.nb-cribl-table thead th {
+  text-align: left;
+  padding: 6px 8px;
+  background: color-mix(in srgb, var(--nb-brand) 12%, var(--nb-bg-cell));
+  border-bottom: 1px solid var(--nb-border-cell);
+  color: var(--nb-text-heading);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.nb-cribl-col-expand {
+  width: 28px;
+  padding: 4px 6px;
+  text-align: center;
+}
+
+.nb-cribl-col-time {
+  width: 200px;
+  max-width: 36%;
+}
+
+.nb-cribl-col-event {
+  min-width: 120px;
+}
+
+.nb-cribl-tr {
+  cursor: pointer;
+  border-bottom: 1px solid var(--nb-border-cell);
+  background: var(--nb-bg-cell);
+}
+
+.nb-cribl-tr--alt {
+  background: var(--nb-bg-cell-alt);
+}
+
+.nb-cribl-tr:hover {
+  background: var(--nb-bg-hover);
+}
+
+.nb-cribl-expand-icon {
+  color: var(--nb-text-muted);
+  font-size: 10px;
+}
+
+.nb-cribl-event-one-line {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 56vw;
+}
+
+.nb-cribl-detail-tr .nb-cribl-detail-cell {
+  padding: 8px 12px 12px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--nb-border-cell);
+}
+
+.nb-cribl-detail-head {
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: var(--nb-text-muted);
+}
+
+.nb-cribl-detail-time {
+  font-weight: 600;
+  color: var(--nb-text);
+}
+
+.nb-cribl-dl {
+  margin: 0;
+}
+
+.nb-cribl-dl-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) 2fr;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--nb-border) 50%, transparent);
+}
+
+.nb-cribl-dl-row:last-child {
+  border-bottom: none;
+}
+
+.nb-cribl-dl-k {
+  font-weight: 500;
+  color: var(--nb-text-muted);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.nb-cribl-dl-v {
+  margin: 0;
+  color: var(--nb-link);
+  word-break: break-word;
+}
+
+.nb-cribl-type-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--nb-brand);
+  color: var(--nb-bg-toolbar);
+  font-size: 9px;
+  font-weight: 700;
+  flex-shrink: 0;
+}

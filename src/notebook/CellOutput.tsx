@@ -1,4 +1,11 @@
-import type { CellOutput as CellOutputType, StreamOutput, ExecuteResult, ErrorOutput } from '../pyodide/types'
+import type {
+  CellOutput as CellOutputType,
+  StreamOutput,
+  ExecuteResult,
+  ErrorOutput,
+  CriblSearchOutput,
+} from '../pyodide/types'
+import { CriblSearchOutputView } from './CriblSearchOutput'
 
 function StreamOutputView({ output }: { output: StreamOutput }) {
   const stderr = output.name === 'stderr'
@@ -24,8 +31,13 @@ function ErrorOutputView({ output }: { output: ErrorOutput }) {
   )
 }
 
+function CriblSearchOutputWrap({ output }: { output: CriblSearchOutput }) {
+  return <CriblSearchOutputView payload={output.payload} />
+}
+
 export function CellOutput({ output }: { output: CellOutputType }) {
   if (output.output_type === 'stream') return <StreamOutputView output={output} />
   if (output.output_type === 'execute_result') return <ExecuteResultView output={output} />
+  if (output.output_type === 'cribl_search') return <CriblSearchOutputWrap output={output} />
   return <ErrorOutputView output={output} />
 }

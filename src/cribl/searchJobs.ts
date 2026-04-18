@@ -5,6 +5,7 @@
 
 import { getCriblApiBase } from './kvstore'
 import { normalizeSearchQuery } from './searchQuery'
+import { deriveColumnNames } from './searchResultModel'
 import { runLocalSearchStub } from './searchStub'
 
 export { normalizeSearchQuery } from './searchQuery'
@@ -12,6 +13,26 @@ export { normalizeSearchQuery } from './searchQuery'
 const SEARCH_GROUP = 'default_search'
 const POLL_MS = 450
 const MAX_POLLS = 200
+
+/** Default max rows fetched from the API and shown in the notebook UI. */
+export const DEFAULT_CRIBL_SEARCH_MAX_ROWS = 20
+
+export type SearchProgressEvent = {
+  /** 0–1 approximate progress for the job lifecycle */
+  fraction: number
+  label: string
+}
+
+export type CriblSearchJobResult = {
+  rows: Record<string, unknown>[]
+  /** Column names (union of keys across rows), sorted */
+  columns: string[]
+  /**
+   * Total matching records when the API reports it (may exceed `rows.length`).
+   * Otherwise null; callers can fall back to `rows.length`.
+   */
+  totalRecords: number | null
+}
 
 function searchBasePath(apiBase: string): string {
   return `${apiBase}/m/${SEARCH_GROUP}/search`
@@ -90,6 +111,73 @@ function parseJobPhase(data: unknown): 'running' | 'completed' | 'failed' {
   return 'running'
 }
 
+const TOTAL_HINT_KEYS = [
+  'total',
+  'totalCount',
+  'total_count',
+  'resultCount',
+  'result_count',
+  'numResults',
+  'num_results',
+  'eventCount',
+  'event_count',
+  'events',
+  'matchingEvents',
+  'matching_events',
+  'scanned',
+  'scanCount',
+  'scan_count',
+  'records',
+  'rowCount',
+  'row_count',
+]
+
+function pickFiniteCount(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v) && v >= 0) return Math.trunc(v)
+  if (typeof v === 'string' && /^\d+$/.test(v.trim())) return parseInt(v.trim(), 10)
+  return null
+}
+
+/**
+ * Best-effort parse of total hit / event counts from job status or results JSON.
+ */
+export function parseTotalRecordHint(data: unknown): number | null {
+  if (data == null) return null
+  if (typeof data !== 'object') return null
+
+  const visit = (o: Record<string, unknown>): number | null => {
+    for (const k of TOTAL_HINT_KEYS) {
+      const n = pickFiniteCount(o[k])
+      if (n !== null) return n
+    }
+    return null
+  }
+
+  const o = data as Record<string, unknown>
+  const direct = visit(o)
+  if (direct !== null) return direct
+
+  const entry = o.entry
+  if (Array.isArray(entry) && entry[0] && typeof entry[0] === 'object') {
+    const e0 = entry[0] as Record<string, unknown>
+    const fromE = visit(e0)
+    if (fromE !== null) return fromE
+    const content = e0.content
+    if (content && typeof content === 'object') {
+      const c = visit(content as Record<string, unknown>)
+      if (c !== null) return c
+    }
+  }
+
+  const content = o.content
+  if (content && typeof content === 'object') {
+    const c = visit(content as Record<string, unknown>)
+    if (c !== null) return c
+  }
+
+  return null
+}
+
 function extractResultRows(data: unknown): Record<string, unknown>[] {
   if (Array.isArray(data)) {
     return data.filter((x) => x && typeof x === 'object') as Record<string, unknown>[]
@@ -119,23 +207,34 @@ function extractResultRows(data: unknown): Record<string, unknown>[] {
 
 export type RunSearchJobOptions = {
   query: string
-  onProgress?: (line: string) => void
+  /** Max rows to request from the results endpoint (default {@link DEFAULT_CRIBL_SEARCH_MAX_ROWS}). */
+  maxRows?: number
+  onProgress?: (ev: SearchProgressEvent) => void
+}
+
+function emitProgress(
+  onProgress: RunSearchJobOptions['onProgress'],
+  fraction: number,
+  label: string,
+): void {
+  onProgress?.({ fraction: Math.min(1, Math.max(0, fraction)), label })
 }
 
 /**
- * Runs a search job and returns result rows as plain objects (DataFrame-ready).
+ * Runs a search job and returns up to `maxRows` result rows as plain objects (DataFrame-ready).
  * In dev (no CRIBL_API_URL), returns mock rows without calling the network.
  */
-export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<Record<string, unknown>[]> {
+export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<CriblSearchJobResult> {
   const base = getCriblApiBase()
   const q = normalizeSearchQuery(options.query)
+  const maxRows = options.maxRows ?? DEFAULT_CRIBL_SEARCH_MAX_ROWS
 
   if (!base) {
-    return runLocalSearchStub(options)
+    return runLocalSearchStub({ ...options, maxRows })
   }
 
   const root = searchBasePath(base)
-  options.onProgress?.('Submitting search job…')
+  emitProgress(options.onProgress, 0.08, 'Submitting search job…')
 
   const createRes = await fetch(`${root}/jobs`, {
     method: 'POST',
@@ -163,8 +262,9 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<R
     throw new Error(`Search job create response missing job id. Body preview: ${preview}`)
   }
 
-  options.onProgress?.(`Job ${jobId}: queued…`)
+  emitProgress(options.onProgress, 0.18, `Job ${jobId}: queued…`)
 
+  let lastStatusJson: unknown
   for (let i = 0; i < MAX_POLLS; i++) {
     const statusRes = await fetch(`${root}/jobs/${encodeURIComponent(jobId)}/status`)
     if (!statusRes.ok) {
@@ -172,38 +272,37 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<R
       throw new Error(`Search job status failed (${statusRes.status}): ${t || statusRes.statusText}`)
     }
     const statusJson: unknown = await statusRes.json()
+    lastStatusJson = statusJson
     const phase = parseJobPhase(statusJson)
     if (phase === 'failed') {
       throw new Error('Search job failed.')
     }
     if (phase === 'completed') {
-      options.onProgress?.(`Job ${jobId}: fetching results…`)
+      emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
       break
     }
-    options.onProgress?.(`Job ${jobId}: running…`)
+    const pollFrac = 0.22 + (0.62 * (i + 1)) / MAX_POLLS
+    emitProgress(options.onProgress, Math.min(0.85, pollFrac), `Job ${jobId}: running…`)
     await sleep(POLL_MS)
   }
 
-  const limit = 1000
-  let offset = 0
-  const all: Record<string, unknown>[] = []
+  const totalFromStatus = lastStatusJson != null ? parseTotalRecordHint(lastStatusJson) : null
 
-  for (;;) {
-    const resultsRes = await fetch(
-      `${root}/jobs/${encodeURIComponent(jobId)}/results?offset=${offset}&limit=${limit}`,
-    )
-    if (!resultsRes.ok) {
-      const t = await resultsRes.text().catch(() => '')
-      throw new Error(`Search results failed (${resultsRes.status}): ${t || resultsRes.statusText}`)
-    }
-    const resultsJson: unknown = await resultsRes.json()
-    const batch = extractResultRows(resultsJson)
-    if (batch.length === 0) break
-    all.push(...batch)
-    if (batch.length < limit) break
-    offset += limit
+  const resultsRes = await fetch(
+    `${root}/jobs/${encodeURIComponent(jobId)}/results?offset=0&limit=${maxRows}`,
+  )
+  if (!resultsRes.ok) {
+    const t = await resultsRes.text().catch(() => '')
+    throw new Error(`Search results failed (${resultsRes.status}): ${t || resultsRes.statusText}`)
   }
+  const resultsJson: unknown = await resultsRes.json()
+  const rows = extractResultRows(resultsJson)
+  const totalFromResults = parseTotalRecordHint(resultsJson)
+  const totalRecords = totalFromResults ?? totalFromStatus ?? null
 
-  options.onProgress?.(`Retrieved ${all.length} row(s).`)
-  return all
+  const columns = deriveColumnNames(rows)
+
+  emitProgress(options.onProgress, 0.98, `Retrieved ${rows.length} row(s).`)
+
+  return { rows, columns, totalRecords }
 }

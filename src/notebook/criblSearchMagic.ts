@@ -2,6 +2,10 @@
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
  * First line: %%cribl_search [var=name] [preview=true|false]
  * Following lines: KQL query body.
+ *
+ * `preview`: when true (default), shows the result table in the cell output. When false,
+ * the table is hidden (metadata lines still show). The DataFrame is always populated in
+ * the named variable; pandas text preview is not printed (the table is the preview).
  */
 
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/

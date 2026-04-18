@@ -35,7 +35,9 @@ import {
   encodeRowsJsonForPythonBase64,
   parseCriblSearchMagic,
 } from './criblSearchMagic'
-import { runCriblSearchJob } from '../cribl/searchJobs'
+import { filterPyodidePackageChatter } from './criblSearchStreamFilter'
+import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '../cribl/searchJobs'
+import type { CriblSearchPayload } from '../pyodide/types'
 
 type DialogState =
   | { kind: 'alert'; message: string }
@@ -331,24 +333,63 @@ export function NotebookPage() {
           }
 
           if (magic.kind === 'cribl_search') {
-            const { varName, preview, query } = magic.value
+            const { varName, query, preview } = magic.value
+            const CRIBL_OUT = 0
             try {
-              const rows = await runCriblSearchJob({
+              const pushCribl = (payload: CriblSearchPayload) => {
+                if (tabGensRef.current.get(tid) !== myGen) return
+                dispatch({
+                  type: 'TAB_NOTEBOOK',
+                  tabId: tid,
+                  action: {
+                    type: 'REPLACE_OUTPUT_AT',
+                    id,
+                    index: CRIBL_OUT,
+                    output: { output_type: 'cribl_search', payload },
+                  },
+                })
+              }
+              const appendCribl = (payload: CriblSearchPayload) => {
+                if (tabGensRef.current.get(tid) !== myGen) return
+                dispatch({
+                  type: 'TAB_NOTEBOOK',
+                  tabId: tid,
+                  action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'cribl_search', payload } },
+                })
+              }
+
+              appendCribl({ kind: 'running', progress: 0.06, label: 'Starting search…' })
+
+              const { rows, columns, totalRecords } = await runCriblSearchJob({
                 query,
-                onProgress: (line) => appendStream('stdout', `${line}\n`),
+                maxRows: DEFAULT_CRIBL_SEARCH_MAX_ROWS,
+                onProgress: (ev) => {
+                  pushCribl({ kind: 'running', progress: ev.fraction, label: ev.label })
+                },
               })
               if (tabGensRef.current.get(tid) !== myGen) return
 
+              pushCribl({
+                kind: 'completed',
+                columns,
+                rows: preview ? rows : [],
+                recordsReturned: rows.length,
+                totalRecords,
+                showTable: preview,
+              })
+
               const b64 = encodeRowsJsonForPythonBase64(rows)
-              const code = buildCriblSearchDataframeCode(varName, b64, preview)
+              /** Rich table already shows rows; never add `print(df.head())` (avoids duplicate text). */
+              const code = buildCriblSearchDataframeCode(varName, b64, false)
               const result = await kernel.execute(code, (name, text) => {
-                if (tabGensRef.current.get(tid) === myGen) {
-                  dispatch({
-                    type: 'TAB_NOTEBOOK',
-                    tabId: tid,
-                    action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'stream', name, text } },
-                  })
-                }
+                if (tabGensRef.current.get(tid) !== myGen) return
+                const filtered = filterPyodidePackageChatter(text)
+                if (filtered.length === 0) return
+                dispatch({
+                  type: 'TAB_NOTEBOOK',
+                  tabId: tid,
+                  action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'stream', name, text: filtered } },
+                })
               })
 
               if (tabGensRef.current.get(tid) !== myGen) return
@@ -371,7 +412,21 @@ export function NotebookPage() {
               }
             } catch (e) {
               const msg = e instanceof Error ? e.message : String(e)
-              appendStream('stderr', `${msg}\n`)
+              if (tabGensRef.current.get(tid) === myGen) {
+                dispatch({
+                  type: 'TAB_NOTEBOOK',
+                  tabId: tid,
+                  action: {
+                    type: 'REPLACE_OUTPUT_AT',
+                    id,
+                    index: 0,
+                    output: {
+                      output_type: 'cribl_search',
+                      payload: { kind: 'failed', message: msg },
+                    },
+                  },
+                })
+              }
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
             }
             return

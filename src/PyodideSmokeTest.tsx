@@ -65,7 +65,9 @@ function resultDetail(r: KernelResult): string {
         ? o.data
         : o.output_type === 'stream'
           ? o.text
-          : `${o.ename}: ${o.evalue}`,
+          : o.output_type === 'error'
+            ? `${o.ename}: ${o.evalue}`
+            : '[cribl_search]',
     )
     .join(' ')
 }
