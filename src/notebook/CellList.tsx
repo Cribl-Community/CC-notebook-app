@@ -22,6 +22,7 @@ export function CellList({ cells, selectedId, dispatch, onRun }: CellListProps) 
               onRun={() => onRun(cell.id)}
               onDelete={() => dispatch({ type: 'DELETE_CELL', id: cell.id })}
               onChange={(source) => dispatch({ type: 'UPDATE_SOURCE', id: cell.id, source })}
+              onClearOutput={() => dispatch({ type: 'CLEAR_OUTPUTS', id: cell.id })}
               onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
               onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
             />

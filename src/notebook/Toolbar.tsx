@@ -10,6 +10,7 @@ interface ToolbarProps {
   onAddCodeCell: () => void
   onAddMarkdownCell: () => void
   onRunAll: () => void
+  onClearAllOutputs: () => void
   onRestart: () => void
   theme: 'dark' | 'light'
   onThemeChange: (t: 'dark' | 'light') => void
@@ -49,6 +50,7 @@ export function Toolbar({
   onAddCodeCell,
   onAddMarkdownCell,
   onRunAll,
+  onClearAllOutputs,
   onRestart,
   theme,
   onThemeChange,
@@ -102,6 +104,15 @@ export function Toolbar({
         <div className="nb-toolbar-divider" />
         <button className="nb-btn" onClick={onRunAll} disabled={busy} title="Run all code cells">
           ▶▶ Run All
+        </button>
+        <button
+          className="nb-btn"
+          type="button"
+          onClick={onClearAllOutputs}
+          disabled={busy}
+          title="Clear outputs from all code cells"
+        >
+          ⊗ Clear outputs
         </button>
         <button className="nb-btn" onClick={onRestart} title="Restart kernel and clear outputs">
           ↺ Restart

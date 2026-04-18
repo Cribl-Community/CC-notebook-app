@@ -184,6 +184,7 @@ export function NotebookPage() {
           onAddCodeCell={() => dispatch({ type: 'ADD_CELL', cellType: 'code' })}
           onAddMarkdownCell={() => dispatch({ type: 'ADD_CELL', cellType: 'markdown' })}
           onRunAll={runAll}
+          onClearAllOutputs={() => dispatch({ type: 'CLEAR_ALL_OUTPUTS' })}
           onRestart={restartKernel}
           theme={theme}
           onThemeChange={setTheme}

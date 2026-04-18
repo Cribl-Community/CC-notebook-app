@@ -9,6 +9,7 @@ interface CodeCellProps {
   onRun: () => void
   onDelete: () => void
   onChange: (source: string) => void
+  onClearOutput: () => void
   onMoveUp?: () => void
   onMoveDown?: () => void
 }
@@ -19,7 +20,17 @@ function GutterLabel({ cell }: { cell: CellData }) {
   return <span>[ ]</span>
 }
 
-export function CodeCell({ cell, isSelected, onSelect, onRun, onDelete, onChange, onMoveUp, onMoveDown }: CodeCellProps) {
+export function CodeCell({
+  cell,
+  isSelected,
+  onSelect,
+  onRun,
+  onDelete,
+  onChange,
+  onClearOutput,
+  onMoveUp,
+  onMoveDown,
+}: CodeCellProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -44,6 +55,7 @@ export function CodeCell({ cell, isSelected, onSelect, onRun, onDelete, onChange
   )
 
   const isRunning = cell.execution_state === 'running'
+  const canClearOutput = cell.outputs.length > 0 || cell.execution_count !== null
 
   return (
     <div
@@ -81,6 +93,17 @@ export function CodeCell({ cell, isSelected, onSelect, onRun, onDelete, onChange
             title="Move cell down"
           >
             ▼
+          </button>
+          <button
+            className="nb-btn nb-btn-clear-output"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClearOutput()
+            }}
+            disabled={!canClearOutput || isRunning}
+            title="Clear cell output"
+          >
+            ⌫
           </button>
           <button
             className="nb-btn nb-btn-delete"
