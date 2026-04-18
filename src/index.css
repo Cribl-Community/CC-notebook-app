@@ -121,6 +121,102 @@ body {
   flex-direction: column;
 }
 
+/* ─── Notebook tabs (multi-document) ───────────────────────────── */
+
+.nb-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 6px 8px 0;
+  background: var(--nb-bg-toolbar);
+  border-bottom: 1px solid var(--nb-border);
+  flex-shrink: 0;
+}
+
+.nb-tab {
+  display: flex;
+  align-items: stretch;
+  max-width: 200px;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: transparent;
+}
+
+.nb-tab--active {
+  background: var(--nb-bg-cell);
+  border-color: var(--nb-border);
+  border-bottom-color: var(--nb-bg-cell);
+  margin-bottom: -1px;
+  z-index: 1;
+}
+
+.nb-tab-select {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--nb-text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.nb-tab-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nb-tab-dirty {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--nb-warn);
+  flex-shrink: 0;
+}
+
+.nb-tab-close {
+  padding: 2px 8px;
+  border: none;
+  background: transparent;
+  color: var(--nb-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 0 4px 0 0;
+}
+
+.nb-tab-close:hover {
+  color: var(--nb-error);
+  background: var(--nb-bg-hover);
+}
+
+.nb-tab-new {
+  padding: 6px 12px;
+  margin-bottom: 2px;
+  border: 1px dashed var(--nb-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--nb-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.nb-tab-new:hover {
+  color: var(--nb-text);
+  border-color: var(--nb-border-hover);
+  background: var(--nb-bg-hover);
+}
+
 /* ─── File browser sidebar (Jupyter-inspired) ───────────────────── */
 
 .nb-sidebar {
