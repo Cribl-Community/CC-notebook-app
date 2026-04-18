@@ -163,7 +163,7 @@ export function NotebookPage() {
     void (async () => {
       try {
         const text = await file.text()
-        const { title, cells } = parseIpynbJson(text)
+        const { title, cells } = parseIpynbJson(text, { filename: file.name })
         dispatch({ type: 'LOAD_NOTEBOOK', title, cells })
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to open notebook'

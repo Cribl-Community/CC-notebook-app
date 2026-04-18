@@ -40,13 +40,37 @@ function extractTitle(metadata: unknown): string {
   return 'Untitled'
 }
 
+/** Basename without `.ipynb` for display; returns null if unusable. */
+export function filenameStemToDisplayTitle(name: string): string | null {
+  const trimmed = name.trim()
+  if (!trimmed) return null
+  const base = trimmed.replace(/[/\\]/g, '/').split('/').pop() ?? trimmed
+  const withoutExt = base.replace(/\.ipynb$/i, '').trim()
+  return withoutExt.length > 0 ? withoutExt : null
+}
+
+/**
+ * Prefer embedded metadata when it is non-generic; otherwise use the upload filename stem.
+ */
+export function resolveImportedNotebookTitle(metadataTitle: string, filename?: string): string {
+  const m = metadataTitle.trim()
+  if (m.length > 0 && m !== 'Untitled') return m
+  if (filename) {
+    const stem = filenameStemToDisplayTitle(filename)
+    if (stem) return stem
+  }
+  return 'Untitled'
+}
+
+export type IpynbParseOptions = { filename?: string }
+
 export type IpynbParseResult = { title: string; cells: Cell[] }
 
 /**
  * Parses a Jupyter notebook file (nbformat 4). Unsupported cell types are skipped.
  * Imported code cells have cleared outputs and execution counts (fresh kernel state).
  */
-export function parseIpynbJson(text: string): IpynbParseResult {
+export function parseIpynbJson(text: string, options?: IpynbParseOptions): IpynbParseResult {
   let root: unknown
   try {
     root = JSON.parse(text) as unknown
@@ -60,7 +84,8 @@ export function parseIpynbJson(text: string): IpynbParseResult {
   const cellsRaw = nb.cells
   if (!Array.isArray(cellsRaw)) throw new Error('Notebook must have a cells array')
 
-  const title = extractTitle(nb.metadata)
+  const metadataTitle = extractTitle(nb.metadata)
+  const title = resolveImportedNotebookTitle(metadataTitle, options?.filename)
 
   const cells: Cell[] = []
   for (const raw of cellsRaw) {
