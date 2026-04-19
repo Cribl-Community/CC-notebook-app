@@ -1,9 +1,12 @@
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
- * First line: %%cribl_search [var=name] [preview=true|false] [earliest=…] [latest=…]
+ * First line: %%cribl_search [var=name] [preview=true|false] [limit=N] [earliest=…] [latest=…]
  * Following lines: KQL query body.
  *
  * `earliest` / `latest` are passed to the Cribl Search job API (defaults in the client if omitted).
+ *
+ * `limit`: max rows to load into the DataFrame (`0` = all rows returned by the job, paginating the
+ * results API as needed). Defaults to `0`.
  *
  * Search rows are always loaded into a pandas DataFrame in the kernel. Use `var=` to set the name;
  * otherwise `DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR` (`results_df`) is used.
@@ -21,6 +24,11 @@ export const DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR = 'results_df'
 export type CriblSearchMagicOk = {
   varName: string
   preview: boolean
+  /**
+   * Max rows to load into the kernel DataFrame. `0` means load every row the search returns
+   * (iterate `/results` pages until exhausted).
+   */
+  limit: number
   query: string
   /** Passed to search job `earliest` when set (e.g. `-1h`, epoch, or ISO). */
   earliest?: string
@@ -33,14 +41,12 @@ export type CriblSearchMagicParse =
   | { kind: 'error'; message: string }
   | { kind: 'none' }
 
-function parseKeyValueParams(paramLine: string): {
-  varName: string
-  preview: boolean
-  earliest?: string
-  latest?: string
-} {
+function parseKeyValueParams(paramLine: string):
+  | { ok: true; varName: string; preview: boolean; limit: number; earliest?: string; latest?: string }
+  | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
   let preview = true
+  let limit = 0
   let earliest: string | undefined
   let latest: string | undefined
   const tokens = paramLine.trim().split(/\s+/).filter(Boolean)
@@ -53,8 +59,15 @@ function parseKeyValueParams(paramLine: string): {
     if (key === 'preview') preview = val.toLowerCase() !== 'false'
     if (key === 'earliest') earliest = val
     if (key === 'latest') latest = val
+    if (key === 'limit') {
+      if (!/^\d+$/.test(val.trim())) {
+        return { ok: false, message: `limit must be a non-negative integer, got ${JSON.stringify(val)}` }
+      }
+      const n = parseInt(val.trim(), 10)
+      limit = n
+    }
   }
-  return { varName, preview, earliest, latest }
+  return { ok: true, varName, preview, limit, earliest, latest }
 }
 
 /**
@@ -69,7 +82,11 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!mm) return { kind: 'none' }
 
   const paramPart = mm[1]?.trim() ?? ''
-  const { varName, preview, earliest, latest } = parseKeyValueParams(paramPart)
+  const parsed = parseKeyValueParams(paramPart)
+  if (!parsed.ok) {
+    return { kind: 'error', message: parsed.message }
+  }
+  const { varName, preview, limit, earliest, latest } = parsed
 
   if (!IDENT_RE.test(varName)) {
     return {
@@ -90,7 +107,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
 
   return {
     kind: 'cribl_search',
-    value: { varName, preview, query, earliest, latest },
+    value: { varName, preview, limit, query, earliest, latest },
   }
 }
 

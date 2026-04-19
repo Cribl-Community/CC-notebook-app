@@ -16,6 +16,7 @@ describe('parseCriblSearchMagic', () => {
     if (r.kind !== 'cribl_search') return
     expect(r.value.varName).toBe('results_df')
     expect(r.value.preview).toBe(true)
+    expect(r.value.limit).toBe(0)
     expect(r.value.query).toBe('dataset=x | limit 1')
   })
 
@@ -56,6 +57,19 @@ describe('parseCriblSearchMagic', () => {
   it('errors on bad var name', () => {
     const r = parseCriblSearchMagic('%%cribl_search var=1bad\nx\n')
     expect(r.kind).toBe('error')
+  })
+
+  it('parses limit for dataframe row cap', () => {
+    const r = parseCriblSearchMagic('%%cribl_search limit=500\ndataset=x | limit 1\n')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.limit).toBe(500)
+  })
+
+  it('errors on non-integer limit', () => {
+    const r = parseCriblSearchMagic('%%cribl_search limit=12.5\nq\n')
+    expect(r.kind).toBe('error')
+    if (r.kind === 'error') expect(r.message).toMatch(/limit must be a non-negative integer/i)
   })
 })
 

@@ -335,7 +335,7 @@ export function NotebookPage() {
           }
 
           if (magic.kind === 'cribl_search') {
-            const { varName, query, preview, earliest, latest } = magic.value
+            const { varName, query, preview, earliest, latest, limit } = magic.value
             const CRIBL_OUT = 0
             try {
               const pushCribl = (payload: CriblSearchPayload) => {
@@ -364,7 +364,7 @@ export function NotebookPage() {
 
               const { rows, columns, totalRecords } = await runCriblSearchJob({
                 query,
-                maxRows: DEFAULT_CRIBL_SEARCH_MAX_ROWS,
+                maxRows: limit,
                 earliest,
                 latest,
                 onProgress: (ev) => {
@@ -376,7 +376,7 @@ export function NotebookPage() {
               pushCribl({
                 kind: 'completed',
                 columns,
-                rows: preview ? rows : [],
+                rows: preview ? rows.slice(0, DEFAULT_CRIBL_SEARCH_MAX_ROWS) : [],
                 recordsReturned: rows.length,
                 totalRecords,
                 dataframeVar: varName,

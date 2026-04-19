@@ -18,8 +18,11 @@ const MAX_POLLS = 200
 export const DEFAULT_SEARCH_EARLIEST = '-1h'
 export const DEFAULT_SEARCH_LATEST = 'now'
 
-/** Default max rows fetched from the API and shown in the notebook UI. */
+/** Max rows shown in the interactive result table (full DataFrame may be larger). */
 export const DEFAULT_CRIBL_SEARCH_MAX_ROWS = 20
+
+/** Rows per `/results` request when paginating (magic `limit=0` loads all pages). */
+export const CRIBL_SEARCH_RESULTS_PAGE_SIZE = 5000
 
 export type SearchProgressEvent = {
   /** 0–1 approximate progress for the job lifecycle */
@@ -334,7 +337,10 @@ function extractResultRows(data: unknown): Record<string, unknown>[] {
 
 export type RunSearchJobOptions = {
   query: string
-  /** Max rows to request from the results endpoint (default {@link DEFAULT_CRIBL_SEARCH_MAX_ROWS}). */
+  /**
+   * Max rows to load into the DataFrame. `0` (default) loads every row the job returns,
+   * paginating `/results` until no more rows. Values greater than `0` cap the loaded set.
+   */
   maxRows?: number
   onProgress?: (ev: SearchProgressEvent) => void
   /** Search job time window; defaults applied below when unset. */
@@ -351,13 +357,14 @@ function emitProgress(
 }
 
 /**
- * Runs a search job and returns up to `maxRows` result rows as plain objects (DataFrame-ready).
+ * Runs a search job and returns result rows as plain objects (DataFrame-ready).
+ * When `maxRows` is `0`, fetches every page of `/results` until exhausted.
  * In dev (no CRIBL_API_URL), returns mock rows without calling the network.
  */
 export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<CriblSearchJobResult> {
   const base = getCriblApiBase()
   const q = normalizeSearchQuery(options.query)
-  const maxRows = options.maxRows ?? DEFAULT_CRIBL_SEARCH_MAX_ROWS
+  const maxRows = options.maxRows ?? 0
 
   if (!base) {
     return runLocalSearchStub({ ...options, maxRows })
@@ -428,21 +435,67 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
 
   const totalFromStatus = lastStatusJson != null ? parseTotalRecordHint(lastStatusJson) : null
 
-  const resultsRes = await fetch(
-    `${root}/jobs/${encodeURIComponent(jobId)}/results?offset=0&limit=${maxRows}`,
-  )
-  if (!resultsRes.ok) {
-    const t = await resultsRes.text().catch(() => '')
-    throw new Error(`Search results failed (${resultsRes.status}): ${t || resultsRes.statusText}`)
-  }
-  const resultsJson: unknown = await readSearchResponseJson(resultsRes)
-  const rows = extractResultRows(resultsJson)
-  const totalFromResults = parseTotalRecordHint(resultsJson)
-  const totalRecords = totalFromResults ?? totalFromStatus ?? null
+  const cap = maxRows === 0 ? Number.MAX_SAFE_INTEGER : maxRows
+  const rows: Record<string, unknown>[] = []
+  let offset = 0
+  let pageIndex = 0
+  let totalFromResults: number | null = null
 
+  const emitRowsProgress = (): void => {
+    const loaded = rows.length
+    const target =
+      totalFromStatus != null && totalFromStatus > 0
+        ? Math.min(cap, totalFromStatus)
+        : cap < Number.MAX_SAFE_INTEGER
+          ? cap
+          : null
+    let frac: number
+    if (target != null && target > 0) {
+      frac = 0.88 + 0.09 * Math.min(1, loaded / target)
+    } else {
+      frac = 0.88 + 0.09 * Math.min(1, 1 - Math.exp(-pageIndex / 5))
+    }
+    emitProgress(
+      options.onProgress,
+      frac,
+      `Job ${jobId}: retrieved ${loaded} row(s)${maxRows === 0 ? '' : ` (limit ${maxRows})`}…`,
+    )
+  }
+
+  while (rows.length < cap) {
+    const remaining = cap - rows.length
+    const pageLimit = Math.min(CRIBL_SEARCH_RESULTS_PAGE_SIZE, remaining)
+    const resultsRes = await fetch(
+      `${root}/jobs/${encodeURIComponent(jobId)}/results?offset=${offset}&limit=${pageLimit}`,
+    )
+    if (!resultsRes.ok) {
+      const t = await resultsRes.text().catch(() => '')
+      throw new Error(`Search results failed (${resultsRes.status}): ${t || resultsRes.statusText}`)
+    }
+    const resultsJson: unknown = await readSearchResponseJson(resultsRes)
+    const batch = extractResultRows(resultsJson)
+    const hint = parseTotalRecordHint(resultsJson)
+    if (hint !== null) totalFromResults = hint
+
+    if (batch.length === 0) break
+
+    rows.push(...batch)
+    offset += batch.length
+    pageIndex += 1
+    emitRowsProgress()
+
+    if (batch.length < pageLimit) break
+    if (rows.length >= cap) break
+  }
+
+  const totalRecords = totalFromResults ?? totalFromStatus ?? null
   const columns = deriveColumnNames(rows)
 
-  emitProgress(options.onProgress, 0.98, `Retrieved ${rows.length} row(s).`)
+  emitProgress(
+    options.onProgress,
+    0.98,
+    `Retrieved ${rows.length} row(s)${maxRows === 0 ? '' : ` (capped at ${maxRows})`}.`,
+  )
 
   return { rows, columns, totalRecords }
 }

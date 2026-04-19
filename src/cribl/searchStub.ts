@@ -10,7 +10,6 @@
 
 import { normalizeSearchQuery } from './searchQuery'
 import type { CriblSearchJobResult, RunSearchJobOptions } from './searchJobs'
-import { DEFAULT_CRIBL_SEARCH_MAX_ROWS } from './searchJobs'
 import { deriveColumnNames } from './searchResultModel'
 
 export type LocalSearchStubWindowHook = {
@@ -61,7 +60,7 @@ export async function runLocalSearchStub(options: RunSearchJobOptions): Promise<
   const delayRun = hook?.delayMs ?? 120
 
   const q = normalizeSearchQuery(options.query)
-  const cap = options.maxRows ?? DEFAULT_CRIBL_SEARCH_MAX_ROWS
+  const maxRows = options.maxRows ?? 0
   options.onProgress?.({ fraction: 0.1, label: '[local stub] preparing search…' })
   await sleep(delayPrepare)
 
@@ -78,6 +77,7 @@ export async function runLocalSearchStub(options: RunSearchJobOptions): Promise<
 
   const rawRows =
     hook?.rows && hook.rows.length > 0 ? hook.rows.map((r) => ({ ...r })) : buildStubRowsForQuery(options.query)
+  const cap = maxRows === 0 ? rawRows.length : Math.min(maxRows, rawRows.length)
   const rows = rawRows.slice(0, cap)
   const columns = deriveColumnNames(rows)
 
