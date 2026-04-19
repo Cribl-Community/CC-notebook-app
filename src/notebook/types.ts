@@ -1,6 +1,6 @@
-import type { CellOutput } from '../pyodide/types'
+import type { CellOutput, IOPubMessage, OutputRecord } from '../pyodide/types'
 
-export type { CellOutput }
+export type { CellOutput, IOPubMessage, OutputRecord }
 
 export type CellId = string
 
@@ -10,7 +10,7 @@ export interface CodeCell {
   id: CellId
   cell_type: 'code'
   source: string
-  outputs: CellOutput[]
+  outputs: OutputRecord[]
   execution_count: number | null
   execution_state: ExecutionState
 }
@@ -42,8 +42,9 @@ export type NotebookAction =
   | { type: 'SELECT_CELL'; id: CellId }
   | { type: 'TOGGLE_MARKDOWN_EDIT'; id: CellId }
   | { type: 'SET_RUNNING'; id: CellId }
-  | { type: 'APPEND_OUTPUT'; id: CellId; output: CellOutput }
-  | { type: 'REPLACE_OUTPUT_AT'; id: CellId; index: number; output: CellOutput }
+  | { type: 'APPEND_OUTPUT'; id: CellId; output: OutputRecord }
+  | { type: 'REPLACE_OUTPUT_AT'; id: CellId; index: number; output: OutputRecord }
+  | { type: 'IOPUB'; id: CellId; msg: IOPubMessage; executionCount: number | null }
   | { type: 'FINISH_CELL'; id: CellId; execution_count: number }
   | { type: 'ERROR_CELL'; id: CellId }
   | { type: 'CLEAR_OUTPUTS'; id: CellId }

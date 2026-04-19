@@ -1,5 +1,5 @@
 import type { Cell, CodeCell, MarkdownCell, NotebookState } from './types'
-import { CRIBL_SEARCH_MIME, type CellOutput, type CriblSearchPayload } from '../pyodide/types'
+import type { MimeBundle, MimeMetadata, OutputRecord } from '../pyodide/types'
 
 const NBFORMAT = 4
 const NBFORMAT_MINOR = 5
@@ -22,51 +22,46 @@ function parseExecutionCount(v: unknown): number | null {
   return null
 }
 
-function textPlainFromMimeBundle(data: unknown): string | null {
-  if (!data || typeof data !== 'object') return null
-  const d = data as Record<string, unknown>
-  const tp = d['text/plain']
-  if (typeof tp === 'string') return tp
-  if (Array.isArray(tp)) return tp.filter((x): x is string => typeof x === 'string').join('')
-  return null
-}
-
-function criblPayloadFromDisplayData(data: unknown): CriblSearchPayload | null {
-  if (!data || typeof data !== 'object') return null
-  const d = data as Record<string, unknown>
-  const raw = d[CRIBL_SEARCH_MIME]
-  if (typeof raw !== 'string' || raw.length === 0) return null
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!parsed || typeof parsed !== 'object') return null
-    const p = parsed as { kind?: unknown }
-    if (p.kind === 'running' || p.kind === 'completed' || p.kind === 'failed') {
-      return parsed as CriblSearchPayload
+/**
+ * Per nbformat 4.x, mime bundle values may be a string or an array of strings.
+ * We always normalize to a single string in memory; binary mimes (image/png,
+ * image/jpeg) are stored as base64 strings as on disk.
+ */
+function normalizeMimeBundle(data: unknown): MimeBundle {
+  if (!data || typeof data !== 'object') return {}
+  const out: MimeBundle = {}
+  for (const [k, v] of Object.entries(data as Record<string, unknown>)) {
+    if (typeof v === 'string') {
+      out[k] = v
+    } else if (Array.isArray(v)) {
+      const joined = v.filter((x): x is string => typeof x === 'string').join('')
+      out[k] = joined
+    } else if (v != null && typeof v === 'object') {
+      try {
+        out[k] = JSON.stringify(v)
+      } catch {
+        // skip
+      }
     }
-  } catch {
-    return null
   }
-  return null
+  return out
 }
 
-function criblSearchPlainSummary(payload: CriblSearchPayload): string {
-  if (payload.kind === 'running') {
-    return `Cribl Search: ${payload.label}`
-  }
-  if (payload.kind === 'failed') {
-    return `Cribl Search failed: ${payload.message}`
-  }
-  const total =
-    payload.totalRecords != null && payload.totalRecords !== payload.recordsReturned
-      ? `${payload.recordsReturned} records (${payload.totalRecords} total). Columns: ${payload.columns.join(', ')}`
-      : `${payload.recordsReturned} records. Columns: ${payload.columns.join(', ')}`
-  const tableNote = payload.showTable === false ? ' Table not shown (preview=false).' : ''
-  const dfVar = payload.dataframeVar ?? 'results_df'
-  const dfNote = ` DataFrame: ${dfVar}.`
-  return `Cribl Search: ${total}${tableNote}${dfNote}`
+function normalizeMetadata(m: unknown): MimeMetadata {
+  if (m && typeof m === 'object' && !Array.isArray(m)) return m as MimeMetadata
+  return {}
 }
 
-function parseNbformatOutput(raw: unknown): CellOutput | null {
+function extractDisplayId(o: Record<string, unknown>): string | undefined {
+  const t = o.transient
+  if (t && typeof t === 'object' && !Array.isArray(t)) {
+    const id = (t as Record<string, unknown>).display_id
+    if (typeof id === 'string') return id
+  }
+  return undefined
+}
+
+function parseNbformatOutput(raw: unknown): OutputRecord | null {
   if (!raw || typeof raw !== 'object') return null
   const o = raw as Record<string, unknown>
   const ot = o.output_type
@@ -80,18 +75,27 @@ function parseNbformatOutput(raw: unknown): CellOutput | null {
     }
   }
   if (ot === 'display_data') {
-    const cribl = criblPayloadFromDisplayData(o.data)
-    if (cribl) {
-      return { output_type: 'cribl_search', payload: cribl }
+    const data = normalizeMimeBundle(o.data)
+    if (Object.keys(data).length === 0) return null
+    const display_id = extractDisplayId(o)
+    return {
+      output_type: 'display_data',
+      data,
+      metadata: normalizeMetadata(o.metadata),
+      ...(display_id ? { display_id } : {}),
     }
-    const plain = textPlainFromMimeBundle(o.data)
-    if (plain === null) return null
-    return { output_type: 'execute_result', data: plain }
   }
   if (ot === 'execute_result') {
-    const plain = textPlainFromMimeBundle(o.data)
-    if (plain === null) return null
-    return { output_type: 'execute_result', data: plain }
+    const data = normalizeMimeBundle(o.data)
+    if (Object.keys(data).length === 0) return null
+    const display_id = extractDisplayId(o)
+    return {
+      output_type: 'execute_result',
+      execution_count: parseExecutionCount(o.execution_count),
+      data,
+      metadata: normalizeMetadata(o.metadata),
+      ...(display_id ? { display_id } : {}),
+    }
   }
   if (ot === 'error') {
     const ename = typeof o.ename === 'string' ? o.ename : 'Error'
@@ -111,7 +115,7 @@ function parseNbformatOutput(raw: unknown): CellOutput | null {
 }
 
 function parseCodeCell(cell: Record<string, unknown>): CodeCell {
-  const outputs: CellOutput[] = []
+  const outputs: OutputRecord[] = []
   const rawOut = cell.outputs
   if (Array.isArray(rawOut)) {
     for (const item of rawOut) {
@@ -177,8 +181,8 @@ export type IpynbParseResult = { title: string; cells: Cell[] }
 
 /**
  * Parses a Jupyter notebook file (nbformat 4). Unsupported cell types are skipped.
- * Code cell outputs and execution counts are loaded from the file (stream, text/plain
- * results, and errors). Other mime types and output kinds are skipped.
+ * Code cell outputs and execution counts are loaded from the file. Full mime
+ * bundles are preserved for `display_data` and `execute_result`.
  */
 export function parseIpynbJson(text: string, options?: IpynbParseOptions): IpynbParseResult {
   let root: unknown
@@ -223,7 +227,7 @@ export function parseIpynbJson(text: string, options?: IpynbParseOptions): Ipynb
   return { title, cells }
 }
 
-function streamOutputToNbformat(o: Extract<CellOutput, { output_type: 'stream' }>) {
+function streamOutputToNbformat(o: Extract<OutputRecord, { output_type: 'stream' }>) {
   return {
     output_type: 'stream' as const,
     name: o.name,
@@ -231,19 +235,28 @@ function streamOutputToNbformat(o: Extract<CellOutput, { output_type: 'stream' }
   }
 }
 
-function executeResultToNbformat(
-  o: Extract<CellOutput, { output_type: 'execute_result' }>,
-  execution_count: number | null,
-) {
+function executeResultToNbformat(o: Extract<OutputRecord, { output_type: 'execute_result' }>) {
+  const transient = o.display_id ? { transient: { display_id: o.display_id } } : {}
   return {
     output_type: 'execute_result' as const,
-    execution_count: execution_count ?? null,
-    data: { 'text/plain': o.data },
-    metadata: {},
+    execution_count: o.execution_count,
+    data: { ...o.data },
+    metadata: { ...o.metadata },
+    ...transient,
   }
 }
 
-function errorOutputToNbformat(o: Extract<CellOutput, { output_type: 'error' }>) {
+function displayDataToNbformat(o: Extract<OutputRecord, { output_type: 'display_data' }>) {
+  const transient = o.display_id ? { transient: { display_id: o.display_id } } : {}
+  return {
+    output_type: 'display_data' as const,
+    data: { ...o.data },
+    metadata: { ...o.metadata },
+    ...transient,
+  }
+}
+
+function errorOutputToNbformat(o: Extract<OutputRecord, { output_type: 'error' }>) {
   return {
     output_type: 'error' as const,
     ename: o.ename,
@@ -252,26 +265,15 @@ function errorOutputToNbformat(o: Extract<CellOutput, { output_type: 'error' }>)
   }
 }
 
-function criblSearchToNbformat(o: Extract<CellOutput, { output_type: 'cribl_search' }>) {
-  return {
-    output_type: 'display_data' as const,
-    data: {
-      'text/plain': criblSearchPlainSummary(o.payload),
-      [CRIBL_SEARCH_MIME]: JSON.stringify(o.payload),
-    },
-    metadata: {},
-  }
-}
-
-function outputsToNbformat(outputs: CellOutput[], execution_count: number | null): unknown[] {
+function outputsToNbformat(outputs: OutputRecord[]): unknown[] {
   const out: unknown[] = []
   for (const o of outputs) {
     if (o.output_type === 'stream') {
       out.push(streamOutputToNbformat(o))
     } else if (o.output_type === 'execute_result') {
-      out.push(executeResultToNbformat(o, execution_count))
-    } else if (o.output_type === 'cribl_search') {
-      out.push(criblSearchToNbformat(o))
+      out.push(executeResultToNbformat(o))
+    } else if (o.output_type === 'display_data') {
+      out.push(displayDataToNbformat(o))
     } else if (o.output_type === 'error') {
       out.push(errorOutputToNbformat(o))
     }
@@ -296,7 +298,7 @@ export function serializeNotebookToIpynbJson(state: NotebookState): string {
         cell_type: 'code',
         execution_count: cell.execution_count,
         metadata: {},
-        outputs: outputsToNbformat(cell.outputs, cell.execution_count),
+        outputs: outputsToNbformat(cell.outputs),
         source: cell.source,
       })
     } else {

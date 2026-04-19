@@ -1,11 +1,11 @@
 import type {
-  CellOutput as CellOutputType,
+  OutputRecord,
   StreamOutput,
-  ExecuteResult,
+  ExecuteResultOutput,
+  DisplayDataOutput,
   ErrorOutput,
-  CriblSearchOutput,
 } from '../pyodide/types'
-import { CriblSearchOutputView } from './CriblSearchOutput'
+import { MimeBundleView } from './MimeBundleView'
 
 function StreamOutputView({ output }: { output: StreamOutput }) {
   const stderr = output.name === 'stderr'
@@ -14,8 +14,12 @@ function StreamOutputView({ output }: { output: StreamOutput }) {
   )
 }
 
-function ExecuteResultView({ output }: { output: ExecuteResult }) {
-  return <pre className="nb-output-pre">{output.data}</pre>
+function ExecuteResultView({ output }: { output: ExecuteResultOutput }) {
+  return <MimeBundleView data={output.data} metadata={output.metadata} />
+}
+
+function DisplayDataView({ output }: { output: DisplayDataOutput }) {
+  return <MimeBundleView data={output.data} metadata={output.metadata} />
 }
 
 function ErrorOutputView({ output }: { output: ErrorOutput }) {
@@ -31,13 +35,9 @@ function ErrorOutputView({ output }: { output: ErrorOutput }) {
   )
 }
 
-function CriblSearchOutputWrap({ output }: { output: CriblSearchOutput }) {
-  return <CriblSearchOutputView payload={output.payload} />
-}
-
-export function CellOutput({ output }: { output: CellOutputType }) {
+export function CellOutput({ output }: { output: OutputRecord }) {
   if (output.output_type === 'stream') return <StreamOutputView output={output} />
   if (output.output_type === 'execute_result') return <ExecuteResultView output={output} />
-  if (output.output_type === 'cribl_search') return <CriblSearchOutputWrap output={output} />
+  if (output.output_type === 'display_data') return <DisplayDataView output={output} />
   return <ErrorOutputView output={output} />
 }
