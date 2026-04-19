@@ -5,6 +5,7 @@ import {
   completionStatus,
   startCompletion,
   acceptCompletion,
+  moveCompletionSelection,
 } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { python } from '@codemirror/lang-python'
@@ -12,6 +13,8 @@ import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } fr
 import { tags } from '@lezer/highlight'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import type { CompletionItem } from '../pyodide/types'
+import { criblSearchCompletionSource } from './criblSearchEditor'
+import { criblSearchKqlHighlightPlugin } from './criblKqlHighlight'
 
 /** Jupyter-like Python token colors (CSS vars in index.css). Lezer maps `as` and `print` to the same tag. */
 const jupyterPythonHighlight = HighlightStyle.define([
@@ -147,15 +150,37 @@ export function createPythonCellExtensions(options: {
     { dark: options.theme === 'dark' },
   )
 
-  const tabCompletion = keymap.of([
+  /** Tab cycles the completion list; Enter accepts (see `completionEnter`). */
+  const completionTabCycle = keymap.of([
     {
       key: 'Tab',
       run: (view) => {
         const st = completionStatus(view.state)
         if (st === 'active') {
-          return acceptCompletion(view)
+          return moveCompletionSelection(true)(view)
         }
         return startCompletion(view)
+      },
+    },
+    {
+      key: 'Shift-Tab',
+      run: (view) => {
+        if (completionStatus(view.state) === 'active') {
+          return moveCompletionSelection(false)(view)
+        }
+        return false
+      },
+    },
+  ])
+
+  const completionEnter = keymap.of([
+    {
+      key: 'Enter',
+      run: (view) => {
+        if (completionStatus(view.state) === 'active') {
+          return acceptCompletion(view)
+        }
+        return false
       },
     },
   ])
@@ -175,6 +200,7 @@ export function createPythonCellExtensions(options: {
     maxRenderedOptions: 80,
     defaultKeymap: false,
     override: [
+      (context) => criblSearchCompletionSource(context),
       async (context) => {
         const code = context.state.doc.toString()
         const pos = context.pos
@@ -203,13 +229,15 @@ export function createPythonCellExtensions(options: {
     cellTheme,
     python(),
     syntaxHighlighting(jupyterPythonHighlight),
+    Prec.high(criblSearchKqlHighlightPlugin),
     bracketMatching(),
     indentOnInput(),
     history(),
     EditorState.tabSize.of(4),
     options.readOnlyCompartment.of(EditorState.readOnly.of(options.readOnly)),
     placeholder(options.placeholderText),
-    Prec.highest(tabCompletion),
+    Prec.highest(completionEnter),
+    Prec.highest(completionTabCycle),
     Prec.highest(runCell),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     completionOverride,

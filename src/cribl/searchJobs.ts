@@ -14,6 +14,10 @@ const SEARCH_GROUP = 'default_search'
 const POLL_MS = 450
 const MAX_POLLS = 200
 
+/** Default time window when `%%cribl_search` omits `earliest=` / `latest=`. */
+export const DEFAULT_SEARCH_EARLIEST = '-1h'
+export const DEFAULT_SEARCH_LATEST = 'now'
+
 /** Default max rows fetched from the API and shown in the notebook UI. */
 export const DEFAULT_CRIBL_SEARCH_MAX_ROWS = 20
 
@@ -40,6 +44,79 @@ function searchBasePath(apiBase: string): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms))
+}
+
+const JSON_CLOSE: Record<string, string> = { '{': '}', '[': ']' }
+
+/**
+ * Returns the substring of `s` containing the first complete top-level JSON object or array,
+ * or null if not found. Handles quoted strings so braces inside strings are ignored.
+ */
+export function extractFirstJsonValue(s: string): string | null {
+  let i = 0
+  while (i < s.length && /\s/.test(s[i]!)) i++
+  if (i >= s.length) return null
+  const c0 = s[i]!
+  if (c0 !== '{' && c0 !== '[') return null
+  const stack: string[] = [JSON_CLOSE[c0]!]
+  let inString = false
+  let escape = false
+  for (let j = i + 1; j < s.length; j++) {
+    const c = s[j]!
+    if (inString) {
+      if (escape) {
+        escape = false
+      } else if (c === '\\') {
+        escape = true
+      } else if (c === '"') {
+        inString = false
+      }
+      continue
+    }
+    if (c === '"') {
+      inString = true
+      continue
+    }
+    if (c === '{' || c === '[') {
+      stack.push(JSON_CLOSE[c]!)
+      continue
+    }
+    if (c === '}' || c === ']') {
+      if (stack.length === 0 || stack[stack.length - 1] !== c) return null
+      stack.pop()
+      if (stack.length === 0) {
+        return s.slice(i, j + 1)
+      }
+    }
+  }
+  return null
+}
+
+/**
+ * Parse a response body that should be JSON. Some proxies or APIs append extra JSON
+ * documents or characters after the first value; `Response.json()` then fails with
+ * "Unexpected non-whitespace character after JSON" and can surface ReadableStream errors.
+ * Always use full-body text + this parser for search endpoints.
+ */
+export function parseLenientJsonResponseBody(text: string): unknown {
+  const trimmed = text.replace(/^\uFEFF/, '').trim()
+  if (!trimmed.length) {
+    throw new Error('Empty JSON response body')
+  }
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    const first = extractFirstJsonValue(trimmed)
+    if (first !== null) {
+      return JSON.parse(first)
+    }
+    throw new Error(`Invalid JSON response (first 240 chars): ${trimmed.slice(0, 240)}`)
+  }
+}
+
+export async function readSearchResponseJson(res: Response): Promise<unknown> {
+  const text = await res.text()
+  return parseLenientJsonResponseBody(text)
 }
 
 function asJobIdString(v: unknown): string | null {
@@ -89,25 +166,75 @@ export function parseSearchJobCreateId(data: unknown): string | null {
   return null
 }
 
-function parseJobPhase(data: unknown): 'running' | 'completed' | 'failed' {
+function truthyCompleteFlag(v: unknown): boolean {
+  return v === true || v === 'true' || v === 1 || v === '1'
+}
+
+/**
+ * Derive job phase from Cribl / Splunk-style status payloads.
+ * Cribl often nests state under `entry[0].content` (e.g. `isDone`, `sid`) while
+ * Splunk-style APIs use `dispatchState` / `status` on the same objects.
+ */
+export function parseJobPhase(data: unknown): 'running' | 'completed' | 'failed' {
   if (!data || typeof data !== 'object') return 'running'
   const o = data as Record<string, unknown>
-  const entry0 = Array.isArray(o.entry) ? o.entry[0] : undefined
-  const inner = entry0 ?? o.content ?? o
-  const rec = typeof inner === 'object' && inner !== null ? (inner as Record<string, unknown>) : o
-  const dispatch = String(rec.dispatchState ?? rec.dispatch_state ?? '').toUpperCase()
-  const status = String(rec.status ?? '').toLowerCase()
-  const progress = String(rec.progress ?? '')
 
-  if (dispatch === 'FAILED' || status === 'failed' || progress === 'error') return 'failed'
-  if (
-    dispatch === 'COMPLETED' ||
-    dispatch === 'DONE' ||
-    status === 'completed' ||
-    progress === 'complete'
-  ) {
-    return 'completed'
+  const recordLayers: Record<string, unknown>[] = [o]
+  const entry = o.entry
+  if (Array.isArray(entry) && entry[0] && typeof entry[0] === 'object') {
+    const e0 = entry[0] as Record<string, unknown>
+    recordLayers.push(e0)
+    const c = e0.content
+    if (c && typeof c === 'object') recordLayers.push(c as Record<string, unknown>)
   }
+  const topContent = o.content
+  if (topContent && typeof topContent === 'object') {
+    recordLayers.push(topContent as Record<string, unknown>)
+  }
+  const items = o.items
+  if (Array.isArray(items) && items[0] && typeof items[0] === 'object') {
+    recordLayers.push(items[0] as Record<string, unknown>)
+    const it0 = items[0] as Record<string, unknown>
+    const ic = it0.content
+    if (ic && typeof ic === 'object') recordLayers.push(ic as Record<string, unknown>)
+  }
+
+  for (const rec of recordLayers) {
+    if (rec.isFailed === true || rec.failed === true) return 'failed'
+
+    if (
+      truthyCompleteFlag(rec.isDone) ||
+      truthyCompleteFlag(rec.done) ||
+      truthyCompleteFlag(rec.completed) ||
+      truthyCompleteFlag(rec.isComplete) ||
+      truthyCompleteFlag(rec.finished)
+    ) {
+      return 'completed'
+    }
+
+    const dispatch = String(rec.dispatchState ?? rec.dispatch_state ?? '').toUpperCase()
+    const status = String(rec.status ?? rec.state ?? rec.phase ?? '').toLowerCase()
+    const progressRaw = rec.progress
+
+    if (dispatch === 'FAILED' || status === 'failed' || status === 'error' || status === 'cancelled') {
+      return 'failed'
+    }
+
+    if (
+      dispatch === 'COMPLETED' ||
+      dispatch === 'DONE' ||
+      status === 'completed' ||
+      status === 'done' ||
+      status === 'success' ||
+      status === 'complete' ||
+      String(progressRaw ?? '') === 'complete'
+    ) {
+      return 'completed'
+    }
+
+    if (typeof progressRaw === 'number' && progressRaw >= 100) return 'completed'
+  }
+
   return 'running'
 }
 
@@ -210,6 +337,9 @@ export type RunSearchJobOptions = {
   /** Max rows to request from the results endpoint (default {@link DEFAULT_CRIBL_SEARCH_MAX_ROWS}). */
   maxRows?: number
   onProgress?: (ev: SearchProgressEvent) => void
+  /** Search job time window; defaults applied below when unset. */
+  earliest?: string
+  latest?: string
 }
 
 function emitProgress(
@@ -241,8 +371,8 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       query: q,
-      earliest: '-24h',
-      latest: 'now',
+      earliest: options.earliest ?? DEFAULT_SEARCH_EARLIEST,
+      latest: options.latest ?? DEFAULT_SEARCH_LATEST,
       sampleRate: 1,
     }),
   })
@@ -252,7 +382,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
     throw new Error(`Search job create failed (${createRes.status}): ${t || createRes.statusText}`)
   }
 
-  const created: unknown = await createRes.json()
+  const created: unknown = await readSearchResponseJson(createRes)
   const jobId = parseSearchJobCreateId(created)
   if (!jobId) {
     const preview =
@@ -264,26 +394,36 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
 
   emitProgress(options.onProgress, 0.18, `Job ${jobId}: queued…`)
 
-  let lastStatusJson: unknown
-  for (let i = 0; i < MAX_POLLS; i++) {
-    const statusRes = await fetch(`${root}/jobs/${encodeURIComponent(jobId)}/status`)
-    if (!statusRes.ok) {
-      const t = await statusRes.text().catch(() => '')
-      throw new Error(`Search job status failed (${statusRes.status}): ${t || statusRes.statusText}`)
+  let lastStatusJson: unknown = created
+  const initialPhase = parseJobPhase(created)
+
+  if (initialPhase === 'failed') {
+    throw new Error('Search job failed.')
+  }
+
+  if (initialPhase === 'completed') {
+    emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
+  } else {
+    for (let i = 0; i < MAX_POLLS; i++) {
+      const statusRes = await fetch(`${root}/jobs/${encodeURIComponent(jobId)}/status`)
+      if (!statusRes.ok) {
+        const t = await statusRes.text().catch(() => '')
+        throw new Error(`Search job status failed (${statusRes.status}): ${t || statusRes.statusText}`)
+      }
+      const statusJson: unknown = await readSearchResponseJson(statusRes)
+      lastStatusJson = statusJson
+      const phase = parseJobPhase(statusJson)
+      if (phase === 'failed') {
+        throw new Error('Search job failed.')
+      }
+      if (phase === 'completed') {
+        emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
+        break
+      }
+      const pollFrac = 0.22 + (0.62 * (i + 1)) / MAX_POLLS
+      emitProgress(options.onProgress, Math.min(0.85, pollFrac), `Job ${jobId}: running…`)
+      await sleep(POLL_MS)
     }
-    const statusJson: unknown = await statusRes.json()
-    lastStatusJson = statusJson
-    const phase = parseJobPhase(statusJson)
-    if (phase === 'failed') {
-      throw new Error('Search job failed.')
-    }
-    if (phase === 'completed') {
-      emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
-      break
-    }
-    const pollFrac = 0.22 + (0.62 * (i + 1)) / MAX_POLLS
-    emitProgress(options.onProgress, Math.min(0.85, pollFrac), `Job ${jobId}: running…`)
-    await sleep(POLL_MS)
   }
 
   const totalFromStatus = lastStatusJson != null ? parseTotalRecordHint(lastStatusJson) : null
@@ -295,7 +435,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
     const t = await resultsRes.text().catch(() => '')
     throw new Error(`Search results failed (${resultsRes.status}): ${t || resultsRes.statusText}`)
   }
-  const resultsJson: unknown = await resultsRes.json()
+  const resultsJson: unknown = await readSearchResponseJson(resultsRes)
   const rows = extractResultRows(resultsJson)
   const totalFromResults = parseTotalRecordHint(resultsJson)
   const totalRecords = totalFromResults ?? totalFromStatus ?? null

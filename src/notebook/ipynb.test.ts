@@ -122,6 +122,7 @@ describe('serializeNotebookToIpynbJson cribl_search', () => {
         rows: [{ _raw: 'e1' }],
         recordsReturned: 1,
         totalRecords: null as number | null,
+        dataframeVar: 'results_df',
       },
     }
     const state: NotebookState = {

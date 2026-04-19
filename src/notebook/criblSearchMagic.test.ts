@@ -30,6 +30,17 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.query).toBe('dataset=cribl_search_sample | limit 100')
   })
 
+  it('parses earliest and latest for the search API', () => {
+    const r = parseCriblSearchMagic(
+      '%%cribl_search earliest=-7d latest=now\ndataset=x | limit 1',
+    )
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.earliest).toBe('-7d')
+    expect(r.value.latest).toBe('now')
+    expect(r.value.query).toBe('dataset=x | limit 1')
+  })
+
   it('allows leading whitespace on first line', () => {
     const r = parseCriblSearchMagic('  %%cribl_search\nq\n')
     expect(r.kind).toBe('cribl_search')

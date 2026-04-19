@@ -60,6 +60,15 @@
   --nb-cm-bracket-match-outline: rgba(100, 180, 255, 0.55);
   --nb-cm-invalid: #f44747;
 
+  /* KQL (%%cribl_search body) */
+  --nb-cm-kql-keyword: #569cd6;
+  --nb-cm-kql-pipe: #c586c0;
+  --nb-cm-kql-string: #ce9178;
+  --nb-cm-kql-number: #b5cea8;
+  --nb-cm-kql-identifier: #d4d4d4;
+  --nb-cm-kql-operator: #d4d4d4;
+  --nb-cm-kql-comment: #7d9c7d;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -114,6 +123,14 @@
   --nb-cm-bracket-match-bg: rgba(0, 123, 255, 0.16);
   --nb-cm-bracket-match-outline: rgba(0, 123, 255, 0.45);
   --nb-cm-invalid: #b00020;
+
+  --nb-cm-kql-keyword: #0451a5;
+  --nb-cm-kql-pipe: #7928a1;
+  --nb-cm-kql-string: #ba2121;
+  --nb-cm-kql-number: #098658;
+  --nb-cm-kql-identifier: rgba(0, 0, 0, 0.87);
+  --nb-cm-kql-operator: rgba(0, 0, 0, 0.87);
+  --nb-cm-kql-comment: #408080;
 }
 
 * {
@@ -964,6 +981,37 @@ body {
   outline: none;
 }
 
+.nb-cell-editor-cm .nb-kql-keyword {
+  color: var(--nb-cm-kql-keyword);
+  font-weight: 600;
+}
+
+.nb-cell-editor-cm .nb-kql-pipe {
+  color: var(--nb-cm-kql-pipe);
+  font-weight: 600;
+}
+
+.nb-cell-editor-cm .nb-kql-string {
+  color: var(--nb-cm-kql-string);
+}
+
+.nb-cell-editor-cm .nb-kql-number {
+  color: var(--nb-cm-kql-number);
+}
+
+.nb-cell-editor-cm .nb-kql-identifier {
+  color: var(--nb-cm-kql-identifier);
+}
+
+.nb-cell-editor-cm .nb-kql-operator {
+  color: var(--nb-cm-kql-operator);
+}
+
+.nb-cell-editor-cm .nb-kql-comment {
+  color: var(--nb-cm-kql-comment);
+  font-style: italic;
+}
+
 /* Jupyter-style completion tooltip (CodeMirror) */
 .cm-tooltip.cm-tooltip-autocomplete {
   border: 1px solid var(--nb-border);
@@ -1154,6 +1202,17 @@ body {
   background: color-mix(in srgb, var(--nb-error) 12%, transparent);
   border-color: color-mix(in srgb, var(--nb-error) 55%, transparent);
   color: var(--nb-error);
+}
+
+.nb-btn-stop {
+  color: var(--nb-warn);
+  border-color: color-mix(in srgb, var(--nb-warn) 40%, transparent);
+}
+
+.nb-btn-stop:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--nb-warn) 14%, transparent);
+  border-color: color-mix(in srgb, var(--nb-warn) 55%, transparent);
+  color: var(--nb-warn);
 }
 
 /* ─── Loading / error states ───────────────────────────────────── */
@@ -1467,6 +1526,15 @@ body {
 .nb-cribl-meta-v {
   color: var(--nb-link);
   word-break: break-word;
+}
+
+.nb-cribl-df-var {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--nb-text);
+  background: var(--nb-bg-cell-alt);
+  padding: 1px 5px;
+  border-radius: 3px;
 }
 
 .nb-cribl-fail-msg {

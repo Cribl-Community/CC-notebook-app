@@ -61,7 +61,9 @@ function criblSearchPlainSummary(payload: CriblSearchPayload): string {
       ? `${payload.recordsReturned} records (${payload.totalRecords} total). Columns: ${payload.columns.join(', ')}`
       : `${payload.recordsReturned} records. Columns: ${payload.columns.join(', ')}`
   const tableNote = payload.showTable === false ? ' Table not shown (preview=false).' : ''
-  return `Cribl Search: ${total}${tableNote}`
+  const dfVar = payload.dataframeVar ?? 'results_df'
+  const dfNote = ` DataFrame: ${dfVar}.`
+  return `Cribl Search: ${total}${tableNote}${dfNote}`
 }
 
 function parseNbformatOutput(raw: unknown): CellOutput | null {

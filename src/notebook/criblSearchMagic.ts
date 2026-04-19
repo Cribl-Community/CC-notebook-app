@@ -1,7 +1,12 @@
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
- * First line: %%cribl_search [var=name] [preview=true|false]
+ * First line: %%cribl_search [var=name] [preview=true|false] [earliest=…] [latest=…]
  * Following lines: KQL query body.
+ *
+ * `earliest` / `latest` are passed to the Cribl Search job API (defaults in the client if omitted).
+ *
+ * Search rows are always loaded into a pandas DataFrame in the kernel. Use `var=` to set the name;
+ * otherwise `DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR` (`results_df`) is used.
  *
  * `preview`: when true (default), shows the result table in the cell output. When false,
  * the table is hidden (metadata lines still show). The DataFrame is always populated in
@@ -10,10 +15,17 @@
 
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 
+/** Default pandas DataFrame name for `%%cribl_search` when `var=` is omitted. */
+export const DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR = 'results_df'
+
 export type CriblSearchMagicOk = {
   varName: string
   preview: boolean
   query: string
+  /** Passed to search job `earliest` when set (e.g. `-1h`, epoch, or ISO). */
+  earliest?: string
+  /** Passed to search job `latest` when set (e.g. `now`). */
+  latest?: string
 }
 
 export type CriblSearchMagicParse =
@@ -21,9 +33,16 @@ export type CriblSearchMagicParse =
   | { kind: 'error'; message: string }
   | { kind: 'none' }
 
-function parseKeyValueParams(paramLine: string): { varName: string; preview: boolean } {
-  let varName = 'results_df'
+function parseKeyValueParams(paramLine: string): {
+  varName: string
+  preview: boolean
+  earliest?: string
+  latest?: string
+} {
+  let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
   let preview = true
+  let earliest: string | undefined
+  let latest: string | undefined
   const tokens = paramLine.trim().split(/\s+/).filter(Boolean)
   for (const t of tokens) {
     const eq = t.indexOf('=')
@@ -32,8 +51,10 @@ function parseKeyValueParams(paramLine: string): { varName: string; preview: boo
     const val = t.slice(eq + 1).trim()
     if (key === 'var') varName = val
     if (key === 'preview') preview = val.toLowerCase() !== 'false'
+    if (key === 'earliest') earliest = val
+    if (key === 'latest') latest = val
   }
-  return { varName, preview }
+  return { varName, preview, earliest, latest }
 }
 
 /**
@@ -48,7 +69,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!mm) return { kind: 'none' }
 
   const paramPart = mm[1]?.trim() ?? ''
-  const { varName, preview } = parseKeyValueParams(paramPart)
+  const { varName, preview, earliest, latest } = parseKeyValueParams(paramPart)
 
   if (!IDENT_RE.test(varName)) {
     return {
@@ -69,7 +90,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
 
   return {
     kind: 'cribl_search',
-    value: { varName, preview, query },
+    value: { varName, preview, query, earliest, latest },
   }
 }
 
