@@ -793,34 +793,6 @@ export function NotebookPage() {
     [restartKernelForTab, showAlert],
   )
 
-  const handleOpenExample = useCallback(
-    (filename: string) => {
-      const tab = createEmptyTab()
-      dispatch({ type: 'ADD_TAB', tab })
-      void (async () => {
-        try {
-          const url = new URL(`./examples/${filename}`, window.location.href).href
-          const res = await fetch(url, { cache: 'no-cache' })
-          if (!res.ok) throw new Error(`Failed to load example: ${res.status} ${res.statusText}`)
-          const text = await res.text()
-          const { title, cells } = parseIpynbJson(text, { filename })
-          dispatch({
-            type: 'REPLACE_TAB_CONTENT',
-            tabId: tab.id,
-            title,
-            cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
-            kvNotebookId: null,
-          })
-          restartKernelForTab(tab.id)
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Failed to open example'
-          showAlert(msg)
-        }
-      })()
-    },
-    [restartKernelForTab, showAlert],
-  )
-
   const tabLabels = useMemo(
     () =>
       workspace.tabs.map((t) => ({
@@ -891,7 +863,6 @@ export function NotebookPage() {
                 onConfirmMove={handleConfirmMove}
                 onDelete={handleDelete}
                 moveDestinations={moveDestinations}
-                onOpenExample={handleOpenExample}
               />
           <div className="nb-workspace">
             <div className="nb-workspace-stack">

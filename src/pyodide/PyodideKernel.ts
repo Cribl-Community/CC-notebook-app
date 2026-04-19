@@ -39,34 +39,12 @@ self.onmessage = async function(e) {
         packageBaseUrl: msg.pyodidePackageBaseUrl,
       });
       // Preload IPython (so notebook_iopub_bootstrap can install its
-      // DisplayPublisher) and micropip (used to install PyPI-only wheels
-      // for ipywidgets/itables). These are part of the vendored wheel set;
-      // if the load fails the bootstrap silently falls back.
+      // DisplayPublisher) and micropip (optional user installs from PyPI when
+      // network allows). Vendored lock packages; if load fails, bootstrap falls back.
       try {
         await pyodide.loadPackage(['ipython', 'micropip']);
       } catch (_) {
         // optional
-      }
-      // Install PyPI-only widget/table wheels from same-origin URLs so we
-      // never need to reach pypi.org through the proxy. These are tiny
-      // pure-Python wheels; total ~6MB.
-      try {
-        const base = msg.pyodidePackageBaseUrl;
-        const wheels = [
-          base + 'comm-0.2.3-py3-none-any.whl',
-          base + 'widgetsnbextension-4.0.15-py3-none-any.whl',
-          base + 'jupyterlab_widgets-3.0.16-py3-none-any.whl',
-          base + 'ipywidgets-8.1.8-py3-none-any.whl',
-          base + 'itables-2.7.3-py3-none-any.whl',
-        ];
-        const py = "import micropip\\nawait micropip.install([" +
-          wheels.map(function(w){return JSON.stringify(w)}).join(',') +
-          "], deps=False)";
-        await pyodide.runPythonAsync(py);
-      } catch (e) {
-        // Non-fatal: examples that need ipywidgets/itables will surface a clearer
-        // error from the notebook itself.
-        console.warn('ipywidgets/itables auto-install failed:', e && e.message ? e.message : e);
       }
       await pyodide.runPythonAsync(COMPLETION_PY);
       await pyodide.runPythonAsync(IOPUB_BOOTSTRAP_PY);
