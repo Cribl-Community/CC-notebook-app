@@ -4,6 +4,7 @@ import {
   extractFirstJsonValue,
   parseJobPhase,
   parseLenientJsonResponseBody,
+  parseNdjsonSearchResultsBody,
   parseSearchJobCreateId,
   parseTotalRecordHint,
   runCriblSearchJob,
@@ -94,6 +95,21 @@ describe('parseTotalRecordHint', () => {
     expect(parseTotalRecordHint({ total: 42 })).toBe(42)
     expect(parseTotalRecordHint({ resultCount: 7 })).toBe(7)
     expect(parseTotalRecordHint({ entry: [{ content: { eventCount: 99 } }] })).toBe(99)
+    expect(parseTotalRecordHint({ totalEventCount: 1000 })).toBe(1000)
+  })
+})
+
+describe('parseNdjsonSearchResultsBody', () => {
+  it('skips metadata line and collects event objects', () => {
+    const body = [
+      '{"isFinished":true,"totalEventCount":3,"limit":5000,"offset":0,"job":{"id":"j1"}}',
+      '{"dataset":"d","_raw":"one","_time":1}',
+      '{"dataset":"d","_raw":"two","_time":2}',
+    ].join('\n')
+    const { rows, totalHint } = parseNdjsonSearchResultsBody(body)
+    expect(totalHint).toBe(3)
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toMatchObject({ _raw: 'one' })
   })
 })
 

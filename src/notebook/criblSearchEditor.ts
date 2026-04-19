@@ -361,6 +361,7 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
   if (
     /^var=.+/u.test(lastTok) ||
     /^preview=.+/u.test(lastTok) ||
+    /^limit=.+/u.test(lastTok) ||
     /^earliest=.+/u.test(lastTok) ||
     /^latest=.+/u.test(lastTok)
   ) {
@@ -386,9 +387,14 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
     partial === '' ||
     'latest='.startsWith(partial) ||
     (partial.length > 0 && 'latest'.startsWith(partial))
+  const wantLimit =
+    partial === '' ||
+    'limit='.startsWith(partial) ||
+    (partial.length > 0 && 'limit'.startsWith(partial))
 
   if (wantVar) paramCandidates.push({ label: 'var=', type: 'property' })
   if (wantPreview) paramCandidates.push({ label: 'preview=', type: 'property' })
+  if (wantLimit) paramCandidates.push({ label: 'limit=', type: 'property' })
   if (wantEarliest) paramCandidates.push({ label: 'earliest=', type: 'property' })
   if (wantLatest) paramCandidates.push({ label: 'latest=', type: 'property' })
 
