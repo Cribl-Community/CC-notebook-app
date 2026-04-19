@@ -2,8 +2,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { buildTreeRows, type TreeRow } from './manifest'
 import type { ManifestItem } from './manifest'
 import { isKvMockMode } from '../cribl/kvstore'
-import { BUILTIN_EXAMPLES } from './builtinExamples'
-
 interface NotebookSidebarProps {
   items: ManifestItem[]
   loading: boolean
@@ -24,8 +22,6 @@ interface NotebookSidebarProps {
   onConfirmMove: (itemId: string, newParentId: string | null) => void
   onDelete: (id: string, name: string, kind: 'folder' | 'notebook') => void
   moveDestinations: { id: string | null; label: string }[]
-  /** Open a bundled example from `public/examples/`. */
-  onOpenExample: (filename: string) => void
 }
 
 function formatModified(iso: string): string {
@@ -74,7 +70,6 @@ export function NotebookSidebar({
   onConfirmMove,
   onDelete,
   moveDestinations,
-  onOpenExample,
 }: NotebookSidebarProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
 
@@ -309,24 +304,6 @@ export function NotebookSidebar({
             </div>
           )
         })}
-      </div>
-
-      <div className="nb-sidebar-examples">
-        <div className="nb-sidebar-examples-title">Examples</div>
-        {BUILTIN_EXAMPLES.map((ex) => (
-          <button
-            key={ex.filename}
-            type="button"
-            className="nb-sidebar-example-row"
-            title={ex.description}
-            onClick={() => onOpenExample(ex.filename)}
-          >
-            <span className="nb-sidebar-example-icon" aria-hidden>
-              📓
-            </span>
-            <span className="nb-sidebar-example-label">{ex.label}</span>
-          </button>
-        ))}
       </div>
 
       {movingItem && (
