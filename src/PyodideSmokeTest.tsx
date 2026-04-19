@@ -12,37 +12,41 @@ interface Check {
   detail: string
 }
 
+function plainText(r: KernelResult): string {
+  for (const o of r.outputs) {
+    if (o.output_type === 'execute_result' || o.output_type === 'display_data') {
+      const tp = o.data['text/plain']
+      if (typeof tp === 'string') return tp.trim().replace(/^['"]|['"]$/g, '')
+    }
+  }
+  return ''
+}
+
 const CHECKS: Omit<Check, 'status' | 'detail'>[] = [
   {
     label: '1 + 1',
     code: '1 + 1',
-    expect: (r) => r.outputs.some((o) => o.output_type === 'execute_result' && o.data === '2'),
+    expect: (r) => plainText(r) === '2',
   },
   {
     label: 'sys.version',
     code: 'import sys; sys.version',
-    expect: (r) => r.outputs.some((o) => o.output_type === 'execute_result' && o.data.length > 0),
+    expect: (r) => plainText(r).length > 0,
   },
   {
     label: 'sum(range(10))',
     code: 'sum(range(10))',
-    expect: (r) => r.outputs.some((o) => o.output_type === 'execute_result' && o.data === '45'),
+    expect: (r) => plainText(r) === '45',
   },
   {
     label: 'import matplotlib',
     code: 'import matplotlib; matplotlib.__version__',
-    expect: (r) =>
-      r.outputs.some(
-        (o) => o.output_type === 'execute_result' && o.data.length > 0 && /^\d/.test(o.data.trim()),
-      ),
+    expect: (r) => /^\d/.test(plainText(r)),
   },
   {
     label: 'import pandas',
     code: 'import pandas as pd; pd.__version__',
-    expect: (r) =>
-      r.outputs.some(
-        (o) => o.output_type === 'execute_result' && o.data.length > 0 && /^\d/.test(o.data.trim()),
-      ),
+    expect: (r) => /^\d/.test(plainText(r)),
   },
 ]
 
@@ -60,15 +64,14 @@ function statusColor(s: CheckStatus): string {
 
 function resultDetail(r: KernelResult): string {
   return r.outputs
-    .map((o) =>
-      o.output_type === 'execute_result'
-        ? o.data
-        : o.output_type === 'stream'
-          ? o.text
-          : o.output_type === 'error'
-            ? `${o.ename}: ${o.evalue}`
-            : '[cribl_search]',
-    )
+    .map((o) => {
+      if (o.output_type === 'execute_result' || o.output_type === 'display_data') {
+        const tp = o.data['text/plain']
+        return typeof tp === 'string' ? tp : '[mime]'
+      }
+      if (o.output_type === 'stream') return o.text
+      return `${o.ename}: ${o.evalue}`
+    })
     .join(' ')
 }
 

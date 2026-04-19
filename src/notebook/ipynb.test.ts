@@ -6,6 +6,7 @@ import {
   serializeNotebookToIpynbJson,
 } from './ipynb'
 import type { NotebookState } from './types'
+import { CRIBL_SEARCH_MIME } from '../pyodide/types'
 
 function minimalNotebook(metadata: Record<string, unknown>): string {
   return JSON.stringify({
@@ -110,20 +111,50 @@ describe('parseIpynbJson', () => {
       traceback: ['line1', 'line2'],
     })
   })
+  it('parses display_data with full mime bundle', () => {
+    const json = JSON.stringify({
+      nbformat: 4,
+      nbformat_minor: 5,
+      metadata: { title: 'T' },
+      cells: [
+        {
+          cell_type: 'code',
+          source: 'x',
+          outputs: [
+            {
+              output_type: 'display_data',
+              data: {
+                'text/plain': 'fallback',
+                'text/html': ['<p>', 'hi', '</p>'],
+              },
+              metadata: { isolated: true },
+              transient: { display_id: 'd1' },
+            },
+          ],
+        },
+      ],
+    })
+    const r = parseIpynbJson(json)
+    const c = r.cells[0]
+    if (c?.cell_type !== 'code') throw new Error('expected code cell')
+    expect(c.outputs[0]).toEqual({
+      output_type: 'display_data',
+      data: { 'text/plain': 'fallback', 'text/html': '<p>hi</p>' },
+      metadata: { isolated: true },
+      display_id: 'd1',
+    })
+  })
 })
 
 describe('serializeNotebookToIpynbJson cribl_search', () => {
-  it('round-trips cribl_search display_data', () => {
-    const criblOut = {
-      output_type: 'cribl_search' as const,
-      payload: {
-        kind: 'completed' as const,
-        columns: ['_raw'],
-        rows: [{ _raw: 'e1' }],
-        recordsReturned: 1,
-        totalRecords: null as number | null,
-        dataframeVar: 'results_df',
-      },
+  it('round-trips cribl_search payload through generic display_data', () => {
+    const payload = {
+      kind: 'completed' as const,
+      columns: ['_raw'],
+      rows: [{ _raw: 'e1' }],
+      recordsReturned: 1,
+      totalRecords: null as number | null,
+      dataframeVar: 'results_df',
     }
     const state: NotebookState = {
       title: 'T',
@@ -132,7 +163,17 @@ describe('serializeNotebookToIpynbJson cribl_search', () => {
           id: 'c1',
           cell_type: 'code',
           source: '%%cribl_search\nq\n',
-          outputs: [criblOut],
+          outputs: [
+            {
+              output_type: 'display_data',
+              data: {
+                'text/plain': 'Cribl Search: 1 records',
+                [CRIBL_SEARCH_MIME]: JSON.stringify(payload),
+              },
+              metadata: {},
+              display_id: 'cribl-search-c1',
+            },
+          ],
           execution_count: 1,
           execution_state: 'idle',
         },
@@ -146,7 +187,11 @@ describe('serializeNotebookToIpynbJson cribl_search', () => {
     const c = cells[0]
     expect(c?.cell_type).toBe('code')
     if (c?.cell_type !== 'code') return
-    expect(c.outputs).toEqual([criblOut])
+    expect(c.outputs).toHaveLength(1)
+    const out = c.outputs[0]
+    if (out.output_type !== 'display_data') throw new Error('expected display_data')
+    expect(out.data[CRIBL_SEARCH_MIME]).toBe(JSON.stringify(payload))
+    expect(out.display_id).toBe('cribl-search-c1')
   })
 })
 
@@ -161,7 +206,12 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
           source: 'print(1)',
           outputs: [
             { output_type: 'stream', name: 'stdout', text: 'hello\n' },
-            { output_type: 'execute_result', data: '42' },
+            {
+              output_type: 'execute_result',
+              execution_count: 3,
+              data: { 'text/plain': '42' },
+              metadata: {},
+            },
           ],
           execution_count: 3,
           execution_state: 'idle',
@@ -190,5 +240,36 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
     expect(c.source).toBe('print(1)')
     expect(c.execution_count).toBe(3)
     expect(c.outputs).toEqual(before.outputs)
+  })
+
+  it('preserves text/html mime and display_id round trip', () => {
+    const state: NotebookState = {
+      title: 'HTML',
+      cells: [
+        {
+          id: 'c1',
+          cell_type: 'code',
+          source: 'show(df)',
+          outputs: [
+            {
+              output_type: 'display_data',
+              data: { 'text/plain': 't', 'text/html': '<table><tr><td>1</td></tr></table>' },
+              metadata: {},
+              display_id: 'd-table',
+            },
+          ],
+          execution_count: 1,
+          execution_state: 'idle',
+        },
+      ],
+      selectedId: null,
+      executionCounter: 0,
+      kernelStatus: 'ready',
+    }
+    const json = serializeNotebookToIpynbJson(state)
+    const { cells } = parseIpynbJson(json)
+    const c = cells[0]
+    if (c?.cell_type !== 'code') throw new Error('expected code cell')
+    expect(c.outputs).toEqual(state.cells[0]!.cell_type === 'code' ? state.cells[0]!.outputs : [])
   })
 })

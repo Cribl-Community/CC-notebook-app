@@ -1,12 +1,14 @@
 import type {
-  CellOutput,
   CompletionItem,
+  IOPubMessage,
   KernelResult,
+  OutputRecord,
   WorkerInbound,
   WorkerOutbound,
 } from './types'
 import { getPyodidePackageBaseUrl } from './pyodideVersion'
 import completionPy from './notebook_complete.py?raw'
+import iopubBootstrapPy from './notebook_iopub_bootstrap.py?raw'
 
 // Worker source as a classic-worker string (not ES module) so importScripts is available.
 // The pyodide URL is passed via the first 'init' message so the worker loads from
@@ -18,6 +20,13 @@ let pyodide = null;
 const COMPLETION_PY = ` +
   JSON.stringify(completionPy) +
   `;
+const IOPUB_BOOTSTRAP_PY = ` +
+  JSON.stringify(iopubBootstrapPy) +
+  `;
+
+function postIOPub(execId, msg) {
+  self.postMessage({ type: 'iopub', id: execId, msg: msg });
+}
 
 self.onmessage = async function(e) {
   const msg = e.data;
@@ -29,7 +38,38 @@ self.onmessage = async function(e) {
         indexURL: msg.pyodideBaseUrl,
         packageBaseUrl: msg.pyodidePackageBaseUrl,
       });
+      // Preload IPython (so notebook_iopub_bootstrap can install its
+      // DisplayPublisher) and micropip (used to install PyPI-only wheels
+      // for ipywidgets/itables). These are part of the vendored wheel set;
+      // if the load fails the bootstrap silently falls back.
+      try {
+        await pyodide.loadPackage(['ipython', 'micropip']);
+      } catch (_) {
+        // optional
+      }
+      // Install PyPI-only widget/table wheels from same-origin URLs so we
+      // never need to reach pypi.org through the proxy. These are tiny
+      // pure-Python wheels; total ~6MB.
+      try {
+        const base = msg.pyodidePackageBaseUrl;
+        const wheels = [
+          base + 'comm-0.2.3-py3-none-any.whl',
+          base + 'widgetsnbextension-4.0.15-py3-none-any.whl',
+          base + 'jupyterlab_widgets-3.0.16-py3-none-any.whl',
+          base + 'ipywidgets-8.1.8-py3-none-any.whl',
+          base + 'itables-2.7.3-py3-none-any.whl',
+        ];
+        const py = "import micropip\\nawait micropip.install([" +
+          wheels.map(function(w){return JSON.stringify(w)}).join(',') +
+          "], deps=False)";
+        await pyodide.runPythonAsync(py);
+      } catch (e) {
+        // Non-fatal: examples that need ipywidgets/itables will surface a clearer
+        // error from the notebook itself.
+        console.warn('ipywidgets/itables auto-install failed:', e && e.message ? e.message : e);
+      }
       await pyodide.runPythonAsync(COMPLETION_PY);
+      await pyodide.runPythonAsync(IOPUB_BOOTSTRAP_PY);
       self.postMessage({ type: 'ready' });
     } catch (err) {
       self.postMessage({ type: 'init_error', message: err.message });
@@ -56,34 +96,82 @@ self.onmessage = async function(e) {
 
   if (msg.type === 'exec') {
     if (!pyodide) return;
-    const id = msg.id;
-    pyodide.setStdout({ batched: function(text) {
-      self.postMessage({ type: 'stream', id: id, name: 'stdout', text: text });
-    }});
-    pyodide.setStderr({ batched: function(text) {
-      self.postMessage({ type: 'stream', id: id, name: 'stderr', text: text });
-    }});
+    const execId = msg.id;
+    const execCount = msg.execution_count | 0;
+
+    // Install the IOPub bridge for this execution. Python calls _NB_IOPUB(dict)
+    // which lands here as a PyProxy → plain JS object.
+    const bridge = (pyMsg) => {
+      let plain;
+      try {
+        plain = pyMsg && typeof pyMsg.toJs === 'function'
+          ? pyMsg.toJs({ dict_converter: Object.fromEntries })
+          : pyMsg;
+      } catch (_) {
+        plain = pyMsg;
+      } finally {
+        try { pyMsg && pyMsg.destroy && pyMsg.destroy(); } catch (_) {}
+      }
+      try {
+        postIOPub(execId, plain);
+      } catch (err) {
+        // Last-ditch: forward as a stream stderr message.
+        try {
+          postIOPub(execId, {
+            msg_type: 'stream',
+            name: 'stderr',
+            text: String(err && err.message ? err.message : err) + '\\n',
+          });
+        } catch (_) {}
+      }
+    };
+
+    pyodide.globals.set('_NB_IOPUB', bridge);
+
+    postIOPub(execId, { msg_type: 'status', execution_state: 'busy' });
     try {
+      // Load any imported packages BEFORE installing the user-facing stdout/stderr
+      // hooks, so package loader chatter ("Loading X", "Loaded X") does not leak
+      // into cell output.
       await pyodide.loadPackagesFromImports(msg.code);
-      const result = await pyodide.runPythonAsync(msg.code);
-      self.postMessage({ type: 'result', id: id, value: String(result ?? '') });
+
+      pyodide.setStdout({ batched: function(text) {
+        postIOPub(execId, { msg_type: 'stream', name: 'stdout', text: text });
+      }});
+      pyodide.setStderr({ batched: function(text) {
+        postIOPub(execId, { msg_type: 'stream', name: 'stderr', text: text });
+      }});
+
+      pyodide.globals.set('_nb_source_code', msg.code);
+      pyodide.globals.set('_nb_exec_count', execCount);
+      await pyodide.runPythonAsync('_nb_run(_nb_source_code, _nb_exec_count)');
     } catch (err) {
-      const message = err.message || String(err);
+      const message = err && err.message ? err.message : String(err);
       const lines = message.split('\\n');
       const nonEmpty = lines.filter(function(l) { return l.trim().length > 0; });
       const lastLine = nonEmpty.length > 0 ? nonEmpty[nonEmpty.length - 1] : '';
       const colonIdx = lastLine.indexOf(': ');
       const ename = colonIdx > 0 ? lastLine.slice(0, colonIdx) : 'Error';
       const evalue = colonIdx > 0 ? lastLine.slice(colonIdx + 2) : lastLine;
-      self.postMessage({ type: 'error', id: id, ename: ename, evalue: evalue, traceback: lines });
+      postIOPub(execId, {
+        msg_type: 'error',
+        ename: ename,
+        evalue: evalue,
+        traceback: lines,
+      });
+    } finally {
+      try { pyodide.globals.set('_NB_IOPUB', null); } catch (_) {}
+      try { pyodide.setStdout({}); } catch (_) {}
+      try { pyodide.setStderr({}); } catch (_) {}
+      postIOPub(execId, { msg_type: 'status', execution_state: 'idle' });
     }
   }
 };
 `
 
 type Pending = {
-  outputs: CellOutput[]
-  onStream?: (name: 'stdout' | 'stderr', text: string) => void
+  outputs: OutputRecord[]
+  onIOPub?: (msg: IOPubMessage) => void
   resolve: (r: KernelResult) => void
 }
 
@@ -123,32 +211,20 @@ export class PyodideKernel {
         return
       }
 
-      if (msg.type === 'stream') {
+      if (msg.type === 'iopub') {
         const p = this.pending.get(msg.id)
         if (!p) return
-        const output: CellOutput = { output_type: 'stream', name: msg.name, text: msg.text }
-        p.outputs.push(output)
-        p.onStream?.(msg.name, msg.text)
-        return
-      }
-
-      if (msg.type === 'result') {
-        const p = this.pending.get(msg.id)
-        if (!p) return
-        this.pending.delete(msg.id)
-        if (msg.value !== '') {
-          p.outputs.push({ output_type: 'execute_result', data: msg.value })
+        const iopub = msg.msg
+        applyIOPubToOutputs(p.outputs, iopub)
+        try {
+          p.onIOPub?.(iopub)
+        } catch {
+          // best-effort
         }
-        p.resolve({ outputs: p.outputs })
-        return
-      }
-
-      if (msg.type === 'error') {
-        const p = this.pending.get(msg.id)
-        if (!p) return
-        this.pending.delete(msg.id)
-        p.outputs.push({ output_type: 'error', ename: msg.ename, evalue: msg.evalue, traceback: msg.traceback })
-        p.resolve({ outputs: p.outputs })
+        if (iopub.msg_type === 'status' && iopub.execution_state === 'idle') {
+          this.pending.delete(msg.id)
+          p.resolve({ outputs: p.outputs })
+        }
         return
       }
     }
@@ -168,13 +244,20 @@ export class PyodideKernel {
 
   execute(
     code: string,
-    onStream?: (name: 'stdout' | 'stderr', text: string) => void,
+    onIOPub?: (msg: IOPubMessage) => void,
+    executionCount = 0,
   ): Promise<KernelResult> {
     const id = crypto.randomUUID()
-    const outputs: CellOutput[] = []
+    const outputs: OutputRecord[] = []
     return new Promise<KernelResult>((resolve) => {
-      this.pending.set(id, { outputs, onStream, resolve })
-      this.worker.postMessage({ type: 'exec', id, code } satisfies WorkerInbound)
+      this.pending.set(id, { outputs, onIOPub, resolve })
+      const exec: WorkerInbound = {
+        type: 'exec',
+        id,
+        code,
+        execution_count: executionCount,
+      }
+      this.worker.postMessage(exec)
     })
   }
 
@@ -197,4 +280,74 @@ export class PyodideKernel {
     }
     this.pendingComplete.clear()
   }
+}
+
+/**
+ * Folds a single IOPub message into a flat per-execution outputs list. This is
+ * a minimal duplicate of the notebook-side {@link applyIOPub} so that
+ * `KernelResult.outputs` (used by smoke tests and the cribl_search final pass)
+ * stays a plain `OutputRecord[]`. The notebook page does not use this — it
+ * applies messages directly via the reducer.
+ */
+function applyIOPubToOutputs(outputs: OutputRecord[], msg: IOPubMessage): void {
+  if (msg.msg_type === 'stream') {
+    if (msg.text.length === 0) return
+    const last = outputs[outputs.length - 1]
+    if (last && last.output_type === 'stream' && last.name === msg.name) {
+      outputs[outputs.length - 1] = {
+        output_type: 'stream',
+        name: msg.name,
+        text: last.text + msg.text,
+      }
+      return
+    }
+    outputs.push({ output_type: 'stream', name: msg.name, text: msg.text })
+    return
+  }
+  if (msg.msg_type === 'display_data') {
+    outputs.push({
+      output_type: 'display_data',
+      data: msg.data,
+      metadata: msg.metadata,
+      ...(msg.transient?.display_id ? { display_id: msg.transient.display_id } : {}),
+    })
+    return
+  }
+  if (msg.msg_type === 'execute_result') {
+    outputs.push({
+      output_type: 'execute_result',
+      execution_count: msg.execution_count,
+      data: msg.data,
+      metadata: msg.metadata,
+      ...(msg.transient?.display_id ? { display_id: msg.transient.display_id } : {}),
+    })
+    return
+  }
+  if (msg.msg_type === 'update_display_data') {
+    const id = msg.transient.display_id
+    for (let i = 0; i < outputs.length; i++) {
+      const r = outputs[i]
+      if (
+        (r.output_type === 'display_data' || r.output_type === 'execute_result') &&
+        r.display_id === id
+      ) {
+        outputs[i] = { ...r, data: msg.data, metadata: msg.metadata }
+      }
+    }
+    return
+  }
+  if (msg.msg_type === 'error') {
+    outputs.push({
+      output_type: 'error',
+      ename: msg.ename,
+      evalue: msg.evalue,
+      traceback: msg.traceback,
+    })
+    return
+  }
+  if (msg.msg_type === 'clear_output' && !msg.wait) {
+    outputs.length = 0
+    return
+  }
+  // status, clear_output(wait:true): no-ops here
 }

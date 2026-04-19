@@ -1,4 +1,18 @@
 import type { NotebookState, NotebookAction, CodeCell, MarkdownCell, Cell } from './types'
+import { applyIOPub, createOutputArea, type OutputAreaState } from './outputArea'
+
+/**
+ * Per-cell deferred-clear state for `clear_output { wait: true }`. Lives on a
+ * module-level WeakMap keyed by the cell object so it survives reducer state
+ * transitions without polluting the serializable {@link CodeCell} shape.
+ */
+const cellOutputAreaStates = new WeakMap<CodeCell, OutputAreaState>()
+
+function getOrInitArea(cell: CodeCell): OutputAreaState {
+  const existing = cellOutputAreaStates.get(cell)
+  if (existing && existing.records === cell.outputs) return existing
+  return { records: cell.outputs, pendingClear: false }
+}
 
 function makeCodeCell(): CodeCell {
   return {
@@ -82,11 +96,17 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
     case 'SET_RUNNING':
       return {
         ...state,
-        cells: state.cells.map((c): Cell =>
-          c.id === action.id && c.cell_type === 'code'
-            ? { ...c, execution_state: 'running', outputs: [], execution_count: null }
-            : c,
-        ),
+        cells: state.cells.map((c): Cell => {
+          if (c.id !== action.id || c.cell_type !== 'code') return c
+          const updated: CodeCell = {
+            ...c,
+            execution_state: 'running',
+            outputs: [],
+            execution_count: null,
+          }
+          cellOutputAreaStates.set(updated, createOutputArea())
+          return updated
+        }),
       }
 
     case 'APPEND_OUTPUT':
@@ -115,6 +135,23 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
               })()
             : c,
         ),
+      }
+    }
+
+    case 'IOPUB': {
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell => {
+          if (c.id !== action.id || c.cell_type !== 'code') return c
+          const area = getOrInitArea(c)
+          const next = applyIOPub(area, action.msg)
+          if (next.records === area.records && next.pendingClear === area.pendingClear) {
+            return c
+          }
+          const updated: CodeCell = { ...c, outputs: next.records }
+          cellOutputAreaStates.set(updated, next)
+          return updated
+        }),
       }
     }
 

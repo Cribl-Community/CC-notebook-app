@@ -37,7 +37,46 @@ import {
 } from './criblSearchMagic'
 import { filterPyodidePackageChatter } from './criblSearchStreamFilter'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '../cribl/searchJobs'
-import type { CriblSearchPayload } from '../pyodide/types'
+import {
+  CRIBL_SEARCH_MIME,
+  type CriblSearchPayload,
+  type IOPubMessage,
+} from '../pyodide/types'
+
+function criblSearchPlainSummary(p: CriblSearchPayload): string {
+  if (p.kind === 'running') return `Cribl Search: ${p.label}`
+  if (p.kind === 'failed') return `Cribl Search failed: ${p.message}`
+  const total =
+    p.totalRecords != null && p.totalRecords !== p.recordsReturned
+      ? `${p.recordsReturned} records (${p.totalRecords} total)`
+      : `${p.recordsReturned} records`
+  return `Cribl Search: ${total}`
+}
+
+function criblSearchIOPub(
+  payload: CriblSearchPayload,
+  display_id: string,
+  update: boolean,
+): IOPubMessage {
+  const data = {
+    'text/plain': criblSearchPlainSummary(payload),
+    [CRIBL_SEARCH_MIME]: JSON.stringify(payload),
+  }
+  if (update) {
+    return {
+      msg_type: 'update_display_data',
+      data,
+      metadata: {},
+      transient: { display_id },
+    }
+  }
+  return {
+    msg_type: 'display_data',
+    data,
+    metadata: {},
+    transient: { display_id },
+  }
+}
 
 type DialogState =
   | { kind: 'alert'; message: string }
@@ -317,50 +356,33 @@ export function NotebookPage() {
           const count = prevCount + 1
           tabExecCountersRef.current.set(tid, count)
 
-          const appendStream = (name: 'stdout' | 'stderr', text: string) => {
-            if (tabGensRef.current.get(tid) === myGen) {
-              dispatch({
-                type: 'TAB_NOTEBOOK',
-                tabId: tid,
-                action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'stream', name, text } },
-              })
-            }
+          const emitIOPub = (msg: IOPubMessage) => {
+            if (tabGensRef.current.get(tid) !== myGen) return
+            dispatch({
+              type: 'TAB_NOTEBOOK',
+              tabId: tid,
+              action: { type: 'IOPUB', id, msg, executionCount: count },
+            })
           }
 
           const magic = parseCriblSearchMagic(source)
           if (magic.kind === 'error') {
-            appendStream('stderr', `${magic.message}\n`)
+            emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${magic.message}\n` })
             dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
             return
           }
 
           if (magic.kind === 'cribl_search') {
             const { varName, query, preview, earliest, latest, limit } = magic.value
-            const CRIBL_OUT = 0
+            const displayId = `cribl-search-${id}`
             try {
-              const pushCribl = (payload: CriblSearchPayload) => {
-                if (tabGensRef.current.get(tid) !== myGen) return
-                dispatch({
-                  type: 'TAB_NOTEBOOK',
-                  tabId: tid,
-                  action: {
-                    type: 'REPLACE_OUTPUT_AT',
-                    id,
-                    index: CRIBL_OUT,
-                    output: { output_type: 'cribl_search', payload },
-                  },
-                })
-              }
-              const appendCribl = (payload: CriblSearchPayload) => {
-                if (tabGensRef.current.get(tid) !== myGen) return
-                dispatch({
-                  type: 'TAB_NOTEBOOK',
-                  tabId: tid,
-                  action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'cribl_search', payload } },
-                })
-              }
-
-              appendCribl({ kind: 'running', progress: 0.06, label: 'Starting search…' })
+              emitIOPub(
+                criblSearchIOPub(
+                  { kind: 'running', progress: 0.06, label: 'Starting search…' },
+                  displayId,
+                  false,
+                ),
+              )
 
               const { rows, columns, totalRecords } = await runCriblSearchJob({
                 query,
@@ -368,45 +390,55 @@ export function NotebookPage() {
                 earliest,
                 latest,
                 onProgress: (ev) => {
-                  pushCribl({ kind: 'running', progress: ev.fraction, label: ev.label })
+                  emitIOPub(
+                    criblSearchIOPub(
+                      { kind: 'running', progress: ev.fraction, label: ev.label },
+                      displayId,
+                      true,
+                    ),
+                  )
                 },
               })
               if (tabGensRef.current.get(tid) !== myGen) return
 
-              pushCribl({
-                kind: 'completed',
-                columns,
-                rows: preview ? rows.slice(0, DEFAULT_CRIBL_SEARCH_MAX_ROWS) : [],
-                recordsReturned: rows.length,
-                totalRecords,
-                dataframeVar: varName,
-                showTable: preview,
-              })
+              emitIOPub(
+                criblSearchIOPub(
+                  {
+                    kind: 'completed',
+                    columns,
+                    rows: preview ? rows.slice(0, DEFAULT_CRIBL_SEARCH_MAX_ROWS) : [],
+                    recordsReturned: rows.length,
+                    totalRecords,
+                    dataframeVar: varName,
+                    showTable: preview,
+                  },
+                  displayId,
+                  true,
+                ),
+              )
 
               const b64 = encodeRowsJsonForPythonBase64(rows)
               /** Rich table already shows rows; never add `print(df.head())` (avoids duplicate text). */
               const code = buildCriblSearchDataframeCode(varName, b64, false)
-              const result = await kernel.execute(code, (name, text) => {
-                if (tabGensRef.current.get(tid) !== myGen) return
-                const filtered = filterPyodidePackageChatter(text)
-                if (filtered.length === 0) return
-                dispatch({
-                  type: 'TAB_NOTEBOOK',
-                  tabId: tid,
-                  action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'stream', name, text: filtered } },
-                })
-              })
+              let sawError = false
+              await kernel.execute(
+                code,
+                (msg) => {
+                  if (msg.msg_type === 'stream') {
+                    const filtered = filterPyodidePackageChatter(msg.text)
+                    if (filtered.length === 0) return
+                    emitIOPub({ ...msg, text: filtered })
+                    return
+                  }
+                  if (msg.msg_type === 'error') sawError = true
+                  emitIOPub(msg)
+                },
+                count,
+              )
 
               if (tabGensRef.current.get(tid) !== myGen) return
 
-              for (const output of result.outputs) {
-                if (output.output_type !== 'stream') {
-                  dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'APPEND_OUTPUT', id, output } })
-                }
-              }
-
-              const hasError = result.outputs.some((o) => o.output_type === 'error')
-              if (hasError) {
+              if (sawError) {
                 dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
               } else {
                 dispatch({
@@ -416,47 +448,34 @@ export function NotebookPage() {
                 })
               }
             } catch (e) {
-              const msg = e instanceof Error ? e.message : String(e)
+              const errMsg = e instanceof Error ? e.message : String(e)
               if (tabGensRef.current.get(tid) === myGen) {
-                dispatch({
-                  type: 'TAB_NOTEBOOK',
-                  tabId: tid,
-                  action: {
-                    type: 'REPLACE_OUTPUT_AT',
-                    id,
-                    index: 0,
-                    output: {
-                      output_type: 'cribl_search',
-                      payload: { kind: 'failed', message: msg },
-                    },
-                  },
-                })
+                emitIOPub(
+                  criblSearchIOPub(
+                    { kind: 'failed', message: errMsg },
+                    displayId,
+                    true,
+                  ),
+                )
               }
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
             }
             return
           }
 
-          const result = await kernel.execute(source, (name, text) => {
-            if (tabGensRef.current.get(tid) === myGen) {
-              dispatch({
-                type: 'TAB_NOTEBOOK',
-                tabId: tid,
-                action: { type: 'APPEND_OUTPUT', id, output: { output_type: 'stream', name, text } },
-              })
-            }
-          })
+          let sawError = false
+          await kernel.execute(
+            source,
+            (msg) => {
+              if (msg.msg_type === 'error') sawError = true
+              emitIOPub(msg)
+            },
+            count,
+          )
 
           if (tabGensRef.current.get(tid) !== myGen) return
 
-          for (const output of result.outputs) {
-            if (output.output_type !== 'stream') {
-              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'APPEND_OUTPUT', id, output } })
-            }
-          }
-
-          const hasError = result.outputs.some((o) => o.output_type === 'error')
-          if (hasError) {
+          if (sawError) {
             dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
           } else {
             dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'FINISH_CELL', id, execution_count: count } })
@@ -510,9 +529,10 @@ export function NotebookPage() {
         type: 'TAB_NOTEBOOK',
         tabId: tid,
         action: {
-          type: 'APPEND_OUTPUT',
+          type: 'IOPUB',
           id: runningId,
-          output: { output_type: 'stream', name: 'stderr', text: 'Execution stopped.\n' },
+          msg: { msg_type: 'stream', name: 'stderr', text: 'Execution stopped.\n' },
+          executionCount: null,
         },
       })
       dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id: runningId } })
@@ -773,6 +793,34 @@ export function NotebookPage() {
     [restartKernelForTab, showAlert],
   )
 
+  const handleOpenExample = useCallback(
+    (filename: string) => {
+      const tab = createEmptyTab()
+      dispatch({ type: 'ADD_TAB', tab })
+      void (async () => {
+        try {
+          const url = new URL(`./examples/${filename}`, window.location.href).href
+          const res = await fetch(url, { cache: 'no-cache' })
+          if (!res.ok) throw new Error(`Failed to load example: ${res.status} ${res.statusText}`)
+          const text = await res.text()
+          const { title, cells } = parseIpynbJson(text, { filename })
+          dispatch({
+            type: 'REPLACE_TAB_CONTENT',
+            tabId: tab.id,
+            title,
+            cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
+            kvNotebookId: null,
+          })
+          restartKernelForTab(tab.id)
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'Failed to open example'
+          showAlert(msg)
+        }
+      })()
+    },
+    [restartKernelForTab, showAlert],
+  )
+
   const tabLabels = useMemo(
     () =>
       workspace.tabs.map((t) => ({
@@ -843,6 +891,7 @@ export function NotebookPage() {
                 onConfirmMove={handleConfirmMove}
                 onDelete={handleDelete}
                 moveDestinations={moveDestinations}
+                onOpenExample={handleOpenExample}
               />
           <div className="nb-workspace">
             <div className="nb-workspace-stack">

@@ -1,0 +1,360 @@
+"""IOPub-style bridge for the notebook kernel.
+
+Installed once at worker init. Exposes:
+
+* ``display(*objs, ...)`` — a JupyterLab-like ``display`` function that emits
+  ``display_data`` IOPub messages with full mime bundles.
+* ``clear_output(wait=False)`` — emits a ``clear_output`` IOPub message.
+* ``_nb_run(code: str, exec_count: int)`` — runs ``code`` while routing the
+  trailing expression result through ``sys.displayhook`` so we emit a proper
+  ``execute_result`` (with mime bundle) instead of a stringified value.
+
+Call site (JS) installs ``_NB_IOPUB`` on the Python globals — a one-arg
+callable that receives a plain ``dict`` IOPub message.
+
+Hooks ``IPython.display.display`` if IPython is importable so ``ipywidgets``
+and other IPython-based libraries forward through the same channel.
+"""
+
+from __future__ import annotations
+
+import base64
+import json
+import sys
+import traceback as _tb_mod
+from typing import Any
+
+
+_DEFAULT_INCLUDE = (
+    "application/vnd.jupyter.widget-view+json",
+    "application/vnd.jupyter.widget-state+json",
+    "application/vnd.cribl.notebook.cribl-search+json",
+    "application/vnd.vegalite.v5+json",
+    "application/vnd.vega.v5+json",
+    "application/json",
+    "text/html",
+    "image/svg+xml",
+    "image/png",
+    "image/jpeg",
+    "text/markdown",
+    "text/latex",
+    "text/plain",
+)
+
+
+def _emit(msg: dict) -> None:
+    """Send a single IOPub message to the host through the JS shim."""
+    pub = globals().get("_NB_IOPUB")
+    if pub is None:
+        return
+    try:
+        pub(msg)
+    except Exception:
+        # Never let the IOPub bridge raise into user code.
+        pass
+
+
+def _normalize_mime_value(v: Any) -> str | None:
+    if v is None:
+        return None
+    if isinstance(v, bytes):
+        return base64.b64encode(v).decode("ascii")
+    if isinstance(v, str):
+        return v
+    if isinstance(v, (dict, list)):
+        try:
+            return json.dumps(v, default=str)
+        except Exception:
+            return None
+    try:
+        return str(v)
+    except Exception:
+        return None
+
+
+def _format_object(obj: Any) -> tuple[dict, dict]:
+    """Return ``(data, metadata)`` for an object. Prefers IPython's formatter."""
+    try:
+        formatter = _get_display_formatter()
+        data, metadata = formatter.format(obj, include=_DEFAULT_INCLUDE)
+    except Exception:
+        data, metadata = _builtin_format_object(obj), {}
+
+    out_data: dict = {}
+    for mime, value in (data or {}).items():
+        normalized = _normalize_mime_value(value)
+        if normalized is not None:
+            out_data[mime] = normalized
+    if "text/plain" not in out_data:
+        try:
+            out_data["text/plain"] = repr(obj)
+        except Exception:
+            out_data["text/plain"] = "<unrepresentable>"
+    return out_data, dict(metadata or {})
+
+
+def _get_display_formatter():
+    """Return the active IPython DisplayFormatter (shell-bound if possible).
+
+    Using the InteractiveShell's formatter matters because side-effecting
+    backend modules (e.g. ``matplotlib_inline.backend_inline``) register
+    figure formatters on it via ``select_figure_formats``. A standalone
+    ``DisplayFormatter()`` instance would miss those registrations and we'd
+    fall back to ``text/plain`` for matplotlib figures.
+    """
+    cached = getattr(_get_display_formatter, "_cached", None)
+    if cached is not None:
+        return cached
+    from IPython.core.formatters import DisplayFormatter  # type: ignore
+
+    try:
+        from IPython.core.interactiveshell import InteractiveShell  # type: ignore
+
+        shell = InteractiveShell.instance()
+        formatter = getattr(shell, "display_formatter", None)
+        if formatter is None:
+            formatter = DisplayFormatter()
+            shell.display_formatter = formatter
+    except Exception:
+        formatter = DisplayFormatter()
+    _get_display_formatter._cached = formatter  # type: ignore[attr-defined]
+    return formatter
+
+
+def _builtin_format_object(obj: Any) -> dict:
+    """Fallback when IPython is not importable.
+
+    Inspects ``_repr_*_`` methods directly in priority order.
+    """
+    bundle: dict = {}
+    repr_mimebundle = getattr(obj, "_repr_mimebundle_", None)
+    if callable(repr_mimebundle):
+        try:
+            res = repr_mimebundle(include=_DEFAULT_INCLUDE)
+            if isinstance(res, tuple):
+                res = res[0]
+            if isinstance(res, dict):
+                for k, v in res.items():
+                    nv = _normalize_mime_value(v)
+                    if nv is not None:
+                        bundle[k] = nv
+        except Exception:
+            pass
+    for attr, mime in (
+        ("_repr_html_", "text/html"),
+        ("_repr_svg_", "image/svg+xml"),
+        ("_repr_png_", "image/png"),
+        ("_repr_jpeg_", "image/jpeg"),
+        ("_repr_latex_", "text/latex"),
+        ("_repr_json_", "application/json"),
+        ("_repr_markdown_", "text/markdown"),
+    ):
+        if mime in bundle:
+            continue
+        m = getattr(obj, attr, None)
+        if callable(m):
+            try:
+                v = m()
+                nv = _normalize_mime_value(v)
+                if nv is not None:
+                    bundle[mime] = nv
+            except Exception:
+                pass
+    return bundle
+
+
+def display(
+    *objs: Any,
+    include: tuple[str, ...] | list[str] | None = None,  # noqa: ARG001
+    exclude: tuple[str, ...] | list[str] | None = None,  # noqa: ARG001
+    metadata: dict | None = None,
+    transient: dict | None = None,
+    display_id: Any = None,
+    raw: bool = False,
+    clear: bool = False,
+    update: bool = False,
+    **_kw: Any,
+) -> None:
+    """Emit a ``display_data`` (or ``update_display_data``) IOPub message."""
+    if clear:
+        clear_output(wait=True)
+
+    if display_id is True:
+        # IPython convention: True asks for a fresh id; we mint one ourselves.
+        import uuid
+
+        display_id = uuid.uuid4().hex
+
+    extra_metadata = dict(metadata or {})
+    transient_dict = dict(transient or {})
+    if display_id and "display_id" not in transient_dict:
+        transient_dict["display_id"] = str(display_id)
+
+    msg_type = "update_display_data" if update else "display_data"
+
+    for obj in objs:
+        if raw and isinstance(obj, dict):
+            data: dict = {}
+            for mime, value in obj.items():
+                nv = _normalize_mime_value(value)
+                if nv is not None:
+                    data[mime] = nv
+            obj_metadata = extra_metadata
+        else:
+            data, obj_metadata = _format_object(obj)
+            if extra_metadata:
+                obj_metadata = {**obj_metadata, **extra_metadata}
+
+        msg = {
+            "msg_type": msg_type,
+            "data": data,
+            "metadata": obj_metadata,
+        }
+        if transient_dict:
+            msg["transient"] = dict(transient_dict)
+        _emit(msg)
+
+
+def clear_output(wait: bool = False) -> None:
+    """Emit a ``clear_output`` IOPub message."""
+    _emit({"msg_type": "clear_output", "wait": bool(wait)})
+
+
+def _displayhook_factory(execution_count: int):
+    def _hook(value: Any) -> None:
+        if value is None:
+            return
+        try:
+            __builtins__["_"] = value  # type: ignore[index]
+        except Exception:
+            pass
+        data, metadata = _format_object(value)
+        _emit(
+            {
+                "msg_type": "execute_result",
+                "execution_count": execution_count,
+                "data": data,
+                "metadata": metadata,
+            }
+        )
+
+    return _hook
+
+
+def _install_ipython_publisher() -> None:
+    """Route ``IPython.display.display`` through our IOPub bridge."""
+    try:
+        from IPython.core.displaypub import DisplayPublisher  # type: ignore
+    except Exception:
+        return
+
+    class _NotebookDisplayPublisher(DisplayPublisher):  # type: ignore[misc]
+        def publish(
+            self,
+            data,
+            metadata=None,
+            source=None,  # noqa: ARG002
+            *,
+            transient=None,
+            update=False,
+            **_kw,
+        ):
+            payload = {}
+            for mime, value in (data or {}).items():
+                nv = _normalize_mime_value(value)
+                if nv is not None:
+                    payload[mime] = nv
+            msg = {
+                "msg_type": "update_display_data" if update else "display_data",
+                "data": payload,
+                "metadata": dict(metadata or {}),
+            }
+            if transient:
+                msg["transient"] = dict(transient)
+            _emit(msg)
+
+        def clear_output(self, wait=False):
+            _emit({"msg_type": "clear_output", "wait": bool(wait)})
+
+    try:
+        from IPython.core.interactiveshell import InteractiveShell  # type: ignore
+
+        shell = InteractiveShell.instance()
+        shell.display_pub = _NotebookDisplayPublisher()
+    except Exception:
+        # No active shell — fall back to monkey-patching IPython.display.display.
+        try:
+            import IPython.display as _ipd  # type: ignore
+
+            _ipd.display = display  # type: ignore[assignment]
+        except Exception:
+            pass
+
+
+def _configure_matplotlib_default_backend() -> None:
+    """Force matplotlib to a Pyodide-compatible backend before the first plot.
+
+    Pyodide ships matplotlib with the ``matplotlib_pyodide`` backend bridge,
+    but matplotlib's own backend selection still defaults to whatever it
+    finds first — frequently ``webagg``, which then fails with
+    ``ImportError: cannot import name 'document' from 'js'``. Setting
+    ``MPLBACKEND`` early (before any ``import matplotlib`` from user code)
+    ensures the right backend is picked. We also call ``matplotlib.use(...)``
+    defensively if matplotlib is already imported.
+    """
+    import os
+
+    if os.environ.get("MPLBACKEND"):
+        return
+    backend = "module://matplotlib_inline.backend_inline"
+    os.environ["MPLBACKEND"] = backend
+    try:
+        mpl = sys.modules.get("matplotlib")
+        if mpl is not None:
+            try:
+                mpl.use(backend, force=True)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+_configure_matplotlib_default_backend()
+_install_ipython_publisher()
+
+
+def _nb_run(code: str, execution_count: int) -> None:
+    """Execute ``code`` in the user namespace, emitting IOPub for the trailing expr."""
+    import ast
+    import builtins
+
+    user_ns = globals()
+    prev_hook = sys.displayhook
+    sys.displayhook = _displayhook_factory(execution_count)
+    try:
+        try:
+            tree = ast.parse(code, mode="exec")
+        except SyntaxError:
+            raise
+
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            exec_part = ast.Module(body=tree.body[:-1], type_ignores=[])
+            expr_part = ast.Expression(body=tree.body[-1].value)  # type: ignore[arg-type]
+            ast.fix_missing_locations(exec_part)
+            ast.fix_missing_locations(expr_part)
+            if exec_part.body:
+                exec(compile(exec_part, "<cell>", "exec"), user_ns, user_ns)
+            value = eval(compile(expr_part, "<cell>", "eval"), user_ns, user_ns)
+            sys.displayhook(value)
+        else:
+            exec(compile(tree, "<cell>", "exec"), user_ns, user_ns)
+    finally:
+        sys.displayhook = prev_hook
+        try:
+            builtins  # appease linters
+        except Exception:
+            pass
+
+
+# Make the helpers reachable as bare globals so user code can call them.
+__all__ = ["display", "clear_output", "_nb_run"]
