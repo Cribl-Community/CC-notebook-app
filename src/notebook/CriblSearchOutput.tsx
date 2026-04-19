@@ -98,6 +98,15 @@ export function CriblSearchOutputView({ payload }: CriblSearchOutputProps) {
         {!showTableUi && (
           <div className="nb-cribl-meta-line nb-cribl-meta-line--dim">Result table hidden (preview=false).</div>
         )}
+        {showTableUi && recordsReturned > 0 && (
+          <div className="nb-cribl-meta-line nb-cribl-meta-line--dim">
+            {rows.length < recordsReturned
+              ? `Table preview: showing ${rows.length} of ${recordsReturned} rows (full result is in ${dataframeVar}).`
+              : rows.length === 1
+                ? 'Table preview: 1 row.'
+                : `Table preview: all ${rows.length} rows.`}
+          </div>
+        )}
       </div>
       {showTableUi && <CriblSearchResultsBody rows={rows} />}
     </div>

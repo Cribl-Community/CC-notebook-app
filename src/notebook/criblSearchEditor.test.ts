@@ -1,5 +1,7 @@
+import { CompletionContext } from '@codemirror/autocomplete'
+import { EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { analyzeCriblSearchCell, tokenizeKqlRegion } from './criblSearchEditor'
+import { analyzeCriblSearchCell, criblSearchCompletionSource, tokenizeKqlRegion } from './criblSearchEditor'
 
 describe('analyzeCriblSearchCell', () => {
   it('detects magic and KQL offset', () => {
@@ -17,6 +19,26 @@ describe('analyzeCriblSearchCell', () => {
   it('matches leading whitespace on first line like parseCriblSearchMagic', () => {
     const code = '  %%cribl_search\nq\n'
     expect(analyzeCriblSearchCell(code).kind).toBe('cribl_search')
+  })
+})
+
+describe('criblSearchCompletionSource magic header', () => {
+  it('offers limit= with other magic params', () => {
+    const code = '%%cribl_search '
+    const state = EditorState.create({ doc: code })
+    const ctx = new CompletionContext(state, code.length, true)
+    const r = criblSearchCompletionSource(ctx)
+    expect(r).not.toBeNull()
+    const labels = r!.options.map((o) => o.label)
+    expect(labels).toContain('limit=')
+    expect(labels).toContain('var=')
+  })
+
+  it('does not offer params while typing limit value', () => {
+    const code = '%%cribl_search limit=500'
+    const state = EditorState.create({ doc: code })
+    const ctx = new CompletionContext(state, code.length, true)
+    expect(criblSearchCompletionSource(ctx)).toBeNull()
   })
 })
 

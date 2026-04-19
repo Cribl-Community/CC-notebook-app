@@ -245,6 +245,8 @@ const TOTAL_HINT_KEYS = [
   'total',
   'totalCount',
   'total_count',
+  'totalEventCount',
+  'persistedEventCount',
   'resultCount',
   'result_count',
   'numResults',
@@ -306,6 +308,83 @@ export function parseTotalRecordHint(data: unknown): number | null {
   }
 
   return null
+}
+
+function isNdjsonContentType(ct: string | null): boolean {
+  if (!ct) return false
+  const lower = ct.toLowerCase()
+  return lower.includes('ndjson') || lower.includes('newline-delimited')
+}
+
+/** NDJSON results: first line is often job metadata (`isFinished`, `totalEventCount`); following lines are events. */
+function isSearchResultsMetaLine(o: Record<string, unknown>): boolean {
+  if (o.isFinished === true) return true
+  if (o.job !== undefined && typeof o.job === 'object') return true
+  if (o.totalEventCount !== undefined && o.dataset === undefined && o._raw === undefined) return true
+  return false
+}
+
+/**
+ * Parse Cribl Search `/results` bodies when returned as newline-delimited JSON (common in production).
+ */
+export function parseNdjsonSearchResultsBody(text: string): {
+  rows: Record<string, unknown>[]
+  totalHint: number | null
+} {
+  const rows: Record<string, unknown>[] = []
+  let totalHint: number | null = null
+  for (const line of text.split(/\r?\n/)) {
+    const t = line.trim()
+    if (!t) continue
+    let obj: unknown
+    try {
+      obj = JSON.parse(t)
+    } catch {
+      continue
+    }
+    if (!obj || typeof obj !== 'object') continue
+    const o = obj as Record<string, unknown>
+    if (isSearchResultsMetaLine(o)) {
+      const h = parseTotalRecordHint(o)
+      if (h !== null) totalHint = h
+      continue
+    }
+    rows.push(o)
+  }
+  return { rows, totalHint }
+}
+
+async function parseSearchJobResultsResponse(res: Response): Promise<{
+  rows: Record<string, unknown>[]
+  totalHint: number | null
+}> {
+  const text = await res.text()
+  const ct = res.headers.get('content-type')
+
+  if (isNdjsonContentType(ct)) {
+    return parseNdjsonSearchResultsBody(text)
+  }
+
+  const trimmed = text.replace(/^\uFEFF/, '').trim()
+  if (trimmed.includes('\n')) {
+    const firstLine = trimmed.slice(0, trimmed.indexOf('\n')).trim()
+    if (firstLine.startsWith('{')) {
+      try {
+        const firstObj = JSON.parse(firstLine) as Record<string, unknown>
+        if (isSearchResultsMetaLine(firstObj)) {
+          return parseNdjsonSearchResultsBody(trimmed)
+        }
+      } catch {
+        /* fall through to single JSON */
+      }
+    }
+  }
+
+  const data = parseLenientJsonResponseBody(text)
+  return {
+    rows: extractResultRows(data),
+    totalHint: parseTotalRecordHint(data),
+  }
 }
 
 function extractResultRows(data: unknown): Record<string, unknown>[] {
@@ -472,10 +551,8 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
       const t = await resultsRes.text().catch(() => '')
       throw new Error(`Search results failed (${resultsRes.status}): ${t || resultsRes.statusText}`)
     }
-    const resultsJson: unknown = await readSearchResponseJson(resultsRes)
-    const batch = extractResultRows(resultsJson)
-    const hint = parseTotalRecordHint(resultsJson)
-    if (hint !== null) totalFromResults = hint
+    const { rows: batch, totalHint: pageHint } = await parseSearchJobResultsResponse(resultsRes)
+    if (pageHint !== null) totalFromResults = pageHint
 
     if (batch.length === 0) break
 
