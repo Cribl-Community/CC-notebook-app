@@ -68,6 +68,7 @@ export function CriblSearchOutputView({ payload }: CriblSearchOutputProps) {
   }
 
   const { columns, rows, recordsReturned, totalRecords, showTable } = payload
+  const dataframeVar = payload.dataframeVar ?? 'results_df'
   const showTableUi = showTable !== false
   const summary =
     totalRecords != null && totalRecords !== recordsReturned
@@ -84,6 +85,12 @@ export function CriblSearchOutputView({ payload }: CriblSearchOutputProps) {
       </div>
       <div className="nb-cribl-meta">
         <div className="nb-cribl-meta-line">{summary}</div>
+        <div className="nb-cribl-meta-line">
+          <span className="nb-cribl-meta-k">DataFrame</span>
+          <span className="nb-cribl-meta-v">
+            Results saved in <code className="nb-cribl-df-var">{dataframeVar}</code>
+          </span>
+        </div>
         <div className="nb-cribl-meta-line">
           <span className="nb-cribl-meta-k">Columns</span>
           <span className="nb-cribl-meta-v">{columns.length > 0 ? columns.join(', ') : '—'}</span>

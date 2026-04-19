@@ -14,6 +14,8 @@ interface ToolbarProps {
   onAddMarkdownCell: () => void
   onRunAll: () => void
   onClearAllOutputs: () => void
+  onStop: () => void
+  stopEnabled: boolean
   onRestart: () => void
   theme: 'dark' | 'light'
   onThemeChange: (t: 'dark' | 'light') => void
@@ -57,6 +59,8 @@ export function Toolbar({
   onAddMarkdownCell,
   onRunAll,
   onClearAllOutputs,
+  onStop,
+  stopEnabled,
   onRestart,
   theme,
   onThemeChange,
@@ -122,6 +126,15 @@ export function Toolbar({
           + Markdown
         </button>
         <div className="nb-toolbar-divider" />
+        <button
+          className="nb-btn nb-btn-stop"
+          type="button"
+          onClick={onStop}
+          disabled={!stopEnabled}
+          title="Stop the running cell and interrupt the kernel"
+        >
+          ⏹ Stop
+        </button>
         <button className="nb-btn" onClick={onRunAll} disabled={busy} title="Run all code cells">
           ▶▶ Run All
         </button>

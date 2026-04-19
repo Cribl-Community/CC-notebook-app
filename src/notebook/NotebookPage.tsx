@@ -57,10 +57,12 @@ function readStoredNotebookTitle(): string | undefined {
 export function NotebookPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
-      return (localStorage.getItem('nb-theme') as 'dark' | 'light') ?? 'light'
+      const s = localStorage.getItem('nb-theme')
+      if (s === 'dark' || s === 'light') return s
     } catch {
-      return 'light'
+      /* localStorage unavailable */
     }
+    return 'light'
   })
 
   useEffect(() => {
@@ -333,7 +335,7 @@ export function NotebookPage() {
           }
 
           if (magic.kind === 'cribl_search') {
-            const { varName, query, preview } = magic.value
+            const { varName, query, preview, earliest, latest } = magic.value
             const CRIBL_OUT = 0
             try {
               const pushCribl = (payload: CriblSearchPayload) => {
@@ -363,6 +365,8 @@ export function NotebookPage() {
               const { rows, columns, totalRecords } = await runCriblSearchJob({
                 query,
                 maxRows: DEFAULT_CRIBL_SEARCH_MAX_ROWS,
+                earliest,
+                latest,
                 onProgress: (ev) => {
                   pushCribl({ kind: 'running', progress: ev.fraction, label: ev.label })
                 },
@@ -375,6 +379,7 @@ export function NotebookPage() {
                 rows: preview ? rows : [],
                 recordsReturned: rows.length,
                 totalRecords,
+                dataframeVar: varName,
                 showTable: preview,
               })
 
@@ -483,6 +488,45 @@ export function NotebookPage() {
     const tid = activeTabIdRef.current
     restartKernelForTab(tid)
   }, [restartKernelForTab])
+
+  const stopExecution = useCallback(() => {
+    const tid = activeTabIdRef.current
+    const prevGen = tabGensRef.current.get(tid) ?? 0
+    tabGensRef.current.set(tid, prevGen + 1)
+
+    const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+    const runningId = tab?.notebook.cells.find(
+      (c) => c.cell_type === 'code' && c.execution_state === 'running',
+    )?.id
+
+    kernelsRef.current.get(tid)?.dispose()
+    kernelsRef.current.delete(tid)
+
+    const q = tabQueuesRef.current.get(tid)
+    if (q) q.p = Promise.resolve()
+
+    if (runningId) {
+      dispatch({
+        type: 'TAB_NOTEBOOK',
+        tabId: tid,
+        action: {
+          type: 'APPEND_OUTPUT',
+          id: runningId,
+          output: { output_type: 'stream', name: 'stderr', text: 'Execution stopped.\n' },
+        },
+      })
+      dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id: runningId } })
+    }
+
+    initKernelForTab(tid)
+  }, [initKernelForTab])
+
+  const canStopExecution = useMemo(() => {
+    if (!state) return false
+    if (state.kernelStatus === 'loading' || state.kernelStatus === 'error') return false
+    if (state.kernelStatus === 'busy') return true
+    return state.cells.some((c) => c.cell_type === 'code' && c.execution_state === 'running')
+  }, [state])
 
   const handleDownload = useCallback(() => {
     if (!state) return
@@ -824,6 +868,8 @@ export function NotebookPage() {
                     onAddMarkdownCell={() => dispatchNotebook({ type: 'ADD_CELL', cellType: 'markdown' })}
                     onRunAll={runAll}
                     onClearAllOutputs={() => dispatchNotebook({ type: 'CLEAR_ALL_OUTPUTS' })}
+                    onStop={stopExecution}
+                    stopEnabled={canStopExecution}
                     onRestart={restartKernel}
                     theme={theme}
                     onThemeChange={setTheme}

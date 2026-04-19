@@ -30,6 +30,8 @@ export type CriblSearchPayload =
       rows: Record<string, unknown>[]
       recordsReturned: number
       totalRecords: number | null
+      /** Pandas DataFrame variable in the kernel (from `var=` or default `results_df`). Omitted in older saved notebooks. */
+      dataframeVar?: string
       /** When false, interactive table is hidden (`preview=false` on %%cribl_search). Omitted/undefined = show table. */
       showTable?: boolean
     }
