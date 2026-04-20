@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   normalizeSearchQuery,
   extractFirstJsonValue,
@@ -125,5 +125,80 @@ describe('runCriblSearchJob mock', () => {
     expect(rows[0]).toHaveProperty('query')
     expect(columns.length).toBeGreaterThan(0)
     expect(totalRecords).toBe(rows.length)
+  })
+
+  it('keeps verbatim query text in local stub when requested', async () => {
+    const query = 'externaldata\n[\n"https://example.com/data.json"\n]'
+    const { rows } = await runCriblSearchJob({
+      query,
+      queryMode: 'verbatim',
+    })
+    expect(rows[0]?.query).toBe(query)
+  })
+})
+
+describe('runCriblSearchJob queryMode', () => {
+  type MaybeWindow = { CRIBL_API_URL?: string }
+  const originalFetch = globalThis.fetch
+  const originalWindow = (globalThis as { window?: MaybeWindow }).window
+
+  beforeEach(() => {
+    ;(globalThis as { window?: MaybeWindow }).window = {
+      ...(originalWindow ?? {}),
+      CRIBL_API_URL: 'https://cribl.example/api/v1',
+    }
+  })
+
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+    ;(globalThis as { window?: MaybeWindow }).window = originalWindow
+  })
+
+  it('sends verbatim query payload when queryMode=verbatim', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'job-1', status: 'completed' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: [{ _raw: 'ok' }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const query = 'externaldata\n[\n"https://example.com/data.json"\n]'
+    await runCriblSearchJob({ query, queryMode: 'verbatim' })
+
+    const call = fetchMock.mock.calls[0]
+    const init = call?.[1] as RequestInit
+    const body = JSON.parse(String(init.body)) as { query: string }
+    expect(body.query).toBe(query)
+  })
+
+  it('keeps normalized behavior by default', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'job-2', status: 'completed' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    await runCriblSearchJob({ query: 'dataset=x | limit 1' })
+    const call = fetchMock.mock.calls[0]
+    const init = call?.[1] as RequestInit
+    const body = JSON.parse(String(init.body)) as { query: string }
+    expect(body.query).toBe('cribl dataset=x | limit 1')
   })
 })

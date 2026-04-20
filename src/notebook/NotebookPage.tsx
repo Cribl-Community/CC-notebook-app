@@ -107,6 +107,19 @@ function formatCriblSearchError(raw: string, generatedQuery?: string): string {
   return msg
 }
 
+function formatCriblSearchJsonRows(rows: Record<string, unknown>[]): string {
+  return `${JSON.stringify(rows, null, 2)}\n`
+}
+
+function formatCriblSearchRawRows(rows: Record<string, unknown>[]): string {
+  const lines = rows.map((row) => {
+    const raw = row._raw
+    if (typeof raw === 'string') return raw
+    return JSON.stringify(row)
+  })
+  return `${lines.join('\n')}\n`
+}
+
 type DialogState =
   | { kind: 'alert'; message: string }
   | { kind: 'confirm'; message: string }
@@ -392,7 +405,7 @@ export function NotebookPage() {
           }
 
           if (magic.kind === 'cribl_search') {
-            const { varName, query, preview, earliest, latest, limit, lang, dataset } = magic.value
+            const { varName, query, preview, response, earliest, latest, limit, lang, dataset } = magic.value
             const displayId = `cribl-search-${id}`
             let generatedKqlForReport: string | undefined
             try {
@@ -438,6 +451,7 @@ export function NotebookPage() {
 
               const { rows, columns, totalRecords } = await runCriblSearchJob({
                 query: searchQuery,
+                queryMode: 'verbatim',
                 maxRows: limit,
                 earliest,
                 latest,
@@ -458,41 +472,50 @@ export function NotebookPage() {
                   {
                     kind: 'completed',
                     columns,
-                    rows: preview ? rows.slice(0, DEFAULT_CRIBL_SEARCH_MAX_ROWS) : [],
+                    rows: preview && response === 'dataframe' ? rows.slice(0, DEFAULT_CRIBL_SEARCH_MAX_ROWS) : [],
                     recordsReturned: rows.length,
                     totalRecords,
                     dataframeVar: varName,
-                    showTable: preview,
+                    showTable: preview && response === 'dataframe',
                   },
                   displayId,
                   true,
                 ),
               )
+              if (response === 'dataframe') {
+                const b64 = encodeRowsJsonForPythonBase64(rows)
+                /** Rich table already shows rows; never add `print(df.head())` (avoids duplicate text). */
+                const code = buildCriblSearchDataframeCode(varName, b64, false)
+                let sawError = false
+                await kernel.execute(
+                  code,
+                  (msg) => {
+                    if (msg.msg_type === 'stream') {
+                      const filtered = filterPyodidePackageChatter(msg.text)
+                      if (filtered.length === 0) return
+                      emitIOPub({ ...msg, text: filtered })
+                      return
+                    }
+                    if (msg.msg_type === 'error') sawError = true
+                    emitIOPub(msg)
+                  },
+                  count,
+                )
 
-              const b64 = encodeRowsJsonForPythonBase64(rows)
-              /** Rich table already shows rows; never add `print(df.head())` (avoids duplicate text). */
-              const code = buildCriblSearchDataframeCode(varName, b64, false)
-              let sawError = false
-              await kernel.execute(
-                code,
-                (msg) => {
-                  if (msg.msg_type === 'stream') {
-                    const filtered = filterPyodidePackageChatter(msg.text)
-                    if (filtered.length === 0) return
-                    emitIOPub({ ...msg, text: filtered })
-                    return
-                  }
-                  if (msg.msg_type === 'error') sawError = true
-                  emitIOPub(msg)
-                },
-                count,
-              )
+                if (tabGensRef.current.get(tid) !== myGen) return
 
-              if (tabGensRef.current.get(tid) !== myGen) return
-
-              if (sawError) {
-                dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
+                if (sawError) {
+                  dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
+                } else {
+                  dispatch({
+                    type: 'TAB_NOTEBOOK',
+                    tabId: tid,
+                    action: { type: 'FINISH_CELL', id, execution_count: count },
+                  })
+                }
               } else {
+                const text = response === 'json' ? formatCriblSearchJsonRows(rows) : formatCriblSearchRawRows(rows)
+                emitIOPub({ msg_type: 'stream', name: 'stdout', text })
                 dispatch({
                   type: 'TAB_NOTEBOOK',
                   tabId: tid,

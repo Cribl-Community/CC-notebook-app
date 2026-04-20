@@ -1,7 +1,7 @@
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
  * First line:
- * %%cribl_search [var=name] [preview=true|false] [limit=N] [earliest=…] [latest=…] [lang=kql|kusto|english] [dataset=name]
+ * %%cribl_search [var=name] [preview=true|false] [response=dataframe|json|raw] [limit=N] [earliest=…] [latest=…] [lang=kql|kusto|english] [dataset=name]
  * Following lines: query body (KQL when `lang=kql|kusto`, natural language when `lang=english`).
  *
  * `earliest` / `latest` are passed to the Cribl Search job API (defaults in the client if omitted).
@@ -25,6 +25,8 @@ export const DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR = 'results_df'
 export type CriblSearchMagicOk = {
   varName: string
   preview: boolean
+  /** How results are surfaced in cell output. */
+  response: 'dataframe' | 'json' | 'raw'
   /**
    * Query language mode.
    * - `kql` (default): body is sent directly to Search API
@@ -55,6 +57,7 @@ function parseKeyValueParams(paramLine: string):
       ok: true
       varName: string
       preview: boolean
+      response: 'dataframe' | 'json' | 'raw'
       lang: 'kql' | 'english'
       limit: number
       earliest?: string
@@ -64,6 +67,7 @@ function parseKeyValueParams(paramLine: string):
   | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
   let preview = true
+  let response: 'dataframe' | 'json' | 'raw' = 'dataframe'
   let lang: 'kql' | 'english' = 'kql'
   let limit = 0
   let earliest: string | undefined
@@ -77,6 +81,17 @@ function parseKeyValueParams(paramLine: string):
     const val = t.slice(eq + 1).trim()
     if (key === 'var') varName = val
     if (key === 'preview') preview = val.toLowerCase() !== 'false'
+    if (key === 'response') {
+      const r = val.toLowerCase()
+      if (r === 'dataframe' || r === 'json' || r === 'raw') {
+        response = r
+      } else {
+        return {
+          ok: false,
+          message: `response must be one of dataframe, json, raw; got ${JSON.stringify(val)}`,
+        }
+      }
+    }
     if (key === 'earliest') earliest = val
     if (key === 'latest') latest = val
     if (key === 'dataset') dataset = val
@@ -101,7 +116,7 @@ function parseKeyValueParams(paramLine: string):
       limit = n
     }
   }
-  return { ok: true, varName, preview, lang, limit, earliest, latest, dataset }
+  return { ok: true, varName, preview, response, lang, limit, earliest, latest, dataset }
 }
 
 /**
@@ -120,7 +135,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!parsed.ok) {
     return { kind: 'error', message: parsed.message }
   }
-  const { varName, preview, lang, limit, earliest, latest, dataset } = parsed
+  const { varName, preview, response, lang, limit, earliest, latest, dataset } = parsed
 
   if (!IDENT_RE.test(varName)) {
     return {
@@ -141,7 +156,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
 
   return {
     kind: 'cribl_search',
-    value: { varName, preview, lang, limit, query, earliest, latest, dataset },
+    value: { varName, preview, response, lang, limit, query, earliest, latest, dataset },
   }
 }
 
