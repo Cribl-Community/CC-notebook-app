@@ -32,6 +32,7 @@ describe('criblSearchCompletionSource magic header', () => {
     const labels = r!.options.map((o) => o.label)
     expect(labels).toContain('limit=')
     expect(labels).toContain('lang=')
+    expect(labels).toContain('response=')
     expect(labels).toContain('dataset=')
     expect(labels).toContain('var=')
   })

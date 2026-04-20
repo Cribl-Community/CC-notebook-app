@@ -361,6 +361,7 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
   if (
     /^var=.+/u.test(lastTok) ||
     /^preview=.+/u.test(lastTok) ||
+    /^response=.+/u.test(lastTok) ||
     /^limit=.+/u.test(lastTok) ||
     /^lang=.+/u.test(lastTok) ||
     /^dataset=.+/u.test(lastTok) ||
@@ -381,6 +382,10 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
     partial === '' ||
     'preview='.startsWith(partial) ||
     (partial.length > 0 && 'preview'.startsWith(partial))
+  const wantResponse =
+    partial === '' ||
+    'response='.startsWith(partial) ||
+    (partial.length > 0 && 'response'.startsWith(partial))
   const wantEarliest =
     partial === '' ||
     'earliest='.startsWith(partial) ||
@@ -404,6 +409,7 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
 
   if (wantVar) paramCandidates.push({ label: 'var=', type: 'property' })
   if (wantPreview) paramCandidates.push({ label: 'preview=', type: 'property' })
+  if (wantResponse) paramCandidates.push({ label: 'response=', type: 'property' })
   if (wantLimit) paramCandidates.push({ label: 'limit=', type: 'property' })
   if (wantLang) paramCandidates.push({ label: 'lang=', type: 'property' })
   if (wantDataset) paramCandidates.push({ label: 'dataset=', type: 'property' })

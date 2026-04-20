@@ -41,8 +41,11 @@ function getHook(): LocalSearchStubWindowHook | undefined {
 }
 
 /** Builds rows that echo the normalized query so you can see the stub received your KQL. */
-export function buildStubRowsForQuery(userQuery: string): Record<string, unknown>[] {
-  const q = normalizeSearchQuery(userQuery.trim())
+export function buildStubRowsForQuery(
+  userQuery: string,
+  queryMode: RunSearchJobOptions['queryMode'] = 'normalized',
+): Record<string, unknown>[] {
+  const q = queryMode === 'verbatim' ? userQuery.trim() : normalizeSearchQuery(userQuery.trim())
   return DEFAULT_ROWS.map((row, i) => ({
     ...row,
     _stub_index: i,
@@ -59,7 +62,8 @@ export async function runLocalSearchStub(options: RunSearchJobOptions): Promise<
   const delayPrepare = hook?.delayMs ?? 80
   const delayRun = hook?.delayMs ?? 120
 
-  const q = normalizeSearchQuery(options.query)
+  const queryMode = options.queryMode ?? 'normalized'
+  const q = queryMode === 'verbatim' ? options.query.trim() : normalizeSearchQuery(options.query)
   const maxRows = options.maxRows ?? 0
   options.onProgress?.({ fraction: 0.1, label: '[local stub] preparing search…' })
   await sleep(delayPrepare)
@@ -76,7 +80,9 @@ export async function runLocalSearchStub(options: RunSearchJobOptions): Promise<
   await sleep(delayRun)
 
   const rawRows =
-    hook?.rows && hook.rows.length > 0 ? hook.rows.map((r) => ({ ...r })) : buildStubRowsForQuery(options.query)
+    hook?.rows && hook.rows.length > 0
+      ? hook.rows.map((r) => ({ ...r }))
+      : buildStubRowsForQuery(options.query, queryMode)
   const cap = maxRows === 0 ? rawRows.length : Math.min(maxRows, rawRows.length)
   const rows = rawRows.slice(0, cap)
   const columns = deriveColumnNames(rows)

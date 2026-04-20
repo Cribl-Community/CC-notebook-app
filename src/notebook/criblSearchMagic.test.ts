@@ -16,6 +16,7 @@ describe('parseCriblSearchMagic', () => {
     if (r.kind !== 'cribl_search') return
     expect(r.value.varName).toBe('results_df')
     expect(r.value.preview).toBe(true)
+    expect(r.value.response).toBe('dataframe')
     expect(r.value.lang).toBe('kql')
     expect(r.value.limit).toBe(0)
     expect(r.value.query).toBe('dataset=x | limit 1')
@@ -31,6 +32,19 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.preview).toBe(false)
     expect(r.value.lang).toBe('kql')
     expect(r.value.query).toBe('dataset=cribl_search_sample | limit 100')
+  })
+
+  it('parses response=json', () => {
+    const r = parseCriblSearchMagic('%%cribl_search response=json\ndataset=x | limit 1\n')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.response).toBe('json')
+  })
+
+  it('errors on invalid response value', () => {
+    const r = parseCriblSearchMagic('%%cribl_search response=csv\nq\n')
+    expect(r.kind).toBe('error')
+    if (r.kind === 'error') expect(r.message).toMatch(/response must be one of dataframe, json, raw/i)
   })
 
   it('parses lang=english', () => {

@@ -416,6 +416,8 @@ function extractResultRows(data: unknown): Record<string, unknown>[] {
 
 export type RunSearchJobOptions = {
   query: string
+  /** `verbatim` sends query exactly as provided; `normalized` applies legacy `cribl` prefix behavior. */
+  queryMode?: 'normalized' | 'verbatim'
   /**
    * Max rows to load into the DataFrame. `0` (default) loads every row the job returns,
    * paginating `/results` until no more rows. Values greater than `0` cap the loaded set.
@@ -442,7 +444,8 @@ function emitProgress(
  */
 export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<CriblSearchJobResult> {
   const base = getCriblApiBase()
-  const q = normalizeSearchQuery(options.query)
+  const queryMode = options.queryMode ?? 'normalized'
+  const q = queryMode === 'verbatim' ? options.query.trim() : normalizeSearchQuery(options.query)
   const maxRows = options.maxRows ?? 0
 
   if (!base) {
