@@ -98,15 +98,50 @@ export type IOPubMessage =
   | { msg_type: 'error'; ename: string; evalue: string; traceback: string[] }
   | { msg_type: 'status'; execution_state: 'busy' | 'idle' }
 
+/**
+ * Subset of `RequestInit` the worker → main-thread fetch bridge forwards.
+ * Bodies are normalised to `ArrayBuffer | string | undefined` so they survive
+ * `postMessage` without referencing a `ReadableStream`.
+ */
+export type ForwardedFetchInit = {
+  method?: string
+  headers?: Record<string, string>
+  body?: ArrayBuffer | string | null
+  credentials?: RequestCredentials
+  redirect?: RequestRedirect
+  referrer?: string
+  referrerPolicy?: ReferrerPolicy
+  cache?: RequestCache
+  mode?: RequestMode
+  integrity?: string
+}
+
 export type WorkerInbound =
   | { type: 'init'; pyodideBaseUrl: string; pyodidePackageBaseUrl: string }
   | { type: 'exec'; id: string; code: string; execution_count: number }
   | { type: 'complete'; id: string; code: string; cursor: number }
+  | {
+      type: 'fetch_response'
+      id: string
+      ok?: boolean
+      status?: number
+      statusText?: string
+      headers?: Record<string, string>
+      body?: ArrayBuffer
+      url?: string
+      error?: string
+    }
 
 export type WorkerOutbound =
   | { type: 'ready' }
   | { type: 'init_error'; message: string }
   | { type: 'iopub'; id: string; msg: IOPubMessage }
   | { type: 'complete_result'; id: string; options: CompletionItem[] }
+  | {
+      type: 'fetch_request'
+      id: string
+      url: string
+      init: ForwardedFetchInit
+    }
 
 export type KernelResult = { outputs: OutputRecord[] }

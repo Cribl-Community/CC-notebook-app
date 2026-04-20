@@ -2,14 +2,38 @@ import { notebookReducer, initialState, createEmptyNotebookCells } from './noteb
 import type { Cell, NotebookAction, NotebookState } from './types'
 import { serializeNotebookToIpynbJson } from './ipynb'
 
+export type TabKind = 'welcome' | 'notebook'
+
 /** One open notebook in the workspace; each tab has its own Pyodide kernel in the UI layer. */
 export interface NotebookTab {
   id: string
+  kind: TabKind
   notebook: NotebookState
   /** Last persisted snapshot for dirty detection (KV save or explicit baseline). */
   lastSavedJson: string
   /** Cribl KV manifest entry id when this tab is linked to a saved notebook. */
   kvNotebookId: string | null
+}
+
+function welcomeNotebookState(): NotebookState {
+  return {
+    title: 'Welcome',
+    cells: [],
+    selectedId: null,
+    executionCounter: 0,
+    kernelStatus: 'ready',
+  }
+}
+
+export function createWelcomeTab(): NotebookTab {
+  const notebook = welcomeNotebookState()
+  return {
+    id: crypto.randomUUID(),
+    kind: 'welcome',
+    notebook,
+    lastSavedJson: serializeNotebookToIpynbJson(notebook),
+    kvNotebookId: null,
+  }
 }
 
 export interface WorkspaceState {
@@ -40,6 +64,7 @@ export function createEmptyTab(): NotebookTab {
   const notebook: NotebookState = { ...initialState, cells: createEmptyNotebookCells() }
   return {
     id: crypto.randomUUID(),
+    kind: 'notebook',
     notebook,
     lastSavedJson: serializeNotebookToIpynbJson(notebook),
     kvNotebookId: null,
@@ -47,21 +72,13 @@ export function createEmptyTab(): NotebookTab {
 }
 
 export function tabIsDirty(tab: NotebookTab): boolean {
+  if (tab.kind === 'welcome') return false
   return serializeNotebookToIpynbJson(tab.notebook) !== tab.lastSavedJson
 }
 
-export function createInitialWorkspace(storedTitle?: string): WorkspaceState {
-  const tab = createEmptyTab()
-  const t = storedTitle?.trim()
-  if (t) {
-    const notebook = { ...tab.notebook, title: t }
-    const next: NotebookTab = {
-      ...tab,
-      notebook,
-      lastSavedJson: serializeNotebookToIpynbJson(notebook),
-    }
-    return { tabs: [next], activeTabId: next.id }
-  }
+/** Cold start: one Welcome tab (not an empty Untitled notebook). */
+export function createInitialWorkspace(): WorkspaceState {
+  const tab = createWelcomeTab()
   return { tabs: [tab], activeTabId: tab.id }
 }
 
@@ -78,7 +95,7 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
     case 'CLOSE_TAB': {
       const tabs = state.tabs.filter((t) => t.id !== action.tabId)
       if (tabs.length === 0) {
-        const fresh = createEmptyTab()
+        const fresh = createWelcomeTab()
         return { tabs: [fresh], activeTabId: fresh.id }
       }
       let activeTabId = state.activeTabId
@@ -98,6 +115,7 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
     case 'TAB_NOTEBOOK': {
       const idx = state.tabs.findIndex((t) => t.id === action.tabId)
       if (idx === -1) return state
+      if (state.tabs[idx].kind === 'welcome') return state
       const nextNotebook = notebookReducer(state.tabs[idx].notebook, action.action)
       const nextTabs = [...state.tabs]
       nextTabs[idx] = { ...state.tabs[idx], notebook: nextNotebook }
@@ -107,6 +125,7 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
     case 'REPLACE_TAB_CONTENT': {
       const idx = state.tabs.findIndex((t) => t.id === action.tabId)
       if (idx === -1) return state
+      if (state.tabs[idx].kind === 'welcome') return state
       const cells = action.cells.length > 0 ? action.cells : createEmptyNotebookCells()
       const title = action.title.trim()
       const notebook = notebookReducer(state.tabs[idx].notebook, {
@@ -127,6 +146,7 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
     case 'SET_TAB_META': {
       const idx = state.tabs.findIndex((t) => t.id === action.tabId)
       if (idx === -1) return state
+      if (state.tabs[idx].kind === 'welcome') return state
       const nextTabs = [...state.tabs]
       const cur = state.tabs[idx]
       nextTabs[idx] = {

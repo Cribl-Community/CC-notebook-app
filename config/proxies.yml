@@ -1,7 +1,19 @@
 # External domains the app reaches via fetch(). Declared for install-time review and pack proxy routing.
 # Pyodide loads extra wheels from the official jsDelivr full distribution (see src/pyodide/pyodideVersion.ts).
+# micropip installs wheels from PyPI (simple index + file storage).
 
 cdn.jsdelivr.net:
   paths:
     allowlist:
       - /pyodide/v0.29.3/
+
+pypi.org:
+  paths:
+    allowlist:
+      - /simple/
+      - /pypi/
+
+files.pythonhosted.org:
+  paths:
+    allowlist:
+      - /packages/

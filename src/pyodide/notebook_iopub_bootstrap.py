@@ -5,7 +5,7 @@ Installed once at worker init. Exposes:
 * ``display(*objs, ...)`` — a JupyterLab-like ``display`` function that emits
   ``display_data`` IOPub messages with full mime bundles.
 * ``clear_output(wait=False)`` — emits a ``clear_output`` IOPub message.
-* ``_nb_run(code: str, exec_count: int)`` — runs ``code`` while routing the
+* ``async def _nb_run(code: str, exec_count: int)`` — runs ``code`` while routing the
   trailing expression result through ``sys.displayhook`` so we emit a proper
   ``execute_result`` (with mime bundle) instead of a stringified value.
 
@@ -18,6 +18,7 @@ and other IPython-based libraries forward through the same channel.
 
 from __future__ import annotations
 
+import ast
 import base64
 import json
 import sys
@@ -323,10 +324,40 @@ _configure_matplotlib_default_backend()
 _install_ipython_publisher()
 
 
-def _nb_run(code: str, execution_count: int) -> None:
-    """Execute ``code`` in the user namespace, emitting IOPub for the trailing expr."""
-    import ast
+def _has_top_level_await(tree: ast.Module) -> bool:
+    """True if ``await`` appears outside nested def/class bodies (needs async exec)."""
+    for stmt in tree.body:
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            continue
+        for node in ast.walk(stmt):
+            if isinstance(node, ast.Await):
+                return True
+    return False
+
+
+def _cell_needs_eval_code_async(tree: ast.Module) -> bool:
+    """True when the cell must run via :func:`eval_code_async` (top-level await).
+
+    Includes a trailing ``await ...`` line written as an expression statement.
+    Without this, the last-expr path compiles that line with ``mode='eval'``,
+    which raises ``SyntaxError: 'await' outside function``.
+    """
+    if _has_top_level_await(tree):
+        return True
+    if tree.body and isinstance(tree.body[-1], ast.Expr):
+        return isinstance(tree.body[-1].value, ast.Await)
+    return False
+
+
+async def _nb_run(code: str, execution_count: int) -> None:
+    """Execute ``code`` in the user namespace, emitting IOPub for the trailing expr.
+
+    Supports top-level ``await`` (e.g. ``await micropip.install(...)``) by compiling
+    with :data:`ast.PyCF_ALLOW_TOP_LEVEL_AWAIT` and awaiting the coroutine ``exec`` returns.
+    """
+    import asyncio
     import builtins
+    import inspect
 
     user_ns = globals()
     prev_hook = sys.displayhook
@@ -337,7 +368,20 @@ def _nb_run(code: str, execution_count: int) -> None:
         except SyntaxError:
             raise
 
-        if tree.body and isinstance(tree.body[-1], ast.Expr):
+        if _cell_needs_eval_code_async(tree):
+            # Prefer Pyodide's async runner (handles TL-await reliably in WASM; exec() return varies).
+            try:
+                from pyodide.code import eval_code_async
+
+                await eval_code_async(code, user_ns)
+            except ImportError:
+                co = compile(code, "<cell>", "exec", ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
+                result = exec(co, user_ns, user_ns)
+                if result is not None and (
+                    inspect.isawaitable(result) or asyncio.iscoroutine(result)
+                ):
+                    await result
+        elif tree.body and isinstance(tree.body[-1], ast.Expr):
             exec_part = ast.Module(body=tree.body[:-1], type_ignores=[])
             expr_part = ast.Expression(body=tree.body[-1].value)  # type: ignore[arg-type]
             ast.fix_missing_locations(exec_part)

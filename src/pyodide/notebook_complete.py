@@ -17,7 +17,8 @@ def _classify(obj: object) -> str:
     return "instance"
 
 
-def _notebook_complete(code: str, cursor: int) -> list:
+def _attribute_complete(code: str, cursor: int) -> list:
+    """Complete `expr.` members using live globals (fast path)."""
     if cursor < 0 or cursor > len(code):
         return []
     before = code[:cursor]
@@ -55,6 +56,50 @@ def _notebook_complete(code: str, cursor: int) -> list:
         out.append({"name": n, "kind": kind})
     out.sort(key=lambda x: x["name"])
     return out
+
+
+def _jedi_type_to_kind(t: str) -> str:
+    if t == "module":
+        return "module"
+    if t == "function":
+        return "function"
+    if t == "class":
+        return "class"
+    return "instance"
+
+
+def _jedi_complete(code: str, cursor: int) -> list:
+    try:
+        import jedi
+    except ImportError:
+        return []
+    before = code[:cursor]
+    line_n = before.count("\n") + 1
+    col = len(before) - before.rfind("\n") - 1
+    if col < 0:
+        col = 0
+    try:
+        script = jedi.Script(code, path="<notebook>")
+        completions = script.complete(line_n, col)
+    except Exception:
+        return []
+    out = []
+    for c in completions:
+        name = c.name
+        if not name:
+            continue
+        typ = getattr(c, "type", "") or ""
+        kind = _jedi_type_to_kind(str(typ))
+        out.append({"name": name, "kind": kind})
+    out.sort(key=lambda x: x["name"])
+    return out[:80]
+
+
+def _notebook_complete(code: str, cursor: int) -> list:
+    ac = _attribute_complete(code, cursor)
+    if ac:
+        return ac
+    return _jedi_complete(code, cursor)
 
 
 def _notebook_complete_json(code: str, cursor: int) -> str:
