@@ -20,7 +20,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
   },
   {
     version: '1.0.27',
-    date: '2026-04-20',
+    date: '2026-04-19',
     highlights: [
       'Welcome tab with product overview, release highlights, and quick links to bundled Examples notebooks.',
       'Bundled Examples: Cribl Search (%%cribl_search) walkthrough and Matplotlib recipes.',

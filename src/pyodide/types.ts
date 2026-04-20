@@ -117,7 +117,7 @@ export type ForwardedFetchInit = {
 }
 
 export type WorkerInbound =
-  | { type: 'init'; pyodideBaseUrl: string; pyodidePackageBaseUrl: string }
+  | { type: 'init'; pyodideBaseUrl: string; pyodidePackageBaseUrl: string; appOrigin: string }
   | { type: 'exec'; id: string; code: string; execution_count: number }
   | { type: 'complete'; id: string; code: string; cursor: number }
   | {
