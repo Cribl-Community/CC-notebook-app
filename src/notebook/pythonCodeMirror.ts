@@ -67,19 +67,6 @@ export function completionReplaceBounds(code: string, pos: number): { from: numb
   return { from, to }
 }
 
-function attributeCompletionContext(code: string, pos: number): boolean {
-  const before = code.slice(0, pos)
-  const lastNl = before.lastIndexOf('\n')
-  const line = before.slice(lastNl + 1)
-  const j = line.length
-  let i = j - 1
-  while (i >= 0 && /[a-zA-Z0-9_]/.test(line[i]!)) {
-    i--
-  }
-  const rest = line.slice(0, i + 1)
-  return rest.length >= 2 && rest.endsWith('.')
-}
-
 const kindToCmType: Record<CompletionItem['kind'], string> = {
   module: 'namespace',
   class: 'class',
@@ -204,9 +191,6 @@ export function createPythonCellExtensions(options: {
       async (context) => {
         const code = context.state.doc.toString()
         const pos = context.pos
-        if (!attributeCompletionContext(code, pos)) {
-          return null
-        }
         const getComplete = options.getComplete()
         if (!getComplete) return null
         const items = await getComplete(code, pos)

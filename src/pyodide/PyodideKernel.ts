@@ -42,7 +42,7 @@ self.onmessage = async function(e) {
       // DisplayPublisher) and micropip (optional user installs from PyPI when
       // network allows). Vendored lock packages; if load fails, bootstrap falls back.
       try {
-        await pyodide.loadPackage(['ipython', 'micropip']);
+        await pyodide.loadPackage(['ipython', 'micropip', 'jedi']);
       } catch (_) {
         // optional
       }

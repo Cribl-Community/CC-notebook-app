@@ -17,6 +17,7 @@ import {
   tabIsDirty,
   tabWorkspaceReducer,
 } from './tabWorkspace'
+import { WelcomePage } from './WelcomePage'
 import {
   createNotebookWithPayload,
   deleteNotebookPayloads,
@@ -83,16 +84,6 @@ type DialogState =
   | { kind: 'confirm'; message: string }
   | { kind: 'prompt'; title: string; label: string; defaultValue: string; input: string }
 
-function readStoredNotebookTitle(): string | undefined {
-  try {
-    const t = localStorage.getItem('nb-notebook-title')
-    if (t?.trim()) return t.trim()
-  } catch {
-    // localStorage unavailable
-  }
-  return undefined
-}
-
 export function NotebookPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
@@ -113,11 +104,7 @@ export function NotebookPage() {
     }
   }, [theme])
 
-  const [workspace, dispatch] = useReducer(
-    tabWorkspaceReducer,
-    undefined,
-    () => createInitialWorkspace(readStoredNotebookTitle()),
-  )
+  const [workspace, dispatch] = useReducer(tabWorkspaceReducer, undefined, () => createInitialWorkspace())
 
   const [manifest, setManifest] = useState<Manifest | null>(null)
   const [libraryLoading, setLibraryLoading] = useState(true)
@@ -232,7 +219,9 @@ export function NotebookPage() {
 
   useEffect(() => {
     try {
-      if (activeTab) localStorage.setItem('nb-notebook-title', activeTab.notebook.title)
+      if (activeTab && activeTab.kind === 'notebook') {
+        localStorage.setItem('nb-notebook-title', activeTab.notebook.title)
+      }
     } catch {
       // ignore
     }
@@ -296,6 +285,7 @@ export function NotebookPage() {
       }
     }
     for (const tab of tabs) {
+      if (tab.kind === 'welcome') continue
       if (!kernelsRef.current.has(tab.id)) {
         initKernelForTab(tab.id)
       }
@@ -313,10 +303,11 @@ export function NotebookPage() {
   const completeCode = useCallback(
     async (code: string, cursor: number): Promise<CompletionItem[] | null> => {
       const tid = activeTabIdRef.current
+      const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+      if (!tab || tab.kind === 'welcome') return null
       const kernel = kernelsRef.current.get(tid)
       if (!kernel) return null
-      const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-      const ks = tab?.notebook.kernelStatus
+      const ks = tab.notebook.kernelStatus
       if (ks === 'loading' || ks === 'error') return null
       try {
         await kernel.ready
@@ -331,11 +322,11 @@ export function NotebookPage() {
   const runCell = useCallback(
     (id: CellId) => {
       const tid = activeTabIdRef.current
+      const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+      if (!tab || tab.kind === 'welcome') return
       const kernel = kernelsRef.current.get(tid)
       if (!kernel) return
 
-      const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-      if (!tab) return
       const cell = tab.notebook.cells.find((c) => c.id === id)
       if (!cell) return
       const source = cell.source
@@ -497,7 +488,7 @@ export function NotebookPage() {
   const runAll = useCallback(() => {
     const tid = activeTabIdRef.current
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-    if (!tab) return
+    if (!tab || tab.kind === 'welcome') return
     tab.notebook.cells
       .filter((c) => c.cell_type === 'code')
       .forEach((cell) => runCell(cell.id))
@@ -505,11 +496,15 @@ export function NotebookPage() {
 
   const restartKernel = useCallback(() => {
     const tid = activeTabIdRef.current
+    const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+    if (tab?.kind === 'welcome') return
     restartKernelForTab(tid)
   }, [restartKernelForTab])
 
   const stopExecution = useCallback(() => {
     const tid = activeTabIdRef.current
+    const tab0 = workspaceRef.current.tabs.find((t) => t.id === tid)
+    if (tab0?.kind === 'welcome') return
     const prevGen = tabGensRef.current.get(tid) ?? 0
     tabGensRef.current.set(tid, prevGen + 1)
 
@@ -542,14 +537,15 @@ export function NotebookPage() {
   }, [initKernelForTab])
 
   const canStopExecution = useMemo(() => {
+    if (!activeTab || activeTab.kind === 'welcome') return false
     if (!state) return false
     if (state.kernelStatus === 'loading' || state.kernelStatus === 'error') return false
     if (state.kernelStatus === 'busy') return true
     return state.cells.some((c) => c.cell_type === 'code' && c.execution_state === 'running')
-  }, [state])
+  }, [state, activeTab])
 
   const handleDownload = useCallback(() => {
-    if (!state) return
+    if (!state || activeTab?.kind === 'welcome') return
     const json = serializeNotebookToIpynbJson(state)
     const blob = new Blob([json], { type: 'application/x-ipynb+json' })
     const url = URL.createObjectURL(blob)
@@ -559,7 +555,7 @@ export function NotebookPage() {
     a.rel = 'noopener'
     a.click()
     URL.revokeObjectURL(url)
-  }, [state])
+  }, [state, activeTab])
 
   const handleCloseTab = useCallback(
     (tabId: string) => {
@@ -585,12 +581,14 @@ export function NotebookPage() {
   }, [])
 
   const handleSave = useCallback(() => {
+    const tid = activeTabIdRef.current
+    const tab0 = workspaceRef.current.tabs.find((t) => t.id === tid)
+    if (tab0?.kind === 'welcome') return
     if (!manifest) {
       void loadLibrary()
       return
     }
-    const tid = activeTabIdRef.current
-    const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+    const tab = tab0
     if (!tab) return
 
     void (async () => {
@@ -793,11 +791,39 @@ export function NotebookPage() {
     [restartKernelForTab, showAlert],
   )
 
+  const handleOpenExample = useCallback(
+    (filename: string) => {
+      const tab = createEmptyTab()
+      dispatch({ type: 'ADD_TAB', tab })
+      void (async () => {
+        try {
+          const base = import.meta.env.BASE_URL || '/'
+          const prefix = base.endsWith('/') ? base : `${base}/`
+          const res = await fetch(`${prefix}Examples/${filename}`)
+          if (!res.ok) throw new Error(`Could not load example (${res.status})`)
+          const text = await res.text()
+          const { title, cells } = ipynbTextToLoadPayload(text)
+          dispatch({
+            type: 'REPLACE_TAB_CONTENT',
+            tabId: tab.id,
+            title,
+            cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
+            kvNotebookId: null,
+          })
+          restartKernelForTab(tab.id)
+        } catch (e) {
+          showAlert(e instanceof Error ? e.message : 'Failed to open example')
+        }
+      })()
+    },
+    [restartKernelForTab, showAlert],
+  )
+
   const tabLabels = useMemo(
     () =>
       workspace.tabs.map((t) => ({
         id: t.id,
-        title: t.notebook.title,
+        title: t.kind === 'welcome' ? 'Welcome' : t.notebook.title,
         dirty: tabIsDirty(t),
       })),
     [workspace.tabs],
@@ -836,6 +862,7 @@ export function NotebookPage() {
   }
 
   const ready = Boolean(state && activeTab)
+  const isWelcome = activeTab?.kind === 'welcome'
 
   return (
     <>
@@ -876,6 +903,7 @@ export function NotebookPage() {
               <div className="nb-editor-shell">
                 <div className="nb-toolbar-rail">
                   <Toolbar
+                    variant={isWelcome ? 'welcome' : 'notebook'}
                     kernelStatus={state.kernelStatus}
                     title={state.title}
                     onTitleChange={(t) => dispatchNotebook({ type: 'SET_NOTEBOOK_TITLE', title: t })}
@@ -895,26 +923,36 @@ export function NotebookPage() {
                     onThemeChange={setTheme}
                   />
                 </div>
-                {state.kernelStatus === 'loading' && (
-                  <div className="nb-loading">Loading Python kernel…</div>
-                )}
-                {state.kernelStatus === 'error' && (
-                  <div className="nb-loading nb-loading--error">
-                    Kernel failed to load. Check console for details.
+                {isWelcome ? (
+                  <div className="nb-main">
+                    <div className="nb-scroll">
+                      <WelcomePage onOpenExample={handleOpenExample} onNewNotebook={handleNewTab} />
+                    </div>
                   </div>
+                ) : (
+                  <>
+                    {state.kernelStatus === 'loading' && (
+                      <div className="nb-loading">Loading Python kernel…</div>
+                    )}
+                    {state.kernelStatus === 'error' && (
+                      <div className="nb-loading nb-loading--error">
+                        Kernel failed to load. Check console for details.
+                      </div>
+                    )}
+                    <div className="nb-main">
+                      <div className="nb-scroll">
+                        <CellList
+                          cells={state.cells}
+                          selectedId={state.selectedId}
+                          dispatch={dispatchNotebook}
+                          onRun={runCell}
+                          theme={theme}
+                          completeCode={completeCode}
+                        />
+                      </div>
+                    </div>
+                  </>
                 )}
-                <div className="nb-main">
-                  <div className="nb-scroll">
-                    <CellList
-                      cells={state.cells}
-                      selectedId={state.selectedId}
-                      dispatch={dispatchNotebook}
-                      onRun={runCell}
-                      theme={theme}
-                      completeCode={completeCode}
-                    />
-                  </div>
-                </div>
               </div>
             </div>
           </div>
