@@ -38,6 +38,8 @@ import {
 } from './criblSearchMagic'
 import { filterPyodidePackageChatter } from './criblSearchStreamFilter'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '../cribl/searchJobs'
+import { translateEnglishToKql } from '../cribl/aiTranslate'
+import { getCriblApiBase } from '../cribl/kvstore'
 import {
   CRIBL_SEARCH_MIME,
   type CriblSearchPayload,
@@ -364,7 +366,7 @@ export function NotebookPage() {
           }
 
           if (magic.kind === 'cribl_search') {
-            const { varName, query, preview, earliest, latest, limit } = magic.value
+            const { varName, query, preview, earliest, latest, limit, lang } = magic.value
             const displayId = `cribl-search-${id}`
             try {
               emitIOPub(
@@ -375,8 +377,34 @@ export function NotebookPage() {
                 ),
               )
 
+              let searchQuery = query
+              if (lang === 'english') {
+                if (!getCriblApiBase()) {
+                  emitIOPub(
+                    criblSearchIOPub(
+                      {
+                        kind: 'running',
+                        progress: 0.14,
+                        label: 'Local dev mode: skipping AI translation (using query as-is)…',
+                      },
+                      displayId,
+                      true,
+                    ),
+                  )
+                } else {
+                  emitIOPub(
+                    criblSearchIOPub(
+                      { kind: 'running', progress: 0.14, label: 'Translating query to KQL…' },
+                      displayId,
+                      true,
+                    ),
+                  )
+                  searchQuery = await translateEnglishToKql(query)
+                }
+              }
+
               const { rows, columns, totalRecords } = await runCriblSearchJob({
-                query,
+                query: searchQuery,
                 maxRows: limit,
                 earliest,
                 latest,

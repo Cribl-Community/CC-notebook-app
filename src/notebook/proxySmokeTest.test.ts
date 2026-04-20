@@ -10,7 +10,7 @@ import {
 describe('getProxySmokeCheckDefinitions', () => {
   it('uses URLs that match config/proxies.yml allowlists', () => {
     const checks = getProxySmokeCheckDefinitions()
-    expect(checks).toHaveLength(3)
+    expect(checks).toHaveLength(4)
 
     const jsd = checks.find((c) => c.id === 'jsdelivr')
     expect(jsd?.url).toBe(
@@ -25,6 +25,10 @@ describe('getProxySmokeCheckDefinitions', () => {
     const files = checks.find((c) => c.id === 'files')
     expect(files?.url).toBeUndefined()
     expect(files?.proxyYamlHost).toBe('files.pythonhosted.org')
+
+    const ai = checks.find((c) => c.id === 'ai')
+    expect(ai?.url).toMatch(/^https:\/\/ai\.cribl(-staging)?\.cloud\//)
+    expect(ai?.acceptHttpErrors).toBe(true)
   })
 })
 
@@ -119,5 +123,25 @@ describe('runProxySmokeTests', () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe('https://pypi.org/pypi/pip/json')
     expect(fetchMock.mock.calls[1]?.[0]).toBe('https://files.pythonhosted.org/packages/z/w.whl')
     expect(finals[0]?.status).toBe('ok')
+  })
+
+  it('treats HTTP errors as reachable when acceptHttpErrors=true', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('denied', { status: 403 })))
+    const defs = [
+      {
+        id: 'ai',
+        proxyYamlHost: 'ai.cribl.cloud',
+        label: 'ai',
+        url: 'https://ai.cribl.cloud/v1/translate/kql',
+        acceptHttpErrors: true,
+      },
+    ]
+    const finals: ProxySmokeRowResult[] = []
+    await runProxySmokeTests(defs, (row) => {
+      if (row.status !== 'pending') finals.push(row)
+    })
+    expect(finals).toHaveLength(1)
+    expect(finals[0]?.status).toBe('ok')
+    expect(finals[0]?.httpStatus).toBe(403)
   })
 })

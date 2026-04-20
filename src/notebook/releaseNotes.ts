@@ -11,6 +11,16 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.30',
+    date: '2026-04-20',
+    highlights: [
+      '%%cribl_search adds lang=kql|kusto|english. English queries are translated to KQL in Cribl environments before search execution.',
+      'AI endpoint routing is environment-aware: staging hosts use ai.cribl-staging.cloud; other environments use ai.cribl.cloud.',
+      'Welcome proxy check now includes a Cribl AI endpoint row in addition to jsDelivr, PyPI, and pythonhosted checks.',
+      'Cribl Search example notebook now includes both an English-query flow and the original KQL flow with a separate DataFrame and visualization.',
+    ],
+  },
+  {
     version: '1.0.28',
     date: '2026-04-20',
     highlights: [

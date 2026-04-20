@@ -1,4 +1,6 @@
 import { PYODIDE_RELEASE } from '../pyodide/pyodideVersion'
+import { resolveCriblAiHost } from '../cribl/aiHost'
+import { AI_TRANSLATE_PATHS } from '../cribl/aiTranslate'
 
 /**
  * Probe URLs aligned with `config/proxies.yml` allowlists. Used on the Welcome
@@ -15,10 +17,17 @@ export type ProxySmokeCheckDef = {
    * PyPI project JSON at run time so the probe does not depend on a fixed path.
    */
   url?: string
+  /**
+   * When true, any HTTP response counts as "host reachable through proxy"
+   * (still fails on DNS/network/timeout). Useful for endpoints that may return
+   * 4xx to anonymous probes.
+   */
+  acceptHttpErrors?: boolean
 }
 
 export function getProxySmokeCheckDefinitions(): ProxySmokeCheckDef[] {
   const v = PYODIDE_RELEASE
+  const aiHost = resolveCriblAiHost()
   return [
     {
       id: 'jsdelivr',
@@ -36,6 +45,13 @@ export function getProxySmokeCheckDefinitions(): ProxySmokeCheckDef[] {
       id: 'files',
       proxyYamlHost: 'files.pythonhosted.org',
       label: 'Python hosted — wheel file (URL from PyPI metadata)',
+    },
+    {
+      id: 'ai',
+      proxyYamlHost: aiHost,
+      label: 'Cribl AI — natural language to KQL translation API',
+      url: `https://${aiHost}${AI_TRANSLATE_PATHS[0]}`,
+      acceptHttpErrors: true,
     },
   ]
 }
@@ -94,7 +110,7 @@ export async function runProxySmokeTests(
         })
         const ms = Math.round(performance.now() - t0)
         globalThis.clearTimeout(timer)
-        if (r.ok) {
+        if (r.ok || def.acceptHttpErrors) {
           onRow({ def, status: 'ok', httpStatus: r.status, ms })
         } else {
           onRow({

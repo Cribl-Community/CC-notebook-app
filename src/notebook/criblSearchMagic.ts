@@ -1,7 +1,8 @@
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
- * First line: %%cribl_search [var=name] [preview=true|false] [limit=N] [earliest=…] [latest=…]
- * Following lines: KQL query body.
+ * First line:
+ * %%cribl_search [var=name] [preview=true|false] [limit=N] [earliest=…] [latest=…] [lang=kql|kusto|english]
+ * Following lines: query body (KQL when `lang=kql|kusto`, natural language when `lang=english`).
  *
  * `earliest` / `latest` are passed to the Cribl Search job API (defaults in the client if omitted).
  *
@@ -25,6 +26,12 @@ export type CriblSearchMagicOk = {
   varName: string
   preview: boolean
   /**
+   * Query language mode.
+   * - `kql` (default): body is sent directly to Search API
+   * - `english`: body is translated to KQL first
+   */
+  lang: 'kql' | 'english'
+  /**
    * Max rows to load into the kernel DataFrame. `0` means load every row the search returns
    * (iterate `/results` pages until exhausted).
    */
@@ -42,10 +49,19 @@ export type CriblSearchMagicParse =
   | { kind: 'none' }
 
 function parseKeyValueParams(paramLine: string):
-  | { ok: true; varName: string; preview: boolean; limit: number; earliest?: string; latest?: string }
+  | {
+      ok: true
+      varName: string
+      preview: boolean
+      lang: 'kql' | 'english'
+      limit: number
+      earliest?: string
+      latest?: string
+    }
   | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
   let preview = true
+  let lang: 'kql' | 'english' = 'kql'
   let limit = 0
   let earliest: string | undefined
   let latest: string | undefined
@@ -59,6 +75,19 @@ function parseKeyValueParams(paramLine: string):
     if (key === 'preview') preview = val.toLowerCase() !== 'false'
     if (key === 'earliest') earliest = val
     if (key === 'latest') latest = val
+    if (key === 'lang') {
+      const l = val.toLowerCase()
+      if (l === 'kql' || l === 'kusto') {
+        lang = 'kql'
+      } else if (l === 'english') {
+        lang = 'english'
+      } else {
+        return {
+          ok: false,
+          message: `lang must be one of kql, kusto, english; got ${JSON.stringify(val)}`,
+        }
+      }
+    }
     if (key === 'limit') {
       if (!/^\d+$/.test(val.trim())) {
         return { ok: false, message: `limit must be a non-negative integer, got ${JSON.stringify(val)}` }
@@ -67,7 +96,7 @@ function parseKeyValueParams(paramLine: string):
       limit = n
     }
   }
-  return { ok: true, varName, preview, limit, earliest, latest }
+  return { ok: true, varName, preview, lang, limit, earliest, latest }
 }
 
 /**
@@ -86,7 +115,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!parsed.ok) {
     return { kind: 'error', message: parsed.message }
   }
-  const { varName, preview, limit, earliest, latest } = parsed
+  const { varName, preview, lang, limit, earliest, latest } = parsed
 
   if (!IDENT_RE.test(varName)) {
     return {
@@ -102,12 +131,12 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
     .trim()
 
   if (!query) {
-    return { kind: 'error', message: 'Missing KQL query after %%cribl_search line.' }
+    return { kind: 'error', message: 'Missing query text after %%cribl_search line.' }
   }
 
   return {
     kind: 'cribl_search',
-    value: { varName, preview, limit, query, earliest, latest },
+    value: { varName, preview, lang, limit, query, earliest, latest },
   }
 }
 
