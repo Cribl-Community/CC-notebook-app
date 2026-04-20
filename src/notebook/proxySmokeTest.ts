@@ -10,7 +10,11 @@ export type ProxySmokeCheckDef = {
   proxyYamlHost: string
   /** Short label for the UI. */
   label: string
-  url: string
+  /**
+   * GET target. Omitted for `id === 'files'` — the wheel URL is taken from
+   * PyPI project JSON at run time so the probe does not depend on a fixed path.
+   */
+  url?: string
 }
 
 export function getProxySmokeCheckDefinitions(): ProxySmokeCheckDef[] {
@@ -31,12 +35,25 @@ export function getProxySmokeCheckDefinitions(): ProxySmokeCheckDef[] {
     {
       id: 'files',
       proxyYamlHost: 'files.pythonhosted.org',
-      label: 'Python hosted — wheel file',
-      // Stable small wheel; path from PyPI JSON for six 1.17.0 (update if 404).
-      url:
-        'https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl',
+      label: 'Python hosted — wheel file (URL from PyPI metadata)',
     },
   ]
+}
+
+/** Latest pip wheel URL from PyPI JSON — must stay on files.pythonhosted.org. */
+export async function resolvePythonHostedWheelProbeUrl(signal?: AbortSignal): Promise<string> {
+  const r = await fetch('https://pypi.org/pypi/pip/json', { cache: 'no-store', signal })
+  if (!r.ok) {
+    throw new Error(`PyPI pip JSON: HTTP ${r.status}`)
+  }
+  const j = (await r.json()) as {
+    urls?: { url?: string; packagetype?: string }[]
+  }
+  const wheel = j.urls?.find((u) => u.packagetype === 'bdist_wheel' && u.url)
+  if (!wheel?.url || !wheel.url.includes('files.pythonhosted.org')) {
+    throw new Error('No files.pythonhosted.org wheel in latest pip PyPI JSON')
+  }
+  return wheel.url
 }
 
 export type ProxySmokeRowResult = {
@@ -59,18 +76,24 @@ export async function runProxySmokeTests(
 ): Promise<void> {
   await Promise.all(
     defs.map(async (def) => {
-      onRow({ def, status: 'pending' })
       const t0 = performance.now()
       const ac = new AbortController()
-      const timer = window.setTimeout(() => ac.abort(), PROBE_TIMEOUT_MS)
+      const timer = globalThis.setTimeout(() => ac.abort(), PROBE_TIMEOUT_MS)
       try {
-        const r = await fetch(def.url, {
+        let targetUrl = def.url
+        if (def.id === 'files') {
+          targetUrl = await resolvePythonHostedWheelProbeUrl(ac.signal)
+        }
+        if (!targetUrl) {
+          throw new Error('Missing probe URL')
+        }
+        const r = await fetch(targetUrl, {
           method: 'GET',
           signal: ac.signal,
           cache: 'no-store',
         })
         const ms = Math.round(performance.now() - t0)
-        window.clearTimeout(timer)
+        globalThis.clearTimeout(timer)
         if (r.ok) {
           onRow({ def, status: 'ok', httpStatus: r.status, ms })
         } else {
@@ -83,7 +106,7 @@ export async function runProxySmokeTests(
           })
         }
       } catch (e) {
-        window.clearTimeout(timer)
+        globalThis.clearTimeout(timer)
         const ms = Math.round(performance.now() - t0)
         const err = e instanceof Error ? e : new Error(String(e))
         const detail =

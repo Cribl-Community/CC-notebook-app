@@ -31,9 +31,10 @@ export function WelcomeProxyCheck() {
     <section className="nb-welcome-section nb-welcome-proxy">
       <h2>Pack proxy check</h2>
       <p className="nb-welcome-muted">
-        Quick GET to each host allowed in <code className="nb-welcome-code">config/proxies.yml</code>. In
-        Cribl Apps, <code className="nb-welcome-code">fetch</code> is routed through the pack proxy; all
-        three should return HTTP 200 when the proxy and allowlists are working.
+        Quick checks against each host in <code className="nb-welcome-code">config/proxies.yml</code> (the
+        pythonhosted probe picks a wheel URL from PyPI pip metadata, then GETs that file). In Cribl
+        Apps, <code className="nb-welcome-code">fetch</code> is routed through the pack proxy; all three
+        should succeed when the proxy and allowlists are working.
       </p>
       <div className="nb-welcome-proxy-actions">
         <button
@@ -52,6 +53,13 @@ export function WelcomeProxyCheck() {
               className="nb-welcome-proxy-status"
               data-status={row.status === 'pending' ? 'pending' : row.status === 'ok' ? 'ok' : 'error'}
               title={row.detail}
+              aria-label={
+                row.status === 'pending'
+                  ? `${row.def.proxyYamlHost}: pending`
+                  : row.status === 'ok'
+                    ? `${row.def.proxyYamlHost}: OK`
+                    : `${row.def.proxyYamlHost}: error${row.detail ? `, ${row.detail}` : ''}`
+              }
             >
               {row.status === 'pending' ? '…' : row.status === 'ok' ? 'OK' : '!'}
             </span>

@@ -45,6 +45,8 @@ function postIOPub(execId, msg) {
 const _origFetch = self.fetch.bind(self);
 const _fetchPending = new Map();
 let _fetchSeq = 0;
+/** App document origin from the main thread (reliable in blob workers; avoids self.location quirks). */
+let _appOrigin = '';
 
 function _serializeHeaders(h) {
   if (!h) return {};
@@ -113,8 +115,13 @@ self.fetch = async function(input, init) {
   const sameOrigin = (function() {
     try {
       const u = new URL(absUrl);
-      return self.location && u.origin === self.location.origin;
-    } catch (_) { return true; }
+      if (_appOrigin) {
+        return u.origin === _appOrigin;
+      }
+      return Boolean(self.location && u.origin === self.location.origin);
+    } catch (_) {
+      return false;
+    }
   })();
 
   if (sameOrigin) {
@@ -165,6 +172,7 @@ self.onmessage = async function(e) {
   }
 
   if (msg.type === 'init') {
+    _appOrigin = msg.appOrigin || '';
     try {
       importScripts(msg.pyodideBaseUrl + 'pyodide.js');
       pyodide = await loadPyodide({
@@ -365,6 +373,7 @@ export class PyodideKernel {
         type: 'init',
         pyodideBaseUrl,
         pyodidePackageBaseUrl,
+        appOrigin: window.location.origin,
       }
       worker.postMessage(initMsg)
     })()
