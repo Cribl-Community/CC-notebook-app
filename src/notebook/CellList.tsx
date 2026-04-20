@@ -7,7 +7,8 @@ interface CellListProps {
   cells: Cell[]
   selectedId: CellId | null
   dispatch: React.Dispatch<NotebookAction>
-  onRun: (id: CellId) => void
+  /** Run and move selection down / insert cell below last (Shift+Enter, ▶). `runAll` uses the same queue without UI advance. */
+  onRunAndAdvance: (id: CellId, cellIndex: number) => void
   theme: 'dark' | 'light'
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
 }
@@ -16,7 +17,7 @@ export function CellList({
   cells,
   selectedId,
   dispatch,
-  onRun,
+  onRunAndAdvance,
   theme,
   completeCode,
 }: CellListProps) {
@@ -31,7 +32,7 @@ export function CellList({
               theme={theme}
               completeCode={completeCode}
               onSelect={() => dispatch({ type: 'SELECT_CELL', id: cell.id })}
-              onRun={() => onRun(cell.id)}
+              onRun={() => onRunAndAdvance(cell.id, index)}
               onDelete={() => dispatch({ type: 'DELETE_CELL', id: cell.id })}
               onChange={(source) => dispatch({ type: 'UPDATE_SOURCE', id: cell.id, source })}
               onClearOutput={() => dispatch({ type: 'CLEAR_OUTPUTS', id: cell.id })}

@@ -11,6 +11,17 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.31',
+    date: '2026-04-21',
+    highlights: [
+      'Notebook execution queue behaves more like Jupyter: cells waiting to run show a busy [*] gutter; only the active cell is read-only while executing.',
+      'Shift+Enter and Run (▶) run the cell, move selection to the next cell, and insert a new code cell below when you run the last cell.',
+      'Stop cancels queued work: pending cells return to idle alongside the usual interrupt of the running cell.',
+      'Theme: default is light unless nb-theme is set to dark; the theme picker lists Light first.',
+      'Cribl Search example notebook: externaldata sample uses var=kql_df and clarifies the magic header.',
+    ],
+  },
+  {
     version: '1.0.30',
     date: '2026-04-20',
     highlights: [

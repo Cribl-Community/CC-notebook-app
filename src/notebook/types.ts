@@ -41,6 +41,8 @@ export type NotebookAction =
   | { type: 'UPDATE_SOURCE'; id: CellId; source: string }
   | { type: 'SELECT_CELL'; id: CellId }
   | { type: 'TOGGLE_MARKDOWN_EDIT'; id: CellId }
+  | { type: 'ENQUEUE_CELL'; id: CellId }
+  | { type: 'CLEAR_ALL_PENDING' }
   | { type: 'SET_RUNNING'; id: CellId }
   | { type: 'APPEND_OUTPUT'; id: CellId; output: OutputRecord }
   | { type: 'REPLACE_OUTPUT_AT'; id: CellId; index: number; output: OutputRecord }

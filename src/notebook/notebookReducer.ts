@@ -93,6 +93,26 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ),
       }
 
+    case 'ENQUEUE_CELL':
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell => {
+          if (c.id !== action.id || c.cell_type !== 'code') return c
+          if (c.execution_state !== 'idle') return c
+          return { ...c, execution_state: 'pending' }
+        }),
+      }
+
+    case 'CLEAR_ALL_PENDING':
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell =>
+          c.cell_type === 'code' && c.execution_state === 'pending'
+            ? { ...c, execution_state: 'idle' }
+            : c,
+        ),
+      }
+
     case 'SET_RUNNING':
       return {
         ...state,
