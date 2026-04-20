@@ -4,21 +4,33 @@
  */
 export const PYODIDE_RELEASE = '0.29.3' as const
 
-/** CDN fallback when {@link VENDOR_PYODIDE_FULL} is false. */
+/** Official Pyodide wheel repo on jsDelivr (fallback when same-origin `./pyodide/full/` is absent). */
 export const PYODIDE_PACKAGE_BASE_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_RELEASE}/full/` as const
 
-/**
- * TEMP: ship pandas/matplotlib wheels under ./pyodide/full/ (see scripts/vendor-pyodide-wheels.mjs)
- * so the pack proxy does not need to reach jsDelivr. Set to false and drop the vendor step once
- * config/proxies.yml + proxy routing work again. (UI/theme changes do not affect wheel size;
- * `npm run package` enforces a 30 MiB cap on the release tarball.)
- */
-export const VENDOR_PYODIDE_FULL = true as const
+/** Same-origin URL for vendored wheels (`npm run vendor-pyodide`). */
+export function getLocalPyodideFullBaseUrl(): string {
+  return new URL('./pyodide/full/', window.location.href).href
+}
 
-/** Base URL for Pyodide to fetch extra wheels (same-origin vendor dir or jsDelivr). */
-export function getPyodidePackageBaseUrl(): string {
-  if (VENDOR_PYODIDE_FULL) {
-    return new URL('./pyodide/full/', window.location.href).href
+/**
+ * Resolves `loadPyodide({ packageBaseUrl })`:
+ * 1. **Local** `./pyodide/full/` only when both `vendored-packages.json` and `pyodide-lock.json` exist (wheels +
+ *    trimmed lock from `vendor-pyodide-wheels.mjs`). The lock lists **only** vendored packages so micropip
+ *    treats other PyPI packages as not in-repo and fetches them from PyPI (not missing same-origin wheels).
+ * 2. Otherwise **jsDelivr** (`PYODIDE_PACKAGE_BASE_URL`) when proxies allow `cdn.jsdelivr.net`.
+ */
+export async function resolvePyodidePackageBaseUrl(): Promise<string> {
+  const local = getLocalPyodideFullBaseUrl()
+  try {
+    const [vendored, lockfile] = await Promise.all([
+      fetch(new URL('vendored-packages.json', local).href, { method: 'GET', cache: 'no-store' }),
+      fetch(new URL('pyodide-lock.json', local).href, { method: 'GET', cache: 'no-store' }),
+    ])
+    if (vendored.ok && lockfile.ok) {
+      return local
+    }
+  } catch {
+    // fetch failed (offline, blocked, etc.) — fall through to CDN
   }
   return PYODIDE_PACKAGE_BASE_URL
 }

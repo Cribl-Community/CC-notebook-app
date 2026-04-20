@@ -1950,6 +1950,111 @@ body {
   text-decoration: underline;
 }
 
+.nb-welcome-proxy .nb-welcome-code {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--nb-bg-toolbar) 85%, var(--nb-border-cell));
+  color: var(--nb-text);
+}
+
+.nb-welcome-proxy-actions {
+  margin-bottom: 12px;
+}
+
+.nb-welcome-proxy-rerun {
+  font-size: 12px;
+}
+
+.nb-welcome-proxy-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nb-welcome-proxy-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--nb-border-cell);
+  background: var(--nb-bg-cell);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.nb-welcome-proxy-status {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+}
+
+.nb-welcome-proxy-status[data-status='pending'] {
+  background: color-mix(in srgb, var(--nb-text-muted) 12%, transparent);
+  color: var(--nb-text-muted);
+}
+
+.nb-welcome-proxy-status[data-status='ok'] {
+  background: color-mix(in srgb, var(--nb-success) 18%, transparent);
+  color: var(--nb-success);
+}
+
+.nb-welcome-proxy-status[data-status='error'] {
+  background: color-mix(in srgb, var(--nb-error) 16%, transparent);
+  color: var(--nb-error);
+}
+
+.nb-welcome-proxy-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nb-welcome-proxy-host {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nb-text-heading);
+}
+
+.nb-welcome-proxy-label {
+  font-size: 12px;
+  color: var(--nb-text-muted);
+}
+
+.nb-welcome-proxy-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--nb-text-dim);
+  font-family: var(--mono);
+}
+
+.nb-welcome-proxy-http {
+  color: var(--nb-text-muted);
+}
+
+.nb-welcome-proxy-detail {
+  flex-basis: 100%;
+  color: var(--nb-text-muted);
+  word-break: break-word;
+}
+
 .nb-toolbar--welcome .nb-toolbar-title-input {
   font-weight: 600;
   color: var(--nb-text-muted);

@@ -6,7 +6,7 @@ import type {
   WorkerInbound,
   WorkerOutbound,
 } from './types'
-import { getPyodidePackageBaseUrl } from './pyodideVersion'
+import { PYODIDE_PACKAGE_BASE_URL, resolvePyodidePackageBaseUrl } from './pyodideVersion'
 import completionPy from './notebook_complete.py?raw'
 import iopubBootstrapPy from './notebook_iopub_bootstrap.py?raw'
 
@@ -28,8 +28,141 @@ function postIOPub(execId, msg) {
   self.postMessage({ type: 'iopub', id: execId, msg: msg });
 }
 
+// === Fetch bridge ===========================================================
+// Pyodide / micropip use the global \`fetch\` to talk to PyPI (metadata) and
+// files.pythonhosted.org (wheels). When the kernel runs inside Cribl's
+// sandboxed iframe, only the main-thread \`fetch\` is monkey-patched to route
+// through the pack proxy ( /api/v1/p/<pack>/proxy/<host>/... with auth
+// injected by the parent window). A blob Worker bypasses that and hits PyPI
+// directly, which fails with "Failed to fetch" because the iframe has no
+// connect-src for those origins.
+//
+// Strategy: forward every cross-origin \`fetch()\` to the main thread via
+// postMessage, let it call the patched \`fetch\` there, and reconstruct a
+// Response from the bytes/headers the main thread sends back. Same-origin
+// requests (vendored wheels, the lock file, our own assets) keep going
+// directly through the worker for speed.
+const _origFetch = self.fetch.bind(self);
+const _fetchPending = new Map();
+let _fetchSeq = 0;
+
+function _serializeHeaders(h) {
+  if (!h) return {};
+  if (typeof Headers !== 'undefined' && h instanceof Headers) {
+    const out = {};
+    h.forEach(function(v, k) { out[k] = v; });
+    return out;
+  }
+  if (Array.isArray(h)) {
+    const out = {};
+    for (let i = 0; i < h.length; i++) out[h[i][0]] = h[i][1];
+    return out;
+  }
+  if (typeof h === 'object') return Object.assign({}, h);
+  return {};
+}
+
+async function _normalizeBody(body) {
+  if (body == null) return null;
+  if (typeof body === 'string') return body;
+  if (body instanceof ArrayBuffer) return body;
+  if (ArrayBuffer.isView(body)) {
+    return body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength);
+  }
+  if (typeof Blob !== 'undefined' && body instanceof Blob) {
+    return await body.arrayBuffer();
+  }
+  // URLSearchParams / FormData / ReadableStream — best-effort.
+  try { return String(body); } catch (_) { return null; }
+}
+
+self.fetch = async function(input, init) {
+  let url;
+  let opts = init || undefined;
+  if (typeof input === 'string') {
+    url = input;
+  } else if (input && typeof input.url === 'string') {
+    url = input.url;
+    if (!opts) {
+      opts = {
+        method: input.method,
+        headers: input.headers,
+        body: input.body && input.method && input.method !== 'GET' && input.method !== 'HEAD'
+          ? await input.clone().arrayBuffer()
+          : undefined,
+        credentials: input.credentials,
+        redirect: input.redirect,
+        referrer: input.referrer,
+        referrerPolicy: input.referrerPolicy,
+        cache: input.cache,
+        mode: input.mode,
+        integrity: input.integrity,
+      };
+    }
+  } else {
+    url = String(input);
+  }
+
+  let absUrl;
+  try {
+    absUrl = new URL(url, self.location && self.location.href).href;
+  } catch (_) {
+    absUrl = url;
+  }
+
+  const sameOrigin = (function() {
+    try {
+      const u = new URL(absUrl);
+      return self.location && u.origin === self.location.origin;
+    } catch (_) { return true; }
+  })();
+
+  if (sameOrigin) {
+    return _origFetch(input, init);
+  }
+
+  const id = '__nbf_' + (++_fetchSeq);
+  const fwdInit = {
+    method: (opts && opts.method) || 'GET',
+    headers: _serializeHeaders(opts && opts.headers),
+    body: await _normalizeBody(opts && opts.body),
+    credentials: opts && opts.credentials,
+    redirect: opts && opts.redirect,
+    referrer: opts && opts.referrer,
+    referrerPolicy: opts && opts.referrerPolicy,
+    cache: opts && opts.cache,
+    mode: opts && opts.mode,
+    integrity: opts && opts.integrity,
+  };
+
+  return new Promise(function(resolve, reject) {
+    _fetchPending.set(id, { resolve: resolve, reject: reject });
+    self.postMessage({ type: 'fetch_request', id: id, url: absUrl, init: fwdInit });
+  });
+};
+
 self.onmessage = async function(e) {
   const msg = e.data;
+
+  if (msg && msg.type === 'fetch_response') {
+    const p = _fetchPending.get(msg.id);
+    if (!p) return;
+    _fetchPending.delete(msg.id);
+    if (msg.error) {
+      p.reject(new TypeError(msg.error));
+    } else {
+      const resp = new Response(msg.body || null, {
+        status: msg.status || 0,
+        statusText: msg.statusText || '',
+        headers: msg.headers || {},
+      });
+      // \`Response\` ignores caller-supplied url; expose the proxied origin so
+      // micropip's "redirected to .../json" diagnostics still make sense.
+      try { Object.defineProperty(resp, 'url', { value: msg.url || '' }); } catch (_) {}
+      p.resolve(resp);
+    }
+    return;
+  }
 
   if (msg.type === 'init') {
     try {
@@ -37,6 +170,10 @@ self.onmessage = async function(e) {
       pyodide = await loadPyodide({
         indexURL: msg.pyodideBaseUrl,
         packageBaseUrl: msg.pyodidePackageBaseUrl,
+        // Default lock is indexURL/pyodide-lock.json (full upstream index). Micropip
+        // uses this lock to decide "in Pyodide repo" vs PyPI — must match packageBaseUrl
+        // (trimmed vendored lock under ./pyodide/full/ when present).
+        lockFileURL: new URL('pyodide-lock.json', msg.pyodidePackageBaseUrl).href,
       });
       // Preload IPython (so notebook_iopub_bootstrap can install its
       // DisplayPublisher) and micropip (optional user installs from PyPI when
@@ -122,7 +259,7 @@ self.onmessage = async function(e) {
 
       pyodide.globals.set('_nb_source_code', msg.code);
       pyodide.globals.set('_nb_exec_count', execCount);
-      await pyodide.runPythonAsync('_nb_run(_nb_source_code, _nb_exec_count)');
+      await pyodide.runPythonAsync('await _nb_run(_nb_source_code, _nb_exec_count)');
     } catch (err) {
       const message = err && err.message ? err.message : String(err);
       const lines = message.split('\\n');
@@ -205,19 +342,32 @@ export class PyodideKernel {
         }
         return
       }
+
+      if (msg.type === 'fetch_request') {
+        void this.handleFetchRequest(msg.id, msg.url, msg.init)
+        return
+      }
     }
 
     this.worker.onerror = (e) => onFail(e.message)
 
-    // Resolve the pyodide base URL from the app's own origin so the worker
-    // loads static files from the same host instead of an external CDN.
-    const pyodideBaseUrl = new URL('./pyodide/', window.location.href).href
-    const initMsg: WorkerInbound = {
-      type: 'init',
-      pyodideBaseUrl,
-      pyodidePackageBaseUrl: getPyodidePackageBaseUrl(),
-    }
-    this.worker.postMessage(initMsg)
+    // Prefer same-origin vendored wheels when `vendor-pyodide-wheels` has run; else jsDelivr CDN.
+    const worker = this.worker
+    void (async () => {
+      let pyodidePackageBaseUrl: string
+      try {
+        pyodidePackageBaseUrl = await resolvePyodidePackageBaseUrl()
+      } catch {
+        pyodidePackageBaseUrl = PYODIDE_PACKAGE_BASE_URL
+      }
+      const pyodideBaseUrl = new URL('./pyodide/', window.location.href).href
+      const initMsg: WorkerInbound = {
+        type: 'init',
+        pyodideBaseUrl,
+        pyodidePackageBaseUrl,
+      }
+      worker.postMessage(initMsg)
+    })()
   }
 
   execute(
@@ -245,6 +395,61 @@ export class PyodideKernel {
       this.pendingComplete.set(id, resolve)
       this.worker.postMessage({ type: 'complete', id, code, cursor } satisfies WorkerInbound)
     })
+  }
+
+  /**
+   * Bridge for the worker's cross-origin `fetch()` calls (micropip → PyPI,
+   * jsDelivr fallback wheels, etc). The Cribl iframe patches the main-thread
+   * `fetch` so external URLs are routed through `/api/v1/p/<pack>/proxy/...`
+   * with auth injected by the parent window. Workers don't see that patch, so
+   * they delegate up here and we hand back a serialised Response.
+   */
+  private async handleFetchRequest(
+    id: string,
+    url: string,
+    init: import('./types').ForwardedFetchInit,
+  ): Promise<void> {
+    try {
+      const fetchInit: RequestInit = {
+        method: init.method,
+        headers: init.headers,
+        credentials: init.credentials,
+        redirect: init.redirect,
+        referrer: init.referrer,
+        referrerPolicy: init.referrerPolicy,
+        cache: init.cache,
+        mode: init.mode,
+        integrity: init.integrity,
+      }
+      if (init.body != null && init.method && init.method !== 'GET' && init.method !== 'HEAD') {
+        fetchInit.body = init.body as BodyInit
+      }
+      const r = await fetch(url, fetchInit)
+      const buf = await r.arrayBuffer()
+      const headers: Record<string, string> = {}
+      r.headers.forEach((v, k) => {
+        headers[k] = v
+      })
+      this.worker.postMessage(
+        {
+          type: 'fetch_response',
+          id,
+          ok: r.ok,
+          status: r.status,
+          statusText: r.statusText,
+          headers,
+          body: buf,
+          url: r.url,
+        },
+        [buf],
+      )
+    } catch (err) {
+      this.worker.postMessage({
+        type: 'fetch_response',
+        id,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
 
   dispose(): void {

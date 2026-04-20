@@ -7,8 +7,8 @@
  * pandas, matplotlib, ipython, micropip, jedi and their deps. URL + sha256
  * come from the lock file.
  *
- * Remove this script and stop calling it once proxying works; use CDN
- * packageBaseUrl again.
+ * Also writes `vendored-packages.json` and a **trimmed** `pyodide-lock.json` (only vendored
+ * packages) into `public/pyodide/full/` so micropip falls back to PyPI for everything else.
  */
 import { createHash } from 'node:crypto'
 import { mkdir, readFile, writeFile, access } from 'node:fs/promises'
@@ -98,6 +98,21 @@ async function main() {
   const cdnBase = `https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/`
   await mkdir(outDir, { recursive: true })
 
+  // Only list packages we actually vendor wheels for. Copying the full upstream
+  // lock while shipping a wheel subset makes micropip think every lock entry is
+  // fetchable from packageBaseUrl (same-origin) and skip PyPI — missing wheels
+  // fail with ERR_FAILED instead of falling back to PyPI.
+  const trimmedPackages = {}
+  for (const name of seen) {
+    trimmedPackages[name] = lock.packages[name]
+  }
+  const trimmedLock = {
+    info: lock.info,
+    packages: trimmedPackages,
+  }
+  await writeFile(join(outDir, 'pyodide-lock.json'), JSON.stringify(trimmedLock, null, 2) + '\n')
+  console.log(`ok pyodide-lock.json (${seen.size} packages) -> full/`)
+
   for (const name of seen) {
     const pkg = lock.packages[name]
     if (!pkg.file_name || !pkg.sha256) {
@@ -110,6 +125,21 @@ async function main() {
       url: cdnBase + pkg.file_name,
     })
   }
+
+  await writeFile(
+    join(outDir, 'vendored-packages.json'),
+    JSON.stringify(
+      {
+        source: 'vendor-pyodide-wheels.mjs',
+        pyodideVersion,
+        packageCount: seen.size,
+        packages: [...seen].sort(),
+      },
+      null,
+      2,
+    ) + '\n',
+  )
+  console.log(`Wrote ${join(outDir, 'vendored-packages.json')}`)
 
   console.log(`Vendored ${seen.size} Pyodide packages into ${outDir}`)
 }

@@ -1,4 +1,5 @@
 import { RELEASE_NOTES } from './releaseNotes'
+import { WelcomeProxyCheck } from './WelcomeProxyCheck'
 
 export type WelcomePageProps = {
   onOpenExample: (filename: string) => void
@@ -72,6 +73,8 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
           </button>
         </div>
       </section>
+
+      <WelcomeProxyCheck />
 
       <section className="nb-welcome-section nb-welcome-release">
         <h2>Release notes</h2>
