@@ -166,8 +166,8 @@ export function Toolbar({
           onChange={(e) => onThemeChange(e.target.value as 'dark' | 'light')}
           title="Select theme"
         >
-          <option value="dark">Dark</option>
           <option value="light">Light</option>
+          <option value="dark">Dark</option>
         </select>
       </div>
       {!welcome && <KernelIndicator status={kernelStatus} />}

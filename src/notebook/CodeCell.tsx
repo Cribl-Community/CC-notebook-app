@@ -22,7 +22,9 @@ interface CodeCellProps {
 }
 
 function GutterLabel({ cell }: { cell: CellData }) {
-  if (cell.execution_state === 'running') return <span>[*]</span>
+  if (cell.execution_state === 'running' || cell.execution_state === 'pending') {
+    return <span>[*]</span>
+  }
   if (cell.execution_count !== null) return <span>[{cell.execution_count}]</span>
   return <span>[ ]</span>
 }
@@ -124,7 +126,7 @@ export function CodeCell({
     e.stopPropagation()
   }, [])
 
-  const isRunning = cell.execution_state === 'running'
+  const isBusy = cell.execution_state === 'running' || cell.execution_state === 'pending'
   const canClearOutput = cell.outputs.length > 0 || cell.execution_count !== null
 
   return (
@@ -143,10 +145,10 @@ export function CodeCell({
               e.stopPropagation()
               onRun()
             }}
-            disabled={isRunning}
+            disabled={isBusy}
             title="Run cell (Shift+Enter)"
           >
-            {isRunning ? '◼' : '▶'}
+            {isBusy ? '◼' : '▶'}
           </button>
           <button
             className="nb-btn nb-btn-move"
@@ -176,7 +178,7 @@ export function CodeCell({
               e.stopPropagation()
               onClearOutput()
             }}
-            disabled={!canClearOutput || isRunning}
+            disabled={!canClearOutput || isBusy}
             title="Clear cell output"
           >
             ⌫

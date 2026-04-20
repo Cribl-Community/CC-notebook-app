@@ -129,7 +129,7 @@ export function NotebookPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
     try {
       const s = localStorage.getItem('nb-theme')
-      if (s === 'dark' || s === 'light') return s
+      if (s === 'dark') return 'dark'
     } catch {
       /* localStorage unavailable */
     }
@@ -221,6 +221,7 @@ export function NotebookPage() {
   const tabGensRef = useRef<Map<string, number>>(new Map())
   const tabQueuesRef = useRef<Map<string, { p: Promise<void> }>>(new Map())
   const tabExecCountersRef = useRef<Map<string, number>>(new Map())
+  const tabScheduledIdsRef = useRef<Map<string, Set<CellId>>>(new Map())
 
   const workspaceRef = useRef(workspace)
   const activeTabIdRef = useRef(workspace.activeTabId)
@@ -279,6 +280,12 @@ export function NotebookPage() {
     return m.get(tabId)!
   }, [])
 
+  const getScheduledSet = useCallback((tabId: string) => {
+    const m = tabScheduledIdsRef.current
+    if (!m.has(tabId)) m.set(tabId, new Set())
+    return m.get(tabId)!
+  }, [])
+
   const initKernelForTab = useCallback((tabId: string) => {
     const gen = (tabGensRef.current.get(tabId) ?? 0) + 1
     tabGensRef.current.set(tabId, gen)
@@ -305,6 +312,7 @@ export function NotebookPage() {
       const q = tabQueuesRef.current.get(tabId)
       if (q) q.p = Promise.resolve()
       tabExecCountersRef.current.set(tabId, 0)
+      tabScheduledIdsRef.current.get(tabId)?.clear()
       dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'RESTART' } })
       initKernelForTab(tabId)
     },
@@ -323,6 +331,7 @@ export function NotebookPage() {
         tabGensRef.current.delete(id)
         tabQueuesRef.current.delete(id)
         tabExecCountersRef.current.delete(id)
+        tabScheduledIdsRef.current.delete(id)
       }
     }
     for (const tab of tabs) {
@@ -369,13 +378,22 @@ export function NotebookPage() {
       if (!kernel) return
 
       const cell = tab.notebook.cells.find((c) => c.id === id)
-      if (!cell) return
+      if (!cell || cell.cell_type !== 'code') return
       const source = cell.source
       const myGen = tabGensRef.current.get(tid) ?? 0
 
+      const scheduled = getScheduledSet(tid)
+      if (scheduled.has(id)) return
+      scheduled.add(id)
+
+      dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ENQUEUE_CELL', id } })
+
       const q = getRunQueue(tid)
       q.p = q.p.then(async () => {
-        if (tabGensRef.current.get(tid) !== myGen) return
+        if (tabGensRef.current.get(tid) !== myGen) {
+          scheduled.delete(id)
+          return
+        }
 
         dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_RUNNING', id } })
 
@@ -561,13 +579,38 @@ export function NotebookPage() {
             dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
           }
         } finally {
+          scheduled.delete(id)
           if (tabGensRef.current.get(tid) === myGen) {
             dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_KERNEL_STATUS', status: 'ready' } })
           }
         }
       })
     },
-    [getRunQueue],
+    [getRunQueue, getScheduledSet],
+  )
+
+  const runCellAndAdvance = useCallback(
+    (id: CellId, cellIndex: number) => {
+      runCell(id)
+      const tid = activeTabIdRef.current
+      const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+      if (!tab || tab.kind === 'welcome') return
+      const cells = tab.notebook.cells
+      if (cellIndex < cells.length - 1) {
+        dispatch({
+          type: 'TAB_NOTEBOOK',
+          tabId: tid,
+          action: { type: 'SELECT_CELL', id: cells[cellIndex + 1]!.id },
+        })
+      } else {
+        dispatch({
+          type: 'TAB_NOTEBOOK',
+          tabId: tid,
+          action: { type: 'ADD_CELL', afterId: id, cellType: 'code' },
+        })
+      }
+    },
+    [runCell],
   )
 
   const runAll = useCallback(() => {
@@ -592,6 +635,9 @@ export function NotebookPage() {
     if (tab0?.kind === 'welcome') return
     const prevGen = tabGensRef.current.get(tid) ?? 0
     tabGensRef.current.set(tid, prevGen + 1)
+
+    tabScheduledIdsRef.current.get(tid)?.clear()
+    dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'CLEAR_ALL_PENDING' } })
 
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
     const runningId = tab?.notebook.cells.find(
@@ -626,7 +672,11 @@ export function NotebookPage() {
     if (!state) return false
     if (state.kernelStatus === 'loading' || state.kernelStatus === 'error') return false
     if (state.kernelStatus === 'busy') return true
-    return state.cells.some((c) => c.cell_type === 'code' && c.execution_state === 'running')
+    return state.cells.some(
+      (c) =>
+        c.cell_type === 'code' &&
+        (c.execution_state === 'running' || c.execution_state === 'pending'),
+    )
   }, [state, activeTab])
 
   const handleDownload = useCallback(() => {
@@ -1030,7 +1080,7 @@ export function NotebookPage() {
                           cells={state.cells}
                           selectedId={state.selectedId}
                           dispatch={dispatchNotebook}
-                          onRun={runCell}
+                          onRunAndAdvance={runCellAndAdvance}
                           theme={theme}
                           completeCode={completeCode}
                         />
