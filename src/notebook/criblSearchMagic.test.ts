@@ -16,6 +16,7 @@ describe('parseCriblSearchMagic', () => {
     if (r.kind !== 'cribl_search') return
     expect(r.value.varName).toBe('results_df')
     expect(r.value.preview).toBe(true)
+    expect(r.value.lang).toBe('kql')
     expect(r.value.limit).toBe(0)
     expect(r.value.query).toBe('dataset=x | limit 1')
   })
@@ -28,7 +29,31 @@ describe('parseCriblSearchMagic', () => {
     if (r.kind !== 'cribl_search') return
     expect(r.value.varName).toBe('df')
     expect(r.value.preview).toBe(false)
+    expect(r.value.lang).toBe('kql')
     expect(r.value.query).toBe('dataset=cribl_search_sample | limit 100')
+  })
+
+  it('parses lang=english', () => {
+    const r = parseCriblSearchMagic('%%cribl_search lang=english\nshow me the latest logs\n')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.lang).toBe('english')
+  })
+
+  it('parses dataset hint from magic header', () => {
+    const r = parseCriblSearchMagic(
+      '%%cribl_search lang=english dataset=cribl_search_sample\nshow me recent records\n',
+    )
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.dataset).toBe('cribl_search_sample')
+  })
+
+  it('normalizes lang=kusto to kql', () => {
+    const r = parseCriblSearchMagic('%%cribl_search lang=kusto\ndataset=x | limit 1\n')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.lang).toBe('kql')
   })
 
   it('parses earliest and latest for the search API', () => {
@@ -70,6 +95,12 @@ describe('parseCriblSearchMagic', () => {
     const r = parseCriblSearchMagic('%%cribl_search limit=12.5\nq\n')
     expect(r.kind).toBe('error')
     if (r.kind === 'error') expect(r.message).toMatch(/limit must be a non-negative integer/i)
+  })
+
+  it('errors on invalid lang value', () => {
+    const r = parseCriblSearchMagic('%%cribl_search lang=spl\nq\n')
+    expect(r.kind).toBe('error')
+    if (r.kind === 'error') expect(r.message).toMatch(/lang must be one of kql, kusto, english/i)
   })
 })
 

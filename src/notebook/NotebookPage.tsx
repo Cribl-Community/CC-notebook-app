@@ -38,6 +38,8 @@ import {
 } from './criblSearchMagic'
 import { filterPyodidePackageChatter } from './criblSearchStreamFilter'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '../cribl/searchJobs'
+import { translateEnglishToKql } from '../cribl/aiTranslate'
+import { getCriblApiBase } from '../cribl/kvstore'
 import {
   CRIBL_SEARCH_MIME,
   type CriblSearchPayload,
@@ -77,6 +79,32 @@ function criblSearchIOPub(
     metadata: {},
     transient: { display_id },
   }
+}
+
+function formatCriblSearchError(raw: string, generatedQuery?: string): string {
+  const msg = raw.trim()
+  if (/Search job create failed \(400\)/i.test(msg) && /no viable alternative/i.test(msg)) {
+    const parts = [
+      'Generated KQL is invalid for Cribl Search (parser error).',
+      'Try refining the English prompt, include `dataset=...` in the magic header, or run with `lang=kql`.',
+    ]
+    if (generatedQuery && generatedQuery.trim().length > 0) {
+      parts.push(`Generated KQL:\n${generatedQuery}`)
+    }
+    return parts.join('\n\n')
+  }
+  if (/AI translation/i.test(msg) || /did not return a valid KQL/i.test(msg)) {
+    const parts = ['Natural-language to KQL translation failed.']
+    if (generatedQuery && generatedQuery.trim().length > 0) {
+      parts.push(`Generated KQL candidate:\n${generatedQuery}`)
+    }
+    parts.push(msg)
+    return parts.join('\n\n')
+  }
+  if (generatedQuery && generatedQuery.trim().length > 0) {
+    return `${msg}\n\nGenerated KQL:\n${generatedQuery}`
+  }
+  return msg
 }
 
 type DialogState =
@@ -364,8 +392,9 @@ export function NotebookPage() {
           }
 
           if (magic.kind === 'cribl_search') {
-            const { varName, query, preview, earliest, latest, limit } = magic.value
+            const { varName, query, preview, earliest, latest, limit, lang, dataset } = magic.value
             const displayId = `cribl-search-${id}`
+            let generatedKqlForReport: string | undefined
             try {
               emitIOPub(
                 criblSearchIOPub(
@@ -375,8 +404,40 @@ export function NotebookPage() {
                 ),
               )
 
+              let searchQuery = query
+              if (lang === 'english') {
+                if (!getCriblApiBase()) {
+                  emitIOPub(
+                    criblSearchIOPub(
+                      {
+                        kind: 'running',
+                        progress: 0.14,
+                        label: 'Local dev mode: skipping AI translation (using query as-is)…',
+                      },
+                      displayId,
+                      true,
+                    ),
+                  )
+                } else {
+                  emitIOPub(
+                    criblSearchIOPub(
+                      { kind: 'running', progress: 0.14, label: 'Translating query to KQL…' },
+                      displayId,
+                      true,
+                    ),
+                  )
+                  searchQuery = await translateEnglishToKql(query, { datasetHint: dataset })
+                  generatedKqlForReport = searchQuery
+                  emitIOPub({
+                    msg_type: 'stream',
+                    name: 'stdout',
+                    text: `Generated KQL:\n${searchQuery}\n`,
+                  })
+                }
+              }
+
               const { rows, columns, totalRecords } = await runCriblSearchJob({
-                query,
+                query: searchQuery,
                 maxRows: limit,
                 earliest,
                 latest,
@@ -440,10 +501,11 @@ export function NotebookPage() {
               }
             } catch (e) {
               const errMsg = e instanceof Error ? e.message : String(e)
+              const pretty = formatCriblSearchError(errMsg, lang === 'english' ? generatedKqlForReport : undefined)
               if (tabGensRef.current.get(tid) === myGen) {
                 emitIOPub(
                   criblSearchIOPub(
-                    { kind: 'failed', message: errMsg },
+                    { kind: 'failed', message: pretty },
                     displayId,
                     true,
                   ),

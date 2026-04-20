@@ -11,4 +11,10 @@ describe('config/proxies.yml', () => {
     const yml = readFileSync(join(repoRoot, 'config', 'proxies.yml'), 'utf8')
     expect(yml).toContain(`/pyodide/v${PYODIDE_RELEASE}/`)
   })
+
+  it('does not require external Cribl AI hosts', () => {
+    const yml = readFileSync(join(repoRoot, 'config', 'proxies.yml'), 'utf8')
+    expect(yml).not.toContain('ai.cribl.cloud:')
+    expect(yml).not.toContain('ai.cribl-staging.cloud:')
+  })
 })

@@ -15,6 +15,12 @@ export type ProxySmokeCheckDef = {
    * PyPI project JSON at run time so the probe does not depend on a fixed path.
    */
   url?: string
+  /**
+   * When true, any HTTP response counts as "host reachable through proxy"
+   * (still fails on DNS/network/timeout). Useful for endpoints that may return
+   * 4xx to anonymous probes.
+   */
+  acceptHttpErrors?: boolean
 }
 
 export function getProxySmokeCheckDefinitions(): ProxySmokeCheckDef[] {
@@ -94,7 +100,7 @@ export async function runProxySmokeTests(
         })
         const ms = Math.round(performance.now() - t0)
         globalThis.clearTimeout(timer)
-        if (r.ok) {
+        if (r.ok || def.acceptHttpErrors) {
           onRow({ def, status: 'ok', httpStatus: r.status, ms })
         } else {
           onRow({
