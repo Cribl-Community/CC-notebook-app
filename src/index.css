@@ -1,45 +1,81 @@
 /*
- * Color tokens align with JupyterLab default themes:
- * packages/theme-dark-extension/style/variables.css
- * packages/theme-light-extension/style/variables.css
+ * App chrome aligns with Cribl UI: cool grays, white surfaces, teal accent, blue links.
+ * Code cells: `--nb-cm-*` + `--mono` stay editor-styled (Jupyter-like).
  */
 
 :root {
   --mono: menlo, consolas, 'DejaVu Sans Mono', 'Cascadia Code', 'Courier New', monospace;
-  --nb-ui-font: system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', helvetica, arial, sans-serif;
+  --nb-ui-font: 'Inter', system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', helvetica, arial, sans-serif;
+
+  /* 4px spacing grid */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+
+  /* Fluid UI type scale (app chrome only; code cells use fixed px + mono) */
+  --nb-text-ui-xs: clamp(0.6875rem, 0.65rem + 0.15vw, 0.75rem);
+  --nb-text-ui-sm: clamp(0.75rem, 0.7rem + 0.2vw, 0.8125rem);
+  --nb-text-ui-md: clamp(0.8125rem, 0.75rem + 0.25vw, 0.875rem);
+  --nb-text-ui-lg: clamp(0.9375rem, 0.85rem + 0.35vw, 1rem);
+  --nb-text-ui-xl: clamp(1.125rem, 1rem + 0.5vw, 1.375rem);
+  --nb-text-ui-2xl: clamp(1.5rem, 1.25rem + 0.9vw, 1.75rem);
+
+  /* Elevation (cool neutrals) */
+  --nb-shadow-elev-1: 0 1px 2px rgba(17, 24, 39, 0.06), 0 1px 3px rgba(17, 24, 39, 0.08);
+  --nb-shadow-elev-2: 0 4px 12px rgba(17, 24, 39, 0.08), 0 2px 4px rgba(17, 24, 39, 0.06);
+  --nb-shadow-elev-3: 0 12px 40px rgba(17, 24, 39, 0.12), 0 4px 12px rgba(17, 24, 39, 0.08);
+  --nb-shadow-frame: 0 0 0 1px #e5e7eb, 0 0 48px rgba(17, 24, 39, 0.12);
+
   /* Cell column width cap (toolbar uses full editor width separately) */
   --nb-page-max-width: 100%;
-  --nb-cell-padding-inline: 6px;
+  --nb-cell-padding-inline: var(--space-2);
 
-  /* Layout & surfaces (dark: --jp-layout-color0/1, toolbar, cell editor) */
-  --nb-bg: #111111;
-  --nb-bg-tab-bar: #212121;
-  --nb-bg-toolbar: #212121;
-  --nb-bg-cell: #212121;
-  --nb-bg-cell-alt: #424242;
-  --nb-bg-hover: #424242;
-  --nb-text: rgba(255, 255, 255, 0.87);
-  --nb-text-heading: rgba(255, 255, 255, 1);
-  --nb-text-muted: rgba(255, 255, 255, 0.54);
-  --nb-text-dim: rgba(255, 255, 255, 0.38);
-  --nb-border: #616161;
-  --nb-border-hover: #757575;
-  --nb-border-cell: #616161;
-  --nb-border-dashed: #757575;
-  --nb-placeholder: rgba(255, 255, 255, 0.38);
+  /* Dark theme — cool slate (companion to Cribl light) */
+  --nb-bg: #111827;
+  --nb-bg-tab-bar: #1f2937;
+  --nb-bg-toolbar: #1f2937;
+  --nb-bg-cell: #1f2937;
+  --nb-bg-cell-alt: #374151;
+  --nb-bg-hover: #4b5563;
+  --nb-text: #f3f4f6;
+  --nb-text-heading: #f9fafb;
+  --nb-text-muted: #9ca3af;
+  --nb-text-dim: #6b7280;
+  --nb-border: #374151;
+  --nb-border-hover: #4b5563;
+  --nb-border-cell: #4b5563;
+  --nb-border-dashed: #6b7280;
+  --nb-placeholder: #9ca3af;
 
-  --nb-brand: #2196f3;
-  --nb-brand-focus: rgba(33, 150, 243, 0.24);
-  --nb-cell-prompt: #307fc1;
-  --nb-success: #4caf50;
-  --nb-warn: #ff9800;
-  --nb-error: #f44336;
-  --nb-error-muted: #e57373;
-  --nb-error-bg: rgba(244, 67, 54, 0.28);
-  --nb-error-border: rgba(244, 67, 54, 0.45);
-  --nb-link: #64b5f6;
-  --nb-link-visited: #ba68c8;
-  --nb-md-accent: #ba68c8;
+  /* Teal accent (Cribl brand); primary CTAs */
+  --nb-accent: #2dd4bf;
+  --nb-accent-focus: rgba(45, 212, 191, 0.22);
+  --nb-brand: var(--nb-accent);
+  --nb-brand-focus: var(--nb-accent-focus);
+
+  --nb-focus-ring: rgba(45, 212, 191, 0.35);
+  --nb-list-selection-bg: rgba(45, 212, 191, 0.12);
+  --nb-list-selection-ring: rgba(45, 212, 191, 0.35);
+
+  /* Code editor caret / selection (not app accent) */
+  --nb-code-caret: #93c5fd;
+  --nb-code-selection-bg: rgba(96, 165, 250, 0.2);
+
+  --nb-cell-prompt: #5eead4;
+  --nb-success: #34d399;
+  --nb-warn: #fbbf24;
+  --nb-error: #f87171;
+  --nb-error-muted: #fca5a5;
+  --nb-error-bg: rgba(248, 113, 113, 0.15);
+  --nb-error-border: rgba(248, 113, 113, 0.4);
+  --nb-link: #60a5fa;
+  --nb-link-visited: #a78bfa;
+  --nb-md-accent: #2dd4bf;
 
   /* CodeMirror / Jupyter mirror-editor (dark) */
   --nb-cm-keyword-strong: #6ebf6e;
@@ -76,34 +112,51 @@
 }
 
 [data-theme='light'] {
-  --nb-bg: #eeeeee;
-  --nb-bg-tab-bar: #ffffff;
-  --nb-bg-toolbar: #ffffff;
-  --nb-bg-cell: #ffffff;
-  --nb-bg-cell-alt: #f5f5f5;
-  --nb-bg-hover: #e0e0e0;
-  --nb-text: rgba(0, 0, 0, 0.87);
-  --nb-text-heading: rgba(0, 0, 0, 0.87);
-  --nb-text-muted: rgba(0, 0, 0, 0.54);
-  --nb-text-dim: rgba(0, 0, 0, 0.38);
-  --nb-border: #bdbdbd;
-  --nb-border-hover: #9e9e9e;
-  --nb-border-cell: #e0e0e0;
-  --nb-border-dashed: #bdbdbd;
-  --nb-placeholder: rgba(0, 0, 0, 0.38);
+  --nb-shadow-elev-1: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 3px rgba(17, 24, 39, 0.06);
+  --nb-shadow-elev-2: 0 4px 16px rgba(17, 24, 39, 0.06), 0 2px 6px rgba(17, 24, 39, 0.04);
+  --nb-shadow-elev-3: 0 12px 40px rgba(17, 24, 39, 0.08), 0 4px 12px rgba(17, 24, 39, 0.05);
+  --nb-shadow-frame: 0 0 0 1px #e5e7eb, 0 0 40px rgba(17, 24, 39, 0.06);
 
-  --nb-brand: #1976d2;
-  --nb-brand-focus: rgba(25, 118, 210, 0.35);
-  --nb-cell-prompt: #307fc1;
-  --nb-success: #388e3c;
-  --nb-warn: #f57c00;
-  --nb-error: #d32f2f;
-  --nb-error-muted: #e57373;
-  --nb-error-bg: #fdd;
-  --nb-error-border: rgba(211, 47, 47, 0.45);
-  --nb-link: #0d47a1;
-  --nb-link-visited: #7b1fa2;
-  --nb-md-accent: #7b1fa2;
+  /* Cribl light: cool grays, white content, sidebar-style canvas */
+  --nb-bg: #f4f6f8;
+  --nb-bg-tab-bar: #f4f6f8;
+  --nb-bg-toolbar: #f4f6f8;
+  --nb-bg-cell: #ffffff;
+  --nb-bg-cell-alt: #f9fafb;
+  --nb-bg-hover: #e5e7eb;
+  --nb-text: #111827;
+  --nb-text-heading: #111827;
+  --nb-text-muted: #6b7280;
+  --nb-text-dim: #9ca3af;
+  --nb-border: #e5e7eb;
+  --nb-border-hover: #d1d5db;
+  --nb-border-cell: #e5e7eb;
+  --nb-border-dashed: #d1d5db;
+  --nb-placeholder: #9ca3af;
+
+  /* Teal primary (active nav / brand); blue for body links */
+  --nb-accent: #007a7a;
+  --nb-accent-focus: rgba(0, 122, 122, 0.2);
+  --nb-brand: var(--nb-accent);
+  --nb-brand-focus: var(--nb-accent-focus);
+
+  --nb-focus-ring: rgba(0, 122, 122, 0.25);
+  --nb-list-selection-bg: #d1f2f2;
+  --nb-list-selection-ring: rgba(0, 122, 122, 0.35);
+
+  --nb-code-caret: #0b57d0;
+  --nb-code-selection-bg: rgba(0, 123, 255, 0.12);
+
+  --nb-cell-prompt: #007a7a;
+  --nb-success: #059669;
+  --nb-warn: #d97706;
+  --nb-error: #dc2626;
+  --nb-error-muted: #ef4444;
+  --nb-error-bg: rgba(220, 38, 38, 0.08);
+  --nb-error-border: rgba(220, 38, 38, 0.25);
+  --nb-link: #007bff;
+  --nb-link-visited: #6f42c1;
+  --nb-md-accent: #007a7a;
 
   /* CodeMirror / Jupyter mirror-editor (light) */
   --nb-cm-keyword-strong: #008000;
@@ -156,6 +209,7 @@ body {
   flex-direction: column;
   align-items: stretch;
   box-sizing: border-box;
+  padding: var(--space-4);
 }
 
 /* ─── Notebook layout ──────────────────────────────────────────── */
@@ -167,14 +221,14 @@ body {
   flex-direction: column;
   width: min(100%, 1420px);
   margin-inline: auto;
-  border-left: 1px solid var(--nb-border);
-  border-right: 1px solid var(--nb-border);
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.2);
+  border: none;
+  box-shadow: var(--nb-shadow-frame);
   overflow: hidden;
+  border-radius: var(--space-2);
 }
 
 [data-theme='light'] .nb-app-frame {
-  box-shadow: 0 0 32px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--nb-shadow-frame);
 }
 
 .nb-page {
@@ -226,14 +280,14 @@ body {
   width: min(100%, 400px);
   max-height: min(90svh, 480px);
   overflow: auto;
-  padding: 16px 18px;
-  border-radius: 6px;
-  border: 1px solid var(--nb-border);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--space-2);
+  border: none;
   background: var(--nb-bg-toolbar);
   color: var(--nb-text);
   font-family: var(--nb-ui-font);
-  font-size: 13px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  font-size: var(--nb-text-ui-md);
+  box-shadow: var(--nb-shadow-elev-3);
 }
 
 .nb-dialog-title {
@@ -279,8 +333,9 @@ body {
 }
 
 .nb-dialog-input:focus {
-  outline: 2px solid var(--nb-brand-focus);
+  outline: 2px solid var(--nb-focus-ring);
   outline-offset: 0;
+  box-shadow: var(--nb-shadow-elev-1);
 }
 
 .nb-dialog-actions {
@@ -349,20 +404,20 @@ body {
   display: flex;
   align-items: stretch;
   max-width: 220px;
-  border: 1px solid transparent;
-  border-top: 2px solid transparent;
+  border: none;
   border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-radius: var(--space-2) var(--space-2) 0 0;
   background: color-mix(in srgb, var(--nb-bg) 55%, var(--nb-bg-tab-bar));
+  box-shadow: none;
 }
 
 .nb-tab--active {
   background: var(--nb-bg-cell);
-  border-color: var(--nb-border);
-  border-top-color: var(--nb-brand);
+  border: none;
   border-bottom-color: var(--nb-bg-cell);
   margin-bottom: -1px;
   z-index: 1;
+  box-shadow: var(--nb-shadow-elev-2);
 }
 
 .nb-tab-select {
@@ -543,7 +598,7 @@ body {
   border: none;
   border-radius: 2px;
   background: transparent;
-  color: var(--nb-brand);
+  color: var(--nb-text-heading);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -615,8 +670,8 @@ body {
 }
 
 .nb-btn-sidebar--sel {
-  outline: 1px solid var(--nb-brand);
-  background: var(--nb-brand-focus);
+  outline: 1px solid var(--nb-list-selection-ring);
+  background: var(--nb-list-selection-bg);
 }
 
 .nb-sidebar-help {
@@ -660,8 +715,9 @@ body {
 }
 
 .nb-sidebar-row--active-nb.nb-sidebar-row--selected {
-  outline: 1px solid var(--nb-brand);
+  outline: 1px solid var(--nb-list-selection-ring);
   outline-offset: -1px;
+  box-shadow: var(--nb-shadow-elev-1);
 }
 
 .nb-sidebar-chevron {
@@ -801,8 +857,9 @@ body {
 }
 
 .nb-toolbar-title-input:focus {
-  border-color: var(--nb-brand);
-  box-shadow: 0 0 0 1px var(--nb-brand-focus);
+  border-color: var(--nb-border-hover);
+  box-shadow: var(--nb-shadow-elev-1);
+  outline: none;
 }
 
 .nb-toolbar-dirty {
@@ -814,13 +871,15 @@ body {
 }
 
 .nb-btn-primary {
-  background: var(--nb-brand);
+  background: var(--nb-accent);
   color: #fff;
   border-color: transparent;
+  box-shadow: var(--nb-shadow-elev-1);
 }
 
 .nb-btn-primary:hover:not(:disabled) {
-  filter: brightness(1.08);
+  filter: brightness(1.06);
+  box-shadow: var(--nb-shadow-elev-2);
 }
 
 .nb-btn-primary:disabled {
@@ -897,11 +956,13 @@ body {
 }
 
 .nb-cell--selected {
-  border-color: var(--nb-brand);
+  border-color: var(--nb-border-cell);
+  box-shadow: var(--nb-shadow-elev-2);
 }
 
 .nb-cell:not(.nb-cell--selected):hover {
   border-color: var(--nb-border-cell);
+  box-shadow: var(--nb-shadow-elev-1);
 }
 
 .nb-cell-gutter {
@@ -961,7 +1022,7 @@ body {
   resize: none;
   min-height: 40px;
   tab-size: 4;
-  caret-color: var(--nb-brand);
+  caret-color: var(--nb-code-caret);
 }
 
 .nb-cell-editor::placeholder {
@@ -1014,10 +1075,10 @@ body {
 
 /* Jupyter-style completion tooltip (CodeMirror) */
 .cm-tooltip.cm-tooltip-autocomplete {
-  border: 1px solid var(--nb-border);
-  border-radius: 4px;
+  border: none;
+  border-radius: var(--space-2);
   background: var(--nb-bg-cell);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--nb-shadow-elev-3);
   max-height: 240px;
 }
 
@@ -1034,7 +1095,7 @@ body {
 }
 
 .cm-tooltip.cm-tooltip-autocomplete li[aria-selected] {
-  background: var(--nb-brand-focus);
+  background: var(--nb-list-selection-bg);
 }
 
 .cm-completionIcon {
@@ -1223,18 +1284,20 @@ body {
 .nb-add-between-btn {
   background: transparent;
   border: 1px dashed var(--nb-border-dashed);
-  border-radius: 4px;
-  color: var(--nb-brand);
+  border-radius: var(--space-2);
+  color: var(--nb-text-muted);
   cursor: pointer;
   font-size: 14px;
   padding: 0 24px;
   line-height: 14px;
-  transition: background 0.1s, border-color 0.1s;
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
 }
 
 .nb-add-between-btn:hover {
-  background: var(--nb-brand-focus);
-  border-color: var(--nb-brand);
+  background: var(--nb-bg-hover);
+  border-color: var(--nb-border-hover);
+  color: var(--nb-text);
+  box-shadow: var(--nb-shadow-elev-1);
 }
 
 /* ─── Shared button styles ─────────────────────────────────────── */
@@ -1364,11 +1427,10 @@ body {
 /* ─── Markdown rendered output ─────────────────────────────────── */
 
 .nb-md-rendered {
-  padding: 10px 16px 12px;
+  padding: var(--space-3) var(--space-4) var(--space-3);
   color: var(--nb-text);
-  font-family: system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', helvetica, arial,
-    sans-serif;
-  font-size: 14px;
+  font-family: var(--nb-ui-font);
+  font-size: var(--nb-text-ui-md);
   line-height: 1.7;
 }
 
@@ -1453,10 +1515,11 @@ body {
 }
 
 .nb-md-rendered blockquote {
-  border-left: 3px solid var(--nb-brand);
+  border-left: 3px solid var(--nb-border-cell);
   margin: 0.75em 0;
   padding: 4px 0 4px 14px;
   color: var(--nb-text-muted);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
 }
 
 .nb-md-rendered hr {
@@ -1550,7 +1613,11 @@ body {
 
 .nb-cribl-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--nb-brand), color-mix(in srgb, var(--nb-brand) 70%, var(--nb-success)));
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--nb-text-heading) 35%, var(--nb-bg-cell-alt)),
+    color-mix(in srgb, var(--nb-text-muted) 45%, var(--nb-bg-cell))
+  );
   border-radius: 2px;
   transition: width 0.2s ease;
 }
@@ -1651,7 +1718,7 @@ body {
 .nb-cribl-table thead th {
   text-align: left;
   padding: 6px 8px;
-  background: color-mix(in srgb, var(--nb-brand) 12%, var(--nb-bg-cell));
+  background: color-mix(in srgb, var(--nb-text-heading) 6%, var(--nb-bg-cell-alt));
   border-bottom: 1px solid var(--nb-border-cell);
   color: var(--nb-text-heading);
   font-weight: 600;
@@ -1756,11 +1823,12 @@ body {
   width: 16px;
   height: 16px;
   border-radius: 3px;
-  background: var(--nb-brand);
-  color: var(--nb-bg-toolbar);
+  background: var(--nb-bg-hover);
+  color: var(--nb-text-heading);
   font-size: 9px;
   font-weight: 700;
   flex-shrink: 0;
+  box-shadow: var(--nb-shadow-elev-1);
 }
 
 /* Welcome tab (landing) */
@@ -1773,31 +1841,31 @@ body {
 }
 
 .nb-welcome-hero {
-  padding: 28px 24px 32px;
-  margin: 0 -8px 28px;
-  border-radius: 12px;
+  padding: var(--space-7) var(--space-6) var(--space-8);
+  margin: 0 calc(-1 * var(--space-2)) var(--space-7);
+  border-radius: var(--space-3);
   background: linear-gradient(
     135deg,
-    color-mix(in srgb, var(--nb-brand) 18%, var(--nb-bg-cell)) 0%,
-    color-mix(in srgb, var(--nb-brand) 6%, var(--nb-bg-cell)) 50%,
-    var(--nb-bg-cell) 100%
+    color-mix(in srgb, var(--nb-bg-cell-alt) 92%, var(--nb-text-heading)) 0%,
+    var(--nb-bg-cell) 55%,
+    var(--nb-bg-cell-alt) 100%
   );
-  border: 1px solid var(--nb-border-cell);
-  box-shadow: 0 12px 40px color-mix(in srgb, var(--nb-bg) 65%, transparent);
+  border: none;
+  box-shadow: var(--nb-shadow-elev-2);
 }
 
 .nb-welcome-kicker {
-  margin: 0 0 8px;
-  font-size: 11px;
+  margin: 0 0 var(--space-2);
+  font-size: var(--nb-text-ui-xs);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--nb-brand);
+  color: var(--nb-text-muted);
   font-weight: 600;
 }
 
 .nb-welcome-title {
-  margin: 0 0 12px;
-  font-size: 28px;
+  margin: 0 0 var(--space-3);
+  font-size: var(--nb-text-ui-2xl);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--nb-text-heading);
@@ -1865,23 +1933,23 @@ body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 6px;
-  padding: 16px 18px;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4);
   text-align: left;
-  border-radius: 8px;
-  border: 1px solid var(--nb-border-cell);
+  border-radius: var(--space-2);
+  border: none;
   background: var(--nb-bg-cell);
   color: inherit;
   cursor: pointer;
+  box-shadow: var(--nb-shadow-elev-1);
   transition:
-    border-color 0.15s ease,
     box-shadow 0.15s ease,
     transform 0.12s ease;
 }
 
 .nb-welcome-card:hover {
-  border-color: var(--nb-brand);
-  box-shadow: 0 4px 16px color-mix(in srgb, var(--nb-bg) 50%, transparent);
+  border-color: transparent;
+  box-shadow: var(--nb-shadow-elev-2);
   transform: translateY(-1px);
 }
 
@@ -1902,10 +1970,11 @@ body {
 }
 
 .nb-welcome-release-latest {
-  padding: 16px 18px;
-  border-radius: 8px;
-  border: 1px solid var(--nb-border-cell);
+  padding: var(--space-4) var(--space-4);
+  border-radius: var(--space-2);
+  border: none;
   background: var(--nb-bg-cell);
+  box-shadow: var(--nb-shadow-elev-1);
 }
 
 .nb-welcome-release-head {
@@ -1919,7 +1988,7 @@ body {
   font-family: var(--mono);
   font-size: 13px;
   font-weight: 600;
-  color: var(--nb-brand);
+  color: var(--nb-text-heading);
 }
 
 .nb-welcome-date {

@@ -99,14 +99,14 @@ export function createPythonCellExtensions(options: {
       },
       '.cm-content': {
         padding: '8px 12px',
-        caretColor: 'var(--nb-brand)',
+        caretColor: 'var(--nb-code-caret)',
         color: 'var(--nb-text)',
       },
       '.cm-cursor, .cm-dropCursor': {
-        borderLeftColor: 'var(--nb-brand) !important',
+        borderLeftColor: 'var(--nb-code-caret) !important',
       },
       '.cm-selectionBackground, ::selection': {
-        backgroundColor: 'var(--nb-brand-focus) !important',
+        backgroundColor: 'var(--nb-code-selection-bg) !important',
       },
       '.cm-activeLine': {
         backgroundColor: 'transparent',
