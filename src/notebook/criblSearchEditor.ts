@@ -363,6 +363,7 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
     /^preview=.+/u.test(lastTok) ||
     /^limit=.+/u.test(lastTok) ||
     /^lang=.+/u.test(lastTok) ||
+    /^dataset=.+/u.test(lastTok) ||
     /^earliest=.+/u.test(lastTok) ||
     /^latest=.+/u.test(lastTok)
   ) {
@@ -396,11 +397,16 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
     partial === '' ||
     'lang='.startsWith(partial) ||
     (partial.length > 0 && 'lang'.startsWith(partial))
+  const wantDataset =
+    partial === '' ||
+    'dataset='.startsWith(partial) ||
+    (partial.length > 0 && 'dataset'.startsWith(partial))
 
   if (wantVar) paramCandidates.push({ label: 'var=', type: 'property' })
   if (wantPreview) paramCandidates.push({ label: 'preview=', type: 'property' })
   if (wantLimit) paramCandidates.push({ label: 'limit=', type: 'property' })
   if (wantLang) paramCandidates.push({ label: 'lang=', type: 'property' })
+  if (wantDataset) paramCandidates.push({ label: 'dataset=', type: 'property' })
   if (wantEarliest) paramCandidates.push({ label: 'earliest=', type: 'property' })
   if (wantLatest) paramCandidates.push({ label: 'latest=', type: 'property' })
 

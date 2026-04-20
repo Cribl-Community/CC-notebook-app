@@ -34,6 +34,7 @@ const cribl = {
         '- **`preview=true|false`** — Show the interactive result table in the cell output (default `true`).\n',
         '- **`limit=N`** — Max rows to load into the DataFrame (`0` = all rows returned).\n',
         '- **`lang=kql|kusto|english`** — Query mode (`english` translates to KQL before search).\n',
+        '- **`dataset=name`** — Optional dataset hint for `lang=english` translations.\n',
         '- **`earliest=` / `latest=`** — Time window passed to the Search API (defaults apply if omitted).\n',
       ].join(''),
     },
@@ -43,7 +44,7 @@ const cribl = {
       execution_count: null,
       outputs: [],
       source: [
-        '%%cribl_search var=recent_df lang=english preview=true limit=2000\n',
+        '%%cribl_search var=recent_df lang=english dataset=cribl_search_sample preview=true limit=2000\n',
         'Show the 2000 most recent entries from dataset=cribl_search_sample sorted newest first.\n',
       ].join(''),
     },

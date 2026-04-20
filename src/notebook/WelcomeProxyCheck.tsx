@@ -34,8 +34,7 @@ export function WelcomeProxyCheck() {
         Quick checks against each host in <code className="nb-welcome-code">config/proxies.yml</code> (the
         pythonhosted probe picks a wheel URL from PyPI pip metadata, then GETs that file). In Cribl
         Apps, <code className="nb-welcome-code">fetch</code> is routed through the pack proxy; all checks
-        should report OK when proxy routing and allowlists are working. The AI probe treats any HTTP
-        response as reachable (it may return 4xx without auth).
+        should report OK when proxy routing and allowlists are working.
       </p>
       <div className="nb-welcome-proxy-actions">
         <button

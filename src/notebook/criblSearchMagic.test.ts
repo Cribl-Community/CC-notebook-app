@@ -40,6 +40,15 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.lang).toBe('english')
   })
 
+  it('parses dataset hint from magic header', () => {
+    const r = parseCriblSearchMagic(
+      '%%cribl_search lang=english dataset=cribl_search_sample\nshow me recent records\n',
+    )
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.dataset).toBe('cribl_search_sample')
+  })
+
   it('normalizes lang=kusto to kql', () => {
     const r = parseCriblSearchMagic('%%cribl_search lang=kusto\ndataset=x | limit 1\n')
     expect(r.kind).toBe('cribl_search')

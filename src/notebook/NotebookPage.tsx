@@ -81,6 +81,32 @@ function criblSearchIOPub(
   }
 }
 
+function formatCriblSearchError(raw: string, generatedQuery?: string): string {
+  const msg = raw.trim()
+  if (/Search job create failed \(400\)/i.test(msg) && /no viable alternative/i.test(msg)) {
+    const parts = [
+      'Generated KQL is invalid for Cribl Search (parser error).',
+      'Try refining the English prompt, include `dataset=...` in the magic header, or run with `lang=kql`.',
+    ]
+    if (generatedQuery && generatedQuery.trim().length > 0) {
+      parts.push(`Generated KQL:\n${generatedQuery}`)
+    }
+    return parts.join('\n\n')
+  }
+  if (/AI translation/i.test(msg) || /did not return a valid KQL/i.test(msg)) {
+    const parts = ['Natural-language to KQL translation failed.']
+    if (generatedQuery && generatedQuery.trim().length > 0) {
+      parts.push(`Generated KQL candidate:\n${generatedQuery}`)
+    }
+    parts.push(msg)
+    return parts.join('\n\n')
+  }
+  if (generatedQuery && generatedQuery.trim().length > 0) {
+    return `${msg}\n\nGenerated KQL:\n${generatedQuery}`
+  }
+  return msg
+}
+
 type DialogState =
   | { kind: 'alert'; message: string }
   | { kind: 'confirm'; message: string }
@@ -366,8 +392,9 @@ export function NotebookPage() {
           }
 
           if (magic.kind === 'cribl_search') {
-            const { varName, query, preview, earliest, latest, limit, lang } = magic.value
+            const { varName, query, preview, earliest, latest, limit, lang, dataset } = magic.value
             const displayId = `cribl-search-${id}`
+            let generatedKqlForReport: string | undefined
             try {
               emitIOPub(
                 criblSearchIOPub(
@@ -399,7 +426,13 @@ export function NotebookPage() {
                       true,
                     ),
                   )
-                  searchQuery = await translateEnglishToKql(query)
+                  searchQuery = await translateEnglishToKql(query, { datasetHint: dataset })
+                  generatedKqlForReport = searchQuery
+                  emitIOPub({
+                    msg_type: 'stream',
+                    name: 'stdout',
+                    text: `Generated KQL:\n${searchQuery}\n`,
+                  })
                 }
               }
 
@@ -468,10 +501,11 @@ export function NotebookPage() {
               }
             } catch (e) {
               const errMsg = e instanceof Error ? e.message : String(e)
+              const pretty = formatCriblSearchError(errMsg, lang === 'english' ? generatedKqlForReport : undefined)
               if (tabGensRef.current.get(tid) === myGen) {
                 emitIOPub(
                   criblSearchIOPub(
-                    { kind: 'failed', message: errMsg },
+                    { kind: 'failed', message: pretty },
                     displayId,
                     true,
                   ),

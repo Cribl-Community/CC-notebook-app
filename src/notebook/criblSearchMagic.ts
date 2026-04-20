@@ -1,7 +1,7 @@
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
  * First line:
- * %%cribl_search [var=name] [preview=true|false] [limit=N] [earliest=…] [latest=…] [lang=kql|kusto|english]
+ * %%cribl_search [var=name] [preview=true|false] [limit=N] [earliest=…] [latest=…] [lang=kql|kusto|english] [dataset=name]
  * Following lines: query body (KQL when `lang=kql|kusto`, natural language when `lang=english`).
  *
  * `earliest` / `latest` are passed to the Cribl Search job API (defaults in the client if omitted).
@@ -41,6 +41,8 @@ export type CriblSearchMagicOk = {
   earliest?: string
   /** Passed to search job `latest` when set (e.g. `now`). */
   latest?: string
+  /** Optional dataset hint for NL->KQL translation (e.g. `cribl_search_sample`). */
+  dataset?: string
 }
 
 export type CriblSearchMagicParse =
@@ -57,6 +59,7 @@ function parseKeyValueParams(paramLine: string):
       limit: number
       earliest?: string
       latest?: string
+      dataset?: string
     }
   | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
@@ -65,6 +68,7 @@ function parseKeyValueParams(paramLine: string):
   let limit = 0
   let earliest: string | undefined
   let latest: string | undefined
+  let dataset: string | undefined
   const tokens = paramLine.trim().split(/\s+/).filter(Boolean)
   for (const t of tokens) {
     const eq = t.indexOf('=')
@@ -75,6 +79,7 @@ function parseKeyValueParams(paramLine: string):
     if (key === 'preview') preview = val.toLowerCase() !== 'false'
     if (key === 'earliest') earliest = val
     if (key === 'latest') latest = val
+    if (key === 'dataset') dataset = val
     if (key === 'lang') {
       const l = val.toLowerCase()
       if (l === 'kql' || l === 'kusto') {
@@ -96,7 +101,7 @@ function parseKeyValueParams(paramLine: string):
       limit = n
     }
   }
-  return { ok: true, varName, preview, lang, limit, earliest, latest }
+  return { ok: true, varName, preview, lang, limit, earliest, latest, dataset }
 }
 
 /**
@@ -115,7 +120,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!parsed.ok) {
     return { kind: 'error', message: parsed.message }
   }
-  const { varName, preview, lang, limit, earliest, latest } = parsed
+  const { varName, preview, lang, limit, earliest, latest, dataset } = parsed
 
   if (!IDENT_RE.test(varName)) {
     return {
@@ -136,7 +141,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
 
   return {
     kind: 'cribl_search',
-    value: { varName, preview, lang, limit, query, earliest, latest },
+    value: { varName, preview, lang, limit, query, earliest, latest, dataset },
   }
 }
 

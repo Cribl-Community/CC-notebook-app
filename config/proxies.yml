@@ -18,17 +18,3 @@ files.pythonhosted.org:
   paths:
     allowlist:
       - /packages/
-
-ai.cribl.cloud:
-  paths:
-    allowlist:
-      - /v1/translate/kql
-      - /v1/translate
-      - /translate
-
-ai.cribl-staging.cloud:
-  paths:
-    allowlist:
-      - /v1/translate/kql
-      - /v1/translate
-      - /translate

@@ -1,6 +1,4 @@
 import { PYODIDE_RELEASE } from '../pyodide/pyodideVersion'
-import { resolveCriblAiHost } from '../cribl/aiHost'
-import { AI_TRANSLATE_PATHS } from '../cribl/aiTranslate'
 
 /**
  * Probe URLs aligned with `config/proxies.yml` allowlists. Used on the Welcome
@@ -27,7 +25,6 @@ export type ProxySmokeCheckDef = {
 
 export function getProxySmokeCheckDefinitions(): ProxySmokeCheckDef[] {
   const v = PYODIDE_RELEASE
-  const aiHost = resolveCriblAiHost()
   return [
     {
       id: 'jsdelivr',
@@ -45,13 +42,6 @@ export function getProxySmokeCheckDefinitions(): ProxySmokeCheckDef[] {
       id: 'files',
       proxyYamlHost: 'files.pythonhosted.org',
       label: 'Python hosted — wheel file (URL from PyPI metadata)',
-    },
-    {
-      id: 'ai',
-      proxyYamlHost: aiHost,
-      label: 'Cribl AI — natural language to KQL translation API',
-      url: `https://${aiHost}${AI_TRANSLATE_PATHS[0]}`,
-      acceptHttpErrors: true,
     },
   ]
 }
