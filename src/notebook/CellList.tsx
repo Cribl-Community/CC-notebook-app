@@ -11,6 +11,8 @@ interface CellListProps {
   onRunAndAdvance: (id: CellId, cellIndex: number) => void
   theme: 'dark' | 'light'
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
+  onAiGenerateCode?: (id: CellId) => void
+  aiCodeBusyCellId?: CellId | null
 }
 
 export function CellList({
@@ -20,6 +22,8 @@ export function CellList({
   onRunAndAdvance,
   theme,
   completeCode,
+  onAiGenerateCode,
+  aiCodeBusyCellId,
 }: CellListProps) {
   return (
     <div className="nb-cell-list">
@@ -38,6 +42,8 @@ export function CellList({
               onClearOutput={() => dispatch({ type: 'CLEAR_OUTPUTS', id: cell.id })}
               onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
               onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
+              onAiGenerate={onAiGenerateCode ? () => onAiGenerateCode(cell.id) : undefined}
+              aiGenerateBusy={aiCodeBusyCellId === cell.id}
             />
           ) : (
             <MarkdownCell

@@ -19,6 +19,9 @@ interface CodeCellProps {
   onMoveDown?: () => void
   /** Namespace-aware completion from the active tab's Pyodide kernel (Tab). */
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
+  /** Insert Python from a Riptide description (optional; only when AI APIs are available). */
+  onAiGenerate?: () => void
+  aiGenerateBusy?: boolean
 }
 
 function GutterLabel({ cell }: { cell: CellData }) {
@@ -41,6 +44,8 @@ export function CodeCell({
   onMoveUp,
   onMoveDown,
   completeCode,
+  onAiGenerate,
+  aiGenerateBusy = false,
 }: CodeCellProps) {
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
@@ -127,6 +132,7 @@ export function CodeCell({
   }, [])
 
   const isBusy = cell.execution_state === 'running' || cell.execution_state === 'pending'
+  const isRunning = cell.execution_state === 'running'
   const canClearOutput = cell.outputs.length > 0 || cell.execution_count !== null
 
   return (
@@ -178,11 +184,25 @@ export function CodeCell({
               e.stopPropagation()
               onClearOutput()
             }}
-            disabled={!canClearOutput || isBusy}
-            title="Clear cell output"
+            disabled={!canClearOutput || isRunning}
+            title="Clear cell output (available while queued; not while executing)"
           >
             ⌫
           </button>
+          {onAiGenerate && (
+            <button
+              type="button"
+              className="nb-btn nb-btn-ai"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAiGenerate()
+              }}
+              disabled={isBusy || aiGenerateBusy}
+              title="Generate Python from description (Riptide)"
+            >
+              AI
+            </button>
+          )}
           <button
             className="nb-btn nb-btn-delete"
             onClick={(e) => {

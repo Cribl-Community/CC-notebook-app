@@ -338,6 +338,11 @@ body {
   box-shadow: var(--nb-shadow-elev-1);
 }
 
+.nb-dialog-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
 .nb-dialog-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1341,6 +1346,19 @@ body {
   padding: 3px 6px;
   font-size: 9px;
   line-height: 1;
+}
+
+.nb-btn-ai {
+  color: var(--nb-accent);
+  border-color: color-mix(in srgb, var(--nb-accent) 40%, transparent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nb-btn-ai:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--nb-accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--nb-accent) 55%, transparent);
+  color: var(--nb-accent);
 }
 
 .nb-btn-delete {
