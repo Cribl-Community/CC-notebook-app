@@ -1,5 +1,4 @@
 import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from 'react'
-import { PyodideKernel } from '../pyodide/PyodideKernel'
 import type { CompletionItem } from '../pyodide/types'
 import { createEmptyNotebookCells } from './notebookReducer'
 import type { CellId, NotebookAction } from './types'
@@ -46,6 +45,7 @@ import {
   type CriblSearchPayload,
   type IOPubMessage,
 } from '../pyodide/types'
+import { useTabNotebookRuntime } from './useTabNotebookRuntime'
 
 function criblSearchPlainSummary(p: CriblSearchPayload): string {
   if (p.kind === 'running') return `Cribl Search: ${p.label}`
@@ -219,12 +219,6 @@ export function NotebookPage() {
     setDialog((d) => (d?.kind === 'prompt' ? { ...d, input } : d))
   }, [])
 
-  const kernelsRef = useRef<Map<string, PyodideKernel>>(new Map())
-  const tabGensRef = useRef<Map<string, number>>(new Map())
-  const tabQueuesRef = useRef<Map<string, { p: Promise<void> }>>(new Map())
-  const tabExecCountersRef = useRef<Map<string, number>>(new Map())
-  const tabScheduledIdsRef = useRef<Map<string, Set<CellId>>>(new Map())
-
   const workspaceRef = useRef(workspace)
   const activeTabIdRef = useRef(workspace.activeTabId)
   useEffect(() => {
@@ -276,73 +270,19 @@ export function NotebookPage() {
     [manifest, movingId],
   )
 
-  const getRunQueue = useCallback((tabId: string) => {
-    const m = tabQueuesRef.current
-    if (!m.has(tabId)) m.set(tabId, { p: Promise.resolve() })
-    return m.get(tabId)!
-  }, [])
-
-  const getScheduledSet = useCallback((tabId: string) => {
-    const m = tabScheduledIdsRef.current
-    if (!m.has(tabId)) m.set(tabId, new Set())
-    return m.get(tabId)!
-  }, [])
-
-  const initKernelForTab = useCallback((tabId: string) => {
-    const gen = (tabGensRef.current.get(tabId) ?? 0) + 1
-    tabGensRef.current.set(tabId, gen)
-    dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'loading' } })
-    const kernel = new PyodideKernel()
-    kernelsRef.current.set(tabId, kernel)
-    kernel.ready
-      .then(() => {
-        if (tabGensRef.current.get(tabId) === gen) {
-          dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'ready' } })
-        }
-      })
-      .catch(() => {
-        if (tabGensRef.current.get(tabId) === gen) {
-          dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'error' } })
-        }
-      })
-  }, [])
-
-  const restartKernelForTab = useCallback(
-    (tabId: string) => {
-      kernelsRef.current.get(tabId)?.dispose()
-      kernelsRef.current.delete(tabId)
-      const q = tabQueuesRef.current.get(tabId)
-      if (q) q.p = Promise.resolve()
-      tabExecCountersRef.current.set(tabId, 0)
-      tabScheduledIdsRef.current.get(tabId)?.clear()
-      dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'RESTART' } })
-      initKernelForTab(tabId)
-    },
-    [initKernelForTab],
-  )
-
   const tabIdsKey = workspace.tabs.map((t) => t.id).join(',')
 
-  useEffect(() => {
-    const tabs = workspaceRef.current.tabs
-    const ids = new Set(tabs.map((t) => t.id))
-    for (const [id, k] of [...kernelsRef.current.entries()]) {
-      if (!ids.has(id)) {
-        k.dispose()
-        kernelsRef.current.delete(id)
-        tabGensRef.current.delete(id)
-        tabQueuesRef.current.delete(id)
-        tabExecCountersRef.current.delete(id)
-        tabScheduledIdsRef.current.delete(id)
-      }
-    }
-    for (const tab of tabs) {
-      if (tab.kind === 'welcome') continue
-      if (!kernelsRef.current.has(tab.id)) {
-        initKernelForTab(tab.id)
-      }
-    }
-  }, [tabIdsKey, initKernelForTab])
+  const {
+    kernelsRef,
+    tabGensRef,
+    tabQueuesRef,
+    tabExecCountersRef,
+    tabScheduledIdsRef,
+    getRunQueue,
+    getScheduledSet,
+    initKernelForTab,
+    restartKernelForTab,
+  } = useTabNotebookRuntime(dispatch, workspaceRef, tabIdsKey)
 
   const dispatchNotebook = useCallback((action: NotebookAction) => {
     dispatch({ type: 'TAB_NOTEBOOK', tabId: activeTabIdRef.current, action })
