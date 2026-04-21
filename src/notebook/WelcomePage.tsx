@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { parseExamplesManifest } from './examplesManifest'
+import { exampleNotebookDisplayLabel, parseExamplesManifest } from './examplesManifest'
 import { RELEASE_NOTES } from './releaseNotes'
 import { notebookStaticPrefix } from './staticAssets'
 import { WelcomeProxyCheck } from './WelcomeProxyCheck'
@@ -121,7 +121,7 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
             >
               {examplesLoad.notebooks.map((filename) => (
                 <option key={filename} value={filename}>
-                  {filename}
+                  {exampleNotebookDisplayLabel(filename)}
                 </option>
               ))}
             </select>
