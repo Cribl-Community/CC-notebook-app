@@ -11,6 +11,29 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.45',
+    date: '2026-04-21',
+    highlights: [
+      'Python “Referenced code” in errors: recognize Pyodide tracebacks that use `File "<cell>", line N` (and related pseudo-filenames / IPython `Input In` lines), not only `<string>`.',
+      'When several notebook frames appear in one traceback, only the innermost frame is used for the arrow highlight so line 1 is not mistaken for the fault line.',
+    ],
+  },
+  {
+    version: '1.0.44',
+    date: '2026-04-21',
+    highlights: [
+      'Packaging: refreshed application bundle for distribution.',
+    ],
+  },
+  {
+    version: '1.0.43',
+    date: '2026-04-21',
+    highlights: [
+      'Python error output now strips ANSI noise and surfaces a compact “Referenced code” snippet from the cell using traceback line references, so failures map to the exact source line faster.',
+      'Error cards now include an optional “Suggest Fix” AI footer (Cribl runtime only) that returns a brief, dismissible debugging suggestion instead of opening modal alerts.',
+    ],
+  },
+  {
     version: '1.0.42',
     date: '2026-04-21',
     highlights: [

@@ -2,6 +2,7 @@ import { getCriblApiBase } from './kvstore'
 
 export const AI_RIPTIDE_AGENT_PATH = '/ai/q/agents/riptide' as const
 export const AI_RIPTIDE_TIMEOUT_MS = 28_000
+export const AI_RIPTIDE_FIX_TIMEOUT_MS = 20_000
 
 function randomId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -152,6 +153,92 @@ export async function generatePythonFromPrompt(
   } catch (e) {
     if (e instanceof Error && e.name === 'AbortError') {
       throw new Error(`Riptide request timed out after ${Math.round(AI_RIPTIDE_TIMEOUT_MS / 1000)}s.`)
+    }
+    throw e
+  } finally {
+    globalThis.clearTimeout(timer)
+    if (external) external.removeEventListener('abort', mergeExternalAbort)
+  }
+}
+
+/**
+ * Ask Riptide for a brief explanation and fix suggestion for a Python cell error.
+ */
+export async function suggestErrorFix(
+  cellSource: string,
+  ename: string,
+  evalue: string,
+  traceback: string[],
+  options?: { signal?: AbortSignal },
+): Promise<string> {
+  const source = cellSource.trim()
+  if (!source) throw new Error('Cell source cannot be empty.')
+  const base = getCriblApiBase() || '/api/v1'
+  const url = `${base}${AI_RIPTIDE_AGENT_PATH}`
+  const ac = new AbortController()
+  const external = options?.signal
+  const timer = globalThis.setTimeout(() => ac.abort(), AI_RIPTIDE_FIX_TIMEOUT_MS)
+
+  const mergeExternalAbort = () => ac.abort()
+  if (external) {
+    if (external.aborted) ac.abort()
+    else external.addEventListener('abort', mergeExternalAbort)
+  }
+
+  const prompt = [
+    'You are helping debug a Python notebook cell.',
+    'Explain the likely cause and the fix in plain language.',
+    'Use at most three short bullet points for prose.',
+    'Whenever you show replacement Python, put each snippet in its own fenced Markdown block using ```python ... ``` so it can be copied or pasted into the cell.',
+    'If the whole cell should be replaced, put the full replacement in a single ```python ... ``` block.',
+    '',
+    '## Cell code',
+    '```python',
+    source,
+    '```',
+    '',
+    '## Error',
+    `${ename}: ${evalue}`,
+    '',
+    '## Traceback',
+    traceback.join('\n').trim(),
+  ].join('\n')
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ id: randomId(), role: 'user', content: prompt, reqId: 0 }],
+        stream: true,
+        sessionId: randomId(),
+        context: {
+          resources: {
+            availableDatasets: [],
+            availableLookups: [],
+            externalSources: [],
+          },
+          files: {},
+        },
+        tools: [],
+      }),
+      signal: ac.signal,
+    })
+
+    const body = await res.text()
+    if (!res.ok) {
+      throw new Error(`Riptide request failed (${res.status}): ${body || res.statusText}`)
+    }
+    const text = parseRiptideNdjsonBody(body).trim()
+    if (!text) {
+      throw new Error('Riptide did not return a usable fix suggestion.')
+    }
+    return text
+  } catch (e) {
+    if (e instanceof Error && e.name === 'AbortError') {
+      throw new Error(
+        `Riptide fix suggestion timed out after ${Math.round(AI_RIPTIDE_FIX_TIMEOUT_MS / 1000)}s.`,
+      )
     }
     throw e
   } finally {

@@ -1179,6 +1179,153 @@ body {
   opacity: 0.95;
 }
 
+.nb-output-error-source {
+  margin-bottom: 6px;
+}
+
+.nb-output-error-source-label {
+  color: var(--nb-error-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: 4px;
+}
+
+.nb-output-error-source-snippet {
+  border-left: 2px solid var(--nb-error-border);
+  background: color-mix(in srgb, var(--nb-error-bg) 80%, var(--nb-bg-cell) 20%);
+  border-radius: 3px;
+  padding: 6px 8px;
+}
+
+.nb-output-error-source-line--highlighted {
+  color: var(--nb-error);
+  font-weight: 600;
+}
+
+.nb-output-error-fix-footer {
+  margin-top: 8px;
+}
+
+.nb-btn-ai-fix {
+  font-size: 12px;
+}
+
+.nb-btn-ai-fix-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: var(--nb-text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.nb-output-error-fix {
+  border: 1px solid var(--nb-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+  background: var(--nb-bg-cell-alt);
+}
+
+.nb-output-error-fix-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--nb-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.nb-output-error-fix-body {
+  margin-top: 4px;
+  color: var(--nb-text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.nb-output-error-fix-text {
+  margin-top: 4px;
+  white-space: pre-wrap;
+}
+
+.nb-output-error-fix-text:first-child,
+.nb-output-error-fix-code:first-child {
+  margin-top: 0;
+}
+
+.nb-output-error-fix-text--raw {
+  color: var(--nb-text-muted);
+}
+
+.nb-output-error-fix-code {
+  margin-top: 8px;
+  border: 1px solid var(--nb-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--nb-bg-cell);
+}
+
+.nb-output-error-fix-code-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--nb-border);
+  background: var(--nb-bg-cell-alt);
+}
+
+.nb-output-error-fix-code-lang {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--nb-text-muted);
+  text-transform: lowercase;
+}
+
+.nb-output-error-fix-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.nb-output-error-fix-code-btn {
+  font-size: 11px;
+  padding: 2px 8px;
+  min-height: 0;
+}
+
+.nb-output-error-fix-code-btn--primary {
+  border-color: var(--nb-accent, var(--nb-border));
+}
+
+.nb-output-error-fix-code-pre {
+  margin: 0;
+  max-height: 220px;
+  overflow: auto;
+  padding: 6px 8px;
+  font-size: 12px;
+  background: var(--nb-bg-cell);
+}
+
+.nb-output-error-fix-dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--nb-text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 0;
+}
+
+.nb-output-error-fix-error {
+  margin-top: 6px;
+  color: var(--nb-error-muted);
+  font-size: 12px;
+}
+
 /* ─── MIME bundle renderers (display_data / execute_result) ────── */
 
 .nb-mime-html,
