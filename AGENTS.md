@@ -1,5 +1,10 @@
 # Cribl App Platform Developer Guide
 
+## Git workflow (agents & humans)
+
+- **Branch before implementing:** create a feature branch from the current `main` (or `origin/main`) before writing code or committing (`git checkout -b feature/...`). Do not stack feature work directly on `main`.
+- **Integrate via PR:** merge completed work through a pull request into `main`, then keep local `main` aligned with `origin/main` after merge.
+
 ## Global Variables
 
 The following are set on `window` automatically when your app runs inside Cribl. They are read-only and always present.
