@@ -39,6 +39,7 @@ import {
 import { filterPyodidePackageChatter } from './criblSearchStreamFilter'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '../cribl/searchJobs'
 import { translateEnglishToKql } from '../cribl/aiTranslate'
+import { formatGeneratedPythonSource, generatePythonFromPrompt } from '../cribl/riptideCode'
 import { getCriblApiBase } from '../cribl/kvstore'
 import {
   CRIBL_SEARCH_MIME,
@@ -153,6 +154,7 @@ export function NotebookPage() {
   const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
   const [movingId, setMovingId] = useState<string | null>(null)
   const [saveBusy, setSaveBusy] = useState(false)
+  const [aiCodeBusyCellId, setAiCodeBusyCellId] = useState<CellId | null>(null)
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const confirmRef = useRef<((ok: boolean) => void) | null>(null)
   const promptRef = useRef<((value: string | null) => void) | null>(null)
@@ -367,6 +369,30 @@ export function NotebookPage() {
       return kernel.complete(code, cursor)
     },
     [],
+  )
+
+  const handleAiGenerateFromPrompt = useCallback(
+    async (cellId: CellId, prompt: string) => {
+      if (!getCriblApiBase()) {
+        showAlert(
+          'Riptide code generation requires the app to run inside Cribl with AI APIs enabled. Local development mode has no API base URL.',
+        )
+        return
+      }
+      const trimmed = prompt.trim()
+      if (!trimmed) return
+      setAiCodeBusyCellId(cellId)
+      try {
+        const code = await generatePythonFromPrompt(trimmed)
+        const source = formatGeneratedPythonSource(trimmed, code)
+        dispatchNotebook({ type: 'UPDATE_SOURCE', id: cellId, source })
+      } catch (e) {
+        showAlert(e instanceof Error ? e.message : 'Riptide request failed.')
+      } finally {
+        setAiCodeBusyCellId(null)
+      }
+    },
+    [showAlert, dispatchNotebook],
   )
 
   const runCell = useCallback(
@@ -1083,6 +1109,8 @@ export function NotebookPage() {
                           onRunAndAdvance={runCellAndAdvance}
                           theme={theme}
                           completeCode={completeCode}
+                          onAiGenerateFromPrompt={handleAiGenerateFromPrompt}
+                          aiCodeBusyCellId={aiCodeBusyCellId}
                         />
                       </div>
                     </div>
