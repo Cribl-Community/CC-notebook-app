@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.41',
+    date: '2026-04-21',
+    highlights: [
+      'Vega-Lite / Altair in cells: chart MIME types now rank above the Jupyter widget placeholder so real Vega bundles are not replaced by “interactive rendering not yet implemented”; Altair renderer selection tries jupyterlab, mimetype, and nteract.',
+    ],
+  },
+  {
     version: '1.0.40',
     date: '2026-04-21',
     highlights: [

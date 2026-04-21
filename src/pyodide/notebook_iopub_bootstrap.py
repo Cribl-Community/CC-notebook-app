@@ -81,18 +81,24 @@ def _normalize_mime_value(v: Any) -> str | None:
 
 
 def _ensure_altair_mimetype_renderer() -> None:
-    """Prefer Altair's jupyterlab (MIME) renderer over the default HTML renderer.
+    """Prefer Altair's MIME renderers over HTML (script stripped) or JupyterChart widgets.
 
     The default renderer emits ``text/html`` with embedded ``<script>`` tags.
     Our output sanitizer strips scripts, so those charts would render as blank.
-    The jupyterlab renderer uses ``application/vnd.vega*`` bundles (Vega-Lite 6 /
-    Vega 6) which we draw with vega-embed.
+
+    Altair wheels may name the same MIME path ``jupyterlab``, ``mimetype``, or
+    ``nteract`` depending on version — try them in order.
     """
     try:
         alt = sys.modules.get("altair")
         if alt is None:
             return
-        alt.renderers.enable("jupyterlab")
+        for name in ("jupyterlab", "mimetype", "nteract"):
+            try:
+                alt.renderers.enable(name)
+                return
+            except Exception:
+                continue
     except Exception:
         pass
 

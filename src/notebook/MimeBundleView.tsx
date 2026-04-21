@@ -103,9 +103,14 @@ function ensureRegistered() {
     rank: 90,
     render: () => <WidgetFallback />,
   })
+  /*
+   * Plotly + Vega must rank above the Jupyter widget stub (90). Otherwise a
+   * bundle that includes both real chart MIME and ipywidgets placeholder keys
+   * loses the chart to “[Jupyter widget — interactive rendering not yet implemented]”.
+   */
   registerMimeRenderer({
     mime: 'application/vnd.plotly.v1+json',
-    rank: 86,
+    rank: 96,
     render: (plotlyData) => <PlotlyMimeView key={plotlyData} data={plotlyData} />,
   })
   /** Vega-Lite 5/6 (+json and Altair’s historic “.json” suffix). */
@@ -116,7 +121,7 @@ function ensureRegistered() {
   ] as const) {
     registerMimeRenderer({
       mime,
-      rank: 84,
+      rank: 95,
       render: (spec) => <VegaMimeView key={spec} data={spec} />,
     })
   }
@@ -128,7 +133,7 @@ function ensureRegistered() {
   ] as const) {
     registerMimeRenderer({
       mime,
-      rank: 83,
+      rank: 94,
       render: (spec) => <VegaMimeView key={spec} data={spec} />,
     })
   }

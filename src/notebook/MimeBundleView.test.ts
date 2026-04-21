@@ -37,4 +37,13 @@ describe('MimeBundleView registrations', () => {
     })
     expect(r?.mime).toBe('application/vnd.vega.v6.json')
   })
+
+  it('prefers Vega MIME over Jupyter widget stub when both exist (Altair bundle)', () => {
+    const r = pickRenderer({
+      'application/vnd.vega.v6.json': '{"$schema":"https://vega.github.io/schema/vega/v6.json"}',
+      'application/vnd.jupyter.widget-view+json': '{"version_major":2,"version_minor":0}',
+      'text/plain': 'Chart(...)',
+    })
+    expect(r?.mime).toBe('application/vnd.vega.v6.json')
+  })
 })
