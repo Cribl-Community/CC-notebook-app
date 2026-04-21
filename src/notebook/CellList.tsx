@@ -42,6 +42,7 @@ export function CellList({
               onClearOutput={() => dispatch({ type: 'CLEAR_OUTPUTS', id: cell.id })}
               onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
               onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
+              onClone={() => dispatch({ type: 'DUPLICATE_CELL', id: cell.id })}
               onAiGenerateFromPrompt={
                 onAiGenerateFromPrompt ? (p) => onAiGenerateFromPrompt(cell.id, p) : undefined
               }
@@ -57,6 +58,7 @@ export function CellList({
               onChange={(source) => dispatch({ type: 'UPDATE_SOURCE', id: cell.id, source })}
               onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
               onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
+              onClone={() => dispatch({ type: 'DUPLICATE_CELL', id: cell.id })}
             />
           )}
           <div className="nb-add-between">

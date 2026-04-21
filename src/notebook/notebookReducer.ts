@@ -34,6 +34,20 @@ function makeMarkdownCell(): MarkdownCell {
   }
 }
 
+function duplicateCell(c: Cell): Cell {
+  const id = crypto.randomUUID()
+  if (c.cell_type === 'code') {
+    return {
+      ...c,
+      id,
+      outputs: [],
+      execution_count: null,
+      execution_state: 'idle',
+    }
+  }
+  return { ...c, id }
+}
+
 export const initialState: NotebookState = {
   title: 'Untitled',
   cells: [makeCodeCell()],
@@ -70,6 +84,15 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
           ? (cells[Math.min(delIdx, cells.length - 1)]?.id ?? null)
           : state.selectedId
       return { ...state, cells, selectedId }
+    }
+
+    case 'DUPLICATE_CELL': {
+      const idx = state.cells.findIndex((c) => c.id === action.id)
+      if (idx === -1) return state
+      const cloned = duplicateCell(state.cells[idx]!)
+      const cells = [...state.cells]
+      cells.splice(idx + 1, 0, cloned)
+      return { ...state, cells, selectedId: cloned.id }
     }
 
     case 'UPDATE_SOURCE':

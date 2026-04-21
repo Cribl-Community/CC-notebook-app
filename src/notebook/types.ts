@@ -38,6 +38,7 @@ export interface NotebookState {
 export type NotebookAction =
   | { type: 'ADD_CELL'; afterId?: CellId; cellType?: 'code' | 'markdown' }
   | { type: 'DELETE_CELL'; id: CellId }
+  | { type: 'DUPLICATE_CELL'; id: CellId }
   | { type: 'UPDATE_SOURCE'; id: CellId; source: string }
   | { type: 'SELECT_CELL'; id: CellId }
   | { type: 'TOGGLE_MARKDOWN_EDIT'; id: CellId }

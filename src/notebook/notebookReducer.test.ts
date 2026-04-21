@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { notebookReducer, createEmptyNotebookCells } from './notebookReducer'
-import type { NotebookState } from './types'
+import type { Cell, NotebookState } from './types'
 
 function readyStateFromCells(cells: NotebookState['cells']): NotebookState {
   return {
@@ -55,5 +55,64 @@ describe('notebookReducer execution queue', () => {
     const c = state.cells.find((x) => x.id === id)
     expect(c?.cell_type === 'code' && c.execution_state).toBe('running')
     expect(c?.cell_type === 'code' && c.outputs.length).toBe(0)
+  })
+})
+
+describe('notebookReducer DUPLICATE_CELL', () => {
+  it('inserts a copy below the source code cell with fresh execution fields', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    const withSrc = cells.map((c) =>
+      c.id === id && c.cell_type === 'code'
+        ? {
+            ...c,
+            source: 'print(1)',
+            outputs: [{ output_type: 'stream' as const, name: 'stdout' as const, text: '1\n' }],
+            execution_count: 3,
+            execution_state: 'idle' as const,
+          }
+        : c,
+    )
+    let state = readyStateFromCells(withSrc)
+    state = notebookReducer(state, { type: 'DUPLICATE_CELL', id })
+    expect(state.cells.length).toBe(2)
+    expect(state.cells[0]?.id).toBe(id)
+    const clone = state.cells[1]
+    expect(clone?.cell_type).toBe('code')
+    if (clone?.cell_type !== 'code') throw new Error('expected code')
+    expect(clone.source).toBe('print(1)')
+    expect(clone.outputs).toEqual([])
+    expect(clone.execution_count).toBeNull()
+    expect(clone.execution_state).toBe('idle')
+    expect(clone.id).not.toBe(id)
+    expect(state.selectedId).toBe(clone.id)
+  })
+
+  it('duplicates markdown preserving editing flag', () => {
+    const id = 'md-1'
+    const cells: Cell[] = [
+      {
+        id,
+        cell_type: 'markdown',
+        source: '# Hi',
+        editing: false,
+      },
+    ]
+    let state = readyStateFromCells(cells)
+    state = notebookReducer(state, { type: 'DUPLICATE_CELL', id })
+    expect(state.cells.length).toBe(2)
+    const clone = state.cells[1]
+    expect(clone?.cell_type).toBe('markdown')
+    if (clone?.cell_type !== 'markdown') throw new Error('expected markdown')
+    expect(clone.source).toBe('# Hi')
+    expect(clone.editing).toBe(false)
+    expect(clone.id).not.toBe(id)
+  })
+
+  it('is a no-op for unknown id', () => {
+    const cells = createEmptyNotebookCells()
+    const state = readyStateFromCells(cells)
+    const same = notebookReducer(state, { type: 'DUPLICATE_CELL', id: 'missing' })
+    expect(same).toEqual(state)
   })
 })
