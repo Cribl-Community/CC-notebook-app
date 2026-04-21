@@ -22,7 +22,7 @@ function DisplayDataView({ output }: { output: DisplayDataOutput }) {
   return <MimeBundleView data={output.data} metadata={output.metadata} />
 }
 
-function ErrorOutputView({ output }: { output: ErrorOutput }) {
+function ErrorOutputView({ output, cellSource }: { output: ErrorOutput; cellSource?: string }) {
   return (
     <div className="nb-output-error">
       <div className="nb-output-error-header">
@@ -35,9 +35,9 @@ function ErrorOutputView({ output }: { output: ErrorOutput }) {
   )
 }
 
-export function CellOutput({ output }: { output: OutputRecord }) {
+export function CellOutput({ output, cellSource }: { output: OutputRecord; cellSource?: string }) {
   if (output.output_type === 'stream') return <StreamOutputView output={output} />
   if (output.output_type === 'execute_result') return <ExecuteResultView output={output} />
   if (output.output_type === 'display_data') return <DisplayDataView output={output} />
-  return <ErrorOutputView output={output} />
+  return <ErrorOutputView output={output} cellSource={cellSource} />
 }
