@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 public/pyodide
+public/Examples/manifest.json
 *.local
 
 # Editor directories and files

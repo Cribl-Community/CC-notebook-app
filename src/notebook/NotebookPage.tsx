@@ -35,6 +35,7 @@ import { getCriblApiBase } from '../cribl/kvstore'
 import type { IOPubMessage } from '../pyodide/types'
 import { runNotebookCellAfterReady } from './runNotebookCell'
 import { useTabNotebookRuntime } from './useTabNotebookRuntime'
+import { notebookStaticPrefix } from './staticAssets'
 
 type DialogState =
   | { kind: 'alert'; message: string }
@@ -667,12 +668,12 @@ export function NotebookPage() {
       dispatch({ type: 'ADD_TAB', tab })
       void (async () => {
         try {
-          const base = import.meta.env.BASE_URL || '/'
-          const prefix = base.endsWith('/') ? base : `${base}/`
-          const res = await fetch(`${prefix}Examples/${filename}`)
+          const res = await fetch(`${notebookStaticPrefix()}Examples/${filename}`)
           if (!res.ok) throw new Error(`Could not load example (${res.status})`)
           const text = await res.text()
-          const { title, cells } = ipynbTextToLoadPayload(text)
+          const parsed = parseIpynbJson(text, { filename })
+          const title = filename.trim() ? filename.trim() : parsed.title
+          const { cells } = parsed
           dispatch({
             type: 'REPLACE_TAB_CONTENT',
             tabId: tab.id,

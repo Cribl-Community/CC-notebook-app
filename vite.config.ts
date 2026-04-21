@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs'
 import { cp, mkdir } from 'node:fs/promises'
 import { join, resolve } from 'path'
 import react from '@vitejs/plugin-react'
+import { examplesManifestPlugin } from './vite.examplesManifestPlugin'
 
 // Copies the minimal pyodide runtime files needed for in-browser execution
 // into public/pyodide/ so they're served from the app's own origin (not CDN).
@@ -80,7 +81,13 @@ const injectScriptFromQueryPlugin = () => {
 };
 
 export default defineConfig({
-  plugins: [react(), packageEndpointPlugin(), injectScriptFromQueryPlugin(), pyodideStaticPlugin()],
+  plugins: [
+    react(),
+    packageEndpointPlugin(),
+    injectScriptFromQueryPlugin(),
+    pyodideStaticPlugin(),
+    examplesManifestPlugin(),
+  ],
   base: './',
   server: {
     cors: true,
