@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.36',
+    date: '2026-04-21',
+    highlights: [
+      'Riptide prompt: multiline textarea wraps long text and grows in height as you type or press Enter; Shift+Enter still runs Generate.',
+    ],
+  },
+  {
     version: '1.0.35',
     date: '2026-04-21',
     highlights: [
