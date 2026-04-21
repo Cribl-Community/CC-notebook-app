@@ -5,8 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "vendor-pyodide": "node scripts/vendor-pyodide-wheels.mjs",
-    "build": "tsc -b && npm run vendor-pyodide && vite build",
+    "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
