@@ -6,7 +6,12 @@ import type {
   WorkerInbound,
   WorkerOutbound,
 } from './types'
-import { PYODIDE_PACKAGE_BASE_URL } from './pyodideVersion'
+import { fetchWithPackageSessionCache } from './packageFetchCache'
+import {
+  getSameOriginPyodideBaseUrl,
+  getSameOriginPyodideLockFileUrl,
+  PYODIDE_PACKAGE_BASE_URL,
+} from './pyodideVersion'
 import completionPy from './notebook_complete.py?raw'
 import iopubBootstrapPy from './notebook_iopub_bootstrap.py?raw'
 
@@ -178,8 +183,8 @@ self.onmessage = async function(e) {
       pyodide = await loadPyodide({
         indexURL: msg.pyodideBaseUrl,
         packageBaseUrl: msg.pyodidePackageBaseUrl,
-        // Micropip uses this lock to decide "in Pyodide repo" vs PyPI — must match packageBaseUrl.
-        lockFileURL: new URL('pyodide-lock.json', msg.pyodidePackageBaseUrl).href,
+        // Same-origin lock from the shipped \`public/pyodide/\` tree; avoids CSP blocks on jsDelivr in iframes.
+        lockFileURL: msg.pyodideLockFileUrl,
       });
       await pyodide.runPythonAsync(COMPLETION_PY);
       await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY);
@@ -195,7 +200,7 @@ self.onmessage = async function(e) {
     if (!pyodide) return;
     const id = msg.id;
     try {
-      await pyodide.loadPackagesFromImports('import jedi\n');
+      await pyodide.loadPackagesFromImports('import jedi\\n');
       pyodide.globals.set('_nb_code', msg.code);
       pyodide.globals.set('_nb_cursor', msg.cursor);
       const jsonStr = await pyodide.runPythonAsync(
@@ -349,13 +354,18 @@ export class PyodideKernel {
       }
     }
 
-    this.worker.onerror = (e) => onFail(e.message)
+    this.worker.onerror = (e: ErrorEvent) => {
+      console.error('[PyodideKernel] worker error', e.message, e.filename, e.lineno, e.colno, e.error)
+      onFail(e.message || 'Worker failed')
+    }
 
-    const pyodideBaseUrl = new URL('./pyodide/', window.location.href).href
+    const pyodideBaseUrl = getSameOriginPyodideBaseUrl()
+    const pyodideLockFileUrl = getSameOriginPyodideLockFileUrl()
     this.worker.postMessage({
       type: 'init',
       pyodideBaseUrl,
       pyodidePackageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
+      pyodideLockFileUrl,
       appOrigin: window.location.origin,
     } satisfies WorkerInbound)
   }
@@ -414,7 +424,7 @@ export class PyodideKernel {
       if (init.body != null && init.method && init.method !== 'GET' && init.method !== 'HEAD') {
         fetchInit.body = init.body as BodyInit
       }
-      const r = await fetch(url, fetchInit)
+      const r = await fetchWithPackageSessionCache(url, fetchInit)
       const buf = await r.arrayBuffer()
       const headers: Record<string, string> = {}
       r.headers.forEach((v, k) => {

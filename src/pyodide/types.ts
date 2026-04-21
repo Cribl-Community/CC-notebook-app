@@ -117,7 +117,14 @@ export type ForwardedFetchInit = {
 }
 
 export type WorkerInbound =
-  | { type: 'init'; pyodideBaseUrl: string; pyodidePackageBaseUrl: string; appOrigin: string }
+  | {
+      type: 'init'
+      pyodideBaseUrl: string
+      pyodidePackageBaseUrl: string
+      /** Full URL of bundled `pyodide-lock.json` on this app origin (CSP-safe vs jsDelivr fetch). */
+      pyodideLockFileUrl: string
+      appOrigin: string
+    }
   | { type: 'exec'; id: string; code: string; execution_count: number }
   | { type: 'complete'; id: string; code: string; cursor: number }
   | {
