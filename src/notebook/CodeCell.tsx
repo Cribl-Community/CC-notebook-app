@@ -51,8 +51,9 @@ export function CodeCell({
   aiGenerateBusy = false,
 }: CodeCellProps) {
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
-  const [aiPromptText, setAiPromptText] = useState('')
-  const aiPromptRef = useRef<HTMLTextAreaElement>(null)
+  /** Typed continuation after `DEFAULT_RIPTIDE_PROMPT_PREFIX` (prefix shown muted beside this input). */
+  const [aiPromptSuffix, setAiPromptSuffix] = useState('')
+  const aiPromptRef = useRef<HTMLInputElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onRunRef = useRef(onRun)
@@ -139,24 +140,27 @@ export function CodeCell({
 
   useEffect(() => {
     if (!aiPanelOpen) return
-    const id = window.setTimeout(() => aiPromptRef.current?.focus(), 0)
+    const id = window.setTimeout(() => {
+      const el = aiPromptRef.current
+      if (!el) return
+      el.focus()
+      const len = el.value.length
+      el.setSelectionRange(len, len)
+    }, 0)
     return () => window.clearTimeout(id)
   }, [aiPanelOpen])
 
   const handleAiToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    setAiPanelOpen((wasOpen) => {
-      if (wasOpen) return false
-      setAiPromptText((t) => (t.trim() === '' ? DEFAULT_RIPTIDE_PROMPT_PREFIX : t))
-      return true
-    })
+    setAiPanelOpen((wasOpen) => !wasOpen)
   }, [])
 
+  const fullAiPrompt = `${DEFAULT_RIPTIDE_PROMPT_PREFIX}${aiPromptSuffix}`.trim()
+
   const handleAiPanelGenerate = useCallback(() => {
-    const p = aiPromptText.trim()
-    if (!p || !onAiGenerateFromPrompt) return
-    void onAiGenerateFromPrompt(p)
-  }, [aiPromptText, onAiGenerateFromPrompt])
+    if (!fullAiPrompt || !onAiGenerateFromPrompt) return
+    void onAiGenerateFromPrompt(fullAiPrompt)
+  }, [fullAiPrompt, onAiGenerateFromPrompt])
 
   const isBusy = cell.execution_state === 'running' || cell.execution_state === 'pending'
   const isRunning = cell.execution_state === 'running'
@@ -247,23 +251,31 @@ export function CodeCell({
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <label className="nb-cell-ai-field">
+            <label className="nb-cell-ai-field" htmlFor={`nb-ai-prompt-${cell.id}`}>
               <span className="nb-cell-ai-field-label">Prompt</span>
-              <textarea
-                ref={aiPromptRef}
-                className="nb-cell-ai-prompt"
-                rows={4}
-                value={aiPromptText}
-                onChange={(e) => setAiPromptText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                    e.preventDefault()
-                    handleAiPanelGenerate()
-                  }
-                }}
-                placeholder="Describe the code…"
-                disabled={aiGenerateBusy}
-              />
+              <div className="nb-cell-ai-prompt-row">
+                <span className="nb-cell-ai-prefix" aria-hidden>
+                  {DEFAULT_RIPTIDE_PROMPT_PREFIX}
+                </span>
+                <input
+                  ref={aiPromptRef}
+                  id={`nb-ai-prompt-${cell.id}`}
+                  type="text"
+                  className="nb-cell-ai-prompt"
+                  autoComplete="off"
+                  value={aiPromptSuffix}
+                  onChange={(e) => setAiPromptSuffix(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.shiftKey) {
+                      e.preventDefault()
+                      handleAiPanelGenerate()
+                    }
+                  }}
+                  placeholder="Describe the code…"
+                  disabled={aiGenerateBusy}
+                  aria-label="Continue the Riptide prompt after “Generate Python code that”"
+                />
+              </div>
             </label>
             <div className="nb-cell-ai-actions">
               <button
@@ -273,7 +285,7 @@ export function CodeCell({
                   e.stopPropagation()
                   handleAiPanelGenerate()
                 }}
-                disabled={isBusy || aiGenerateBusy || aiPromptText.trim() === ''}
+                disabled={isBusy || aiGenerateBusy || fullAiPrompt === ''}
               >
                 {aiGenerateBusy ? '…' : 'Generate'}
               </button>
@@ -288,7 +300,7 @@ export function CodeCell({
                 Close
               </button>
             </div>
-            <p className="nb-cell-ai-hint">Ctrl+Enter or ⌘ Enter runs Generate. Edit the prompt and generate again to iterate.</p>
+            <p className="nb-cell-ai-hint">Shift+Enter runs Generate. Edit the prompt and generate again to iterate.</p>
           </div>
         )}
         <div

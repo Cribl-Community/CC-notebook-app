@@ -1384,23 +1384,54 @@ body {
   color: var(--nb-text-muted);
 }
 
-.nb-cell-ai-prompt {
+.nb-cell-ai-prompt-row {
+  display: flex;
+  align-items: stretch;
   width: 100%;
-  min-height: 72px;
-  resize: vertical;
-  padding: 8px 10px;
+  min-height: 32px;
+  box-sizing: border-box;
   border: 1px solid var(--nb-border);
   border-radius: 4px;
   background: var(--nb-bg-cell);
+  overflow: hidden;
+}
+
+.nb-cell-ai-prompt-row:focus-within {
+  outline: 2px solid var(--nb-focus-ring);
+  outline-offset: 0;
+  box-shadow: var(--nb-shadow-elev-1);
+}
+
+.nb-cell-ai-prefix {
+  flex-shrink: 0;
+  align-self: center;
+  padding-left: 10px;
+  padding-right: 0;
+  color: var(--nb-text-dim);
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.88;
+  user-select: none;
+}
+
+.nb-cell-ai-prompt {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
   color: var(--nb-text);
   font-family: var(--mono);
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .nb-cell-ai-prompt:focus {
-  outline: 2px solid var(--nb-focus-ring);
-  outline-offset: 0;
+  outline: none;
 }
 
 .nb-cell-ai-prompt:disabled {
