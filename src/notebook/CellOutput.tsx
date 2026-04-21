@@ -9,6 +9,7 @@ import type {
 import { MimeBundleView } from './MimeBundleView'
 import { stripAnsi, extractCellLineRefs } from './ansiUtils'
 import { suggestErrorFix } from '../cribl/riptideCode'
+import { getCriblApiBase } from '../cribl/kvstore'
 
 type SourceSnippetLine = {
   lineNumber: number
@@ -58,7 +59,7 @@ function ErrorOutputView({ output, cellSource }: { output: ErrorOutput; cellSour
   const cleanedTraceback = output.traceback.map((line) => stripAnsi(line))
   const refs = extractCellLineRefs(cleanedTraceback)
   const snippet = cellSource ? buildSourceSnippet(cellSource, refs) : []
-  const canSuggestFix = Boolean(cellSource)
+  const canSuggestFix = Boolean(cellSource && getCriblApiBase())
 
   const handleSuggestFix = async () => {
     if (!cellSource || fixState === 'loading') return
