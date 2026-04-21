@@ -5,7 +5,7 @@ import type { CodeCell as CellData } from './types'
 import { CellOutput } from './CellOutput'
 import { createPythonCellExtensions } from './pythonCodeMirror'
 import type { CompletionItem } from '../pyodide/types'
-import { DEFAULT_RIPTIDE_PROMPT_PREFIX } from '../cribl/riptideCode'
+import { DEFAULT_RIPTIDE_PROMPT_PREFIX, parseRiptidePromptFromCellSource } from '../cribl/riptideCode'
 
 interface CodeCellProps {
   cell: CellData
@@ -150,10 +150,27 @@ export function CodeCell({
     return () => window.clearTimeout(id)
   }, [aiPanelOpen])
 
-  const handleAiToggle = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-    setAiPanelOpen((wasOpen) => !wasOpen)
-  }, [])
+  const handleAiToggle = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      setAiPanelOpen((wasOpen) => {
+        if (wasOpen) return false
+        const parsed = parseRiptidePromptFromCellSource(cell.source)
+        queueMicrotask(() => {
+          if (parsed !== null) {
+            const suffix = parsed.startsWith(DEFAULT_RIPTIDE_PROMPT_PREFIX)
+              ? parsed.slice(DEFAULT_RIPTIDE_PROMPT_PREFIX.length)
+              : parsed
+            setAiPromptSuffix(suffix)
+          } else {
+            setAiPromptSuffix('')
+          }
+        })
+        return true
+      })
+    },
+    [cell.source],
+  )
 
   const fullAiPrompt = `${DEFAULT_RIPTIDE_PROMPT_PREFIX}${aiPromptSuffix}`.trim()
 

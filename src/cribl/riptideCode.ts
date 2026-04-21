@@ -52,14 +52,47 @@ export function extractPythonFromRiptideText(raw: string): string {
 /** Default first words for the inline prompt so the model tends to emit Python. */
 export const DEFAULT_RIPTIDE_PROMPT_PREFIX = 'Generate Python code that ' as const
 
+/** Comment marker written into the cell before saved prompt lines (after `# `). */
+export const RIPTIDE_CELL_PROMPT_HEADER = '### Prompt:' as const
+
 /**
- * Prefix the cell with each prompt line as a `#` comment, then the generated code.
+ * Prefix the cell with `# ### Prompt:` and each prompt line as `# …`, then the generated code.
  */
 export function formatGeneratedPythonSource(userPrompt: string, generatedCode: string): string {
   const lines = userPrompt.trim().split('\n')
-  const commented = lines.map((line) => `# ${line}`).join('\n')
+  const headerLine = `# ${RIPTIDE_CELL_PROMPT_HEADER}`
+  const body = lines.map((line) => `# ${line}`).join('\n')
   const code = generatedCode.trim()
-  return `${commented}\n\n${code}\n`
+  return `${headerLine}\n${body}\n\n${code}\n`
+}
+
+/**
+ * If the cell starts with the Riptide `### Prompt:` comment block, return the saved full prompt text.
+ * Supports the format produced by {@link formatGeneratedPythonSource}. Otherwise returns `null`.
+ */
+export function parseRiptidePromptFromCellSource(source: string): string | null {
+  const rawLines = source.replace(/\r\n/g, '\n').split('\n')
+  let i = 0
+  while (i < rawLines.length && (rawLines[i] ?? '').trim() === '') i++
+  const first = rawLines[i] ?? ''
+  const m0 = first.match(/^\s*#\s*###\s*Prompt:\s*(.*)$/)
+  if (!m0) return null
+  const firstRest = m0[1] ?? ''
+  const parts: string[] = []
+  if (firstRest.trim().length > 0) {
+    parts.push(firstRest)
+  }
+  i++
+  while (i < rawLines.length) {
+    const line = rawLines[i] ?? ''
+    if (line.trim() === '') break
+    const cm = line.match(/^\s*#\s?(.*)$/)
+    if (!cm) break
+    parts.push(cm[1] ?? '')
+    i++
+  }
+  if (parts.length === 0) return null
+  return parts.join('\n').trim()
 }
 
 /**

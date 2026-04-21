@@ -6,6 +6,8 @@ import {
   formatGeneratedPythonSource,
   generatePythonFromPrompt,
   parseRiptideNdjsonBody,
+  parseRiptidePromptFromCellSource,
+  RIPTIDE_CELL_PROMPT_HEADER,
 } from './riptideCode'
 
 describe('parseRiptideNdjsonBody', () => {
@@ -25,13 +27,40 @@ describe('parseRiptideNdjsonBody', () => {
 })
 
 describe('formatGeneratedPythonSource', () => {
-  it('comments each prompt line and appends code', () => {
-    expect(formatGeneratedPythonSource('Hello', 'x = 1')).toBe('# Hello\n\nx = 1\n')
-    expect(formatGeneratedPythonSource('a\nb', 'print(1)')).toBe('# a\n# b\n\nprint(1)\n')
+  it('writes ### Prompt header and comment lines, then code', () => {
+    expect(formatGeneratedPythonSource('Hello', 'x = 1')).toBe(
+      `# ${RIPTIDE_CELL_PROMPT_HEADER}\n# Hello\n\nx = 1\n`,
+    )
+    expect(formatGeneratedPythonSource('a\nb', 'print(1)')).toBe(
+      `# ${RIPTIDE_CELL_PROMPT_HEADER}\n# a\n# b\n\nprint(1)\n`,
+    )
   })
 
   it('exports default prefix for UI', () => {
     expect(DEFAULT_RIPTIDE_PROMPT_PREFIX).toBe('Generate Python code that ')
+  })
+})
+
+describe('parseRiptidePromptFromCellSource', () => {
+  it('returns null without ### Prompt pattern', () => {
+    expect(parseRiptidePromptFromCellSource('x = 1')).toBeNull()
+    expect(parseRiptidePromptFromCellSource('# foo\nx=1')).toBeNull()
+  })
+
+  it('parses header on its own line and following comment lines', () => {
+    const src = `# ${RIPTIDE_CELL_PROMPT_HEADER}\n# Hello\n# world\n\nprint(1)\n`
+    expect(parseRiptidePromptFromCellSource(src)).toBe('Hello\nworld')
+  })
+
+  it('parses text on same line as ### Prompt:', () => {
+    const src = `# ${RIPTIDE_CELL_PROMPT_HEADER} one line\n\npass\n`
+    expect(parseRiptidePromptFromCellSource(src)).toBe('one line')
+  })
+
+  it('round-trips with formatGeneratedPythonSource', () => {
+    const prompt = `${DEFAULT_RIPTIDE_PROMPT_PREFIX}loads a CSV`
+    const src = formatGeneratedPythonSource(prompt, 'import pandas as pd')
+    expect(parseRiptidePromptFromCellSource(src)).toBe(prompt)
   })
 })
 
