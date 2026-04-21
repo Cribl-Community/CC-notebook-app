@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.42',
+    date: '2026-04-21',
+    highlights: [
+      'Code cells with top-level ``await`` (e.g. ``await micropip.install("altair")``) now emit ``execute_result`` for a trailing variable line such as ``chart``, matching Jupyter. Previously ``eval_code_async`` ran the cell but never invoked ``displayhook``, so Vega-Lite / Altair output areas stayed empty.',
+    ],
+  },
+  {
     version: '1.0.41',
     date: '2026-04-21',
     highlights: [
