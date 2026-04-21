@@ -79,8 +79,11 @@ async function responseToPayload(r: Response): Promise<SerializedFetchPayload> {
 }
 
 async function readFromPersistentCache(url: string): Promise<SerializedFetchPayload | null> {
-  if (typeof caches === 'undefined') return null
   try {
+    // `typeof caches` is inside the try-catch because in a sandboxed iframe (no
+    // allow-same-origin) the `caches` global is a getter that throws SecurityError —
+    // which typeof does NOT suppress.
+    if (typeof caches === 'undefined') return null
     const cache = await caches.open(CACHE_NAME)
     const hit = await cache.match(new Request(url, { method: 'GET' }))
     if (!hit || !hit.ok) return null
@@ -95,8 +98,8 @@ async function writeToPersistentCache(
   init: RequestInit,
   payload: SerializedFetchPayload,
 ): Promise<void> {
-  if (typeof caches === 'undefined') return
   try {
+    if (typeof caches === 'undefined') return
     const cache = await caches.open(CACHE_NAME)
     const res = new Response(payload.body.slice(0), {
       status: payload.status,

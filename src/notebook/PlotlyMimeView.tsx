@@ -33,7 +33,16 @@ export function PlotlyMimeView({ data }: { data: string }) {
   useEffect(() => {
     let cancelled = false
     void import('react-plotly.js').then((m) => {
-      if (!cancelled) setPlot(() => m.default)
+      if (cancelled) return
+      // Vite's CJS interop can double-wrap: m.default may be { default: Fn }
+      // when the CJS module sets __esModule:true but Vite still wraps it.
+      const raw = m.default as unknown
+      const component =
+        typeof raw === 'function'
+          ? (raw as typeof import('react-plotly.js')['default'])
+          : ((raw as Record<string, unknown>)
+              ?.default as typeof import('react-plotly.js')['default'])
+      setPlot(() => component)
     })
     return () => {
       cancelled = true

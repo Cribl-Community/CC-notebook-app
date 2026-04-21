@@ -53,6 +53,40 @@ let _fetchSeq = 0;
 /** App document origin from the main thread (reliable in blob workers; avoids self.location quirks). */
 let _appOrigin = '';
 
+// Pyodide's pyfetch (0.29.x) checks the Service Worker Cache API before making
+// real network requests.  In a sandboxed iframe without the allow-same-origin
+// flag, accessing \`self.caches\` throws a SecurityError which pyfetch wraps as
+// AbortError — and that propagates all the way up to micropip as
+// "Can't fetch metadata for '...'".  Pre-emptively replace caches with a no-op
+// stub so pyfetch always gets a cache-miss and falls through to the actual fetch.
+(function _polyfillCaches() {
+  var hasCaches = false;
+  try { hasCaches = typeof self.caches !== 'undefined' && !!self.caches; } catch (_) {}
+  if (!hasCaches) {
+    var _noopCache = {
+      match: function() { return Promise.resolve(undefined); },
+      put: function() { return Promise.resolve(); },
+      delete: function() { return Promise.resolve(false); },
+      keys: function() { return Promise.resolve([]); },
+      addAll: function() { return Promise.resolve(); },
+      add: function() { return Promise.resolve(); },
+    };
+    try {
+      Object.defineProperty(self, 'caches', {
+        configurable: true,
+        enumerable: false,
+        value: {
+          open: function() { return Promise.resolve(_noopCache); },
+          match: function() { return Promise.resolve(undefined); },
+          has: function() { return Promise.resolve(false); },
+          delete: function() { return Promise.resolve(false); },
+          keys: function() { return Promise.resolve([]); },
+        },
+      });
+    } catch (_) {}
+  }
+}());
+
 function _serializeHeaders(h) {
   if (!h) return {};
   if (typeof Headers !== 'undefined' && h instanceof Headers) {
@@ -403,6 +437,14 @@ export class PyodideKernel {
    * `fetch` so external URLs are routed through `/api/v1/p/<pack>/proxy/...`
    * with auth injected by the parent window. Workers don't see that patch, so
    * they delegate up here and we hand back a serialised Response.
+   *
+   * NOTE: We intentionally do NOT forward the worker's custom `headers` to
+   * `window.fetch`. The Cribl platform patch injects the `Authorization` header
+   * only when no explicit headers object is passed; supplying caller headers
+   * (e.g. micropip's `Accept: application/vnd.pypi.simple.v1+json`) causes the
+   * auth injection to be skipped, resulting in HTTP 401 from the pack proxy.
+   * Dropping the headers is safe: wheel GETs need none, and pypi.org returns
+   * text/html by default which micropip's `from_simple_html_api` handles.
    */
   private async handleFetchRequest(
     id: string,
@@ -412,12 +454,14 @@ export class PyodideKernel {
     try {
       const fetchInit: RequestInit = {
         method: init.method,
-        headers: init.headers,
+        // headers intentionally omitted — see note above
         credentials: init.credentials,
         redirect: init.redirect,
         referrer: init.referrer,
         referrerPolicy: init.referrerPolicy,
-        cache: init.cache,
+        // Force no-store so the browser never tries to check its HTTP cache;
+        // in sandboxed iframes the default cache mode can block indefinitely.
+        cache: 'no-store',
         mode: init.mode,
         integrity: init.integrity,
       }

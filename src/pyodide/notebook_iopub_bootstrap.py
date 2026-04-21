@@ -103,9 +103,42 @@ def _ensure_altair_mimetype_renderer() -> None:
         pass
 
 
+def _configure_plotly_renderer() -> None:
+    """Suppress Plotly's nbformat traceback by patching BaseFigure._ipython_display_.
+
+    Plotly's default ``_ipython_display_`` calls ``pio.show()`` which requires
+    ``nbformat>=4.2.0``.  That package is not installed in Pyodide, so IPython's
+    ``IPythonDisplayFormatter`` catches the resulting ``ValueError``, prints a
+    multi-line traceback to stderr, and returns ``None`` — which lets the
+    ``MimeBundleFormatter`` fall through and produce the correct
+    ``application/vnd.plotly.v1+json`` data (so the chart still renders).
+
+    Replacing ``_ipython_display_`` with a method that raises ``NotImplementedError``
+    instead causes ``IPythonDisplayFormatter`` to silently return ``None`` (it special-
+    cases ``NotImplementedError`` as "this object has no IPython display") without
+    printing any traceback, while keeping the ``_repr_mimebundle_`` path intact.
+    """
+    try:
+        basedatatypes = sys.modules.get("plotly.basedatatypes")
+        if basedatatypes is None:
+            return
+        BaseFigure = getattr(basedatatypes, "BaseFigure", None)
+        if BaseFigure is None or getattr(BaseFigure, "_nb_ipython_display_patched", False):
+            return
+
+        def _nb_ipython_display_(self) -> None:  # noqa: ANN001
+            raise NotImplementedError
+
+        BaseFigure._ipython_display_ = _nb_ipython_display_  # type: ignore[method-assign]
+        BaseFigure._nb_ipython_display_patched = True  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
 def _format_object(obj: Any) -> tuple[dict, dict]:
     """Return ``(data, metadata)`` for an object. Prefers IPython's formatter."""
     _ensure_altair_mimetype_renderer()
+    _configure_plotly_renderer()
     try:
         formatter = _get_display_formatter()
         data, metadata = formatter.format(obj, include=_DEFAULT_INCLUDE)
