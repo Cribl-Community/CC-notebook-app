@@ -11,6 +11,15 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.32',
+    date: '2026-04-21',
+    highlights: [
+      'Code cells: AI button (Riptide) generates Python from a natural-language description and replaces the cell source when running inside Cribl with AI APIs.',
+      'Multiline prompt dialog with Ctrl+Enter / ⌘ Enter to submit.',
+      'Clear cell output (⌫) works while a cell is queued (pending); it stays disabled only during actual execution.',
+    ],
+  },
+  {
     version: '1.0.31',
     date: '2026-04-21',
     highlights: [
