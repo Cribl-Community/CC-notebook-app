@@ -134,8 +134,9 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
               Open example
             </button>
             <p className="nb-welcome-muted nb-welcome-examples-hint">
-              Names match files under <code className="nb-welcome-code">public/Examples</code>. Double-click a
-              row or use Open example.
+              Each entry matches a bundled <code className="nb-welcome-code">.ipynb</code> under{' '}
+              <code className="nb-welcome-code">public/Examples</code> (shown here without the extension;
+              underscores appear as spaces). Double-click a row or use Open example.
             </p>
           </div>
         )}

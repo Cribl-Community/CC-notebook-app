@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.51',
+    date: '2026-04-22',
+    highlights: [
+      'Welcome: bundled Examples list and new tabs use readable titles (no `.ipynb` suffix; underscores shown as spaces) while still loading the correct files under `public/Examples`.',
+    ],
+  },
+  {
     version: '1.0.50',
     date: '2026-04-22',
     highlights: [
