@@ -18,6 +18,7 @@ interface CodeCellProps {
   onClearOutput: () => void
   onMoveUp?: () => void
   onMoveDown?: () => void
+  onClone?: () => void
   /** Namespace-aware completion from the active tab's Pyodide kernel (Tab). */
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
   /**
@@ -46,6 +47,7 @@ export function CodeCell({
   onClearOutput,
   onMoveUp,
   onMoveDown,
+  onClone,
   completeCode,
   onAiGenerateFromPrompt,
   aiGenerateBusy = false,
@@ -249,6 +251,18 @@ export function CodeCell({
               AI
             </button>
           )}
+          <button
+            type="button"
+            className="nb-btn nb-btn-clone"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClone?.()
+            }}
+            disabled={!onClone}
+            title="Duplicate cell below"
+          >
+            ⧉ Clone
+          </button>
           <button
             className="nb-btn nb-btn-delete"
             onClick={(e) => {

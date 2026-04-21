@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.35',
+    date: '2026-04-21',
+    highlights: [
+      'Cells: Clone in the cell toolbar duplicates the cell directly below the original; duplicated code cells start with no outputs and idle execution state.',
+    ],
+  },
+  {
     version: '1.0.34',
     date: '2026-04-21',
     highlights: [

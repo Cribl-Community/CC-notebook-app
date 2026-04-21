@@ -12,6 +12,7 @@ interface MarkdownCellProps {
   onChange: (source: string) => void
   onMoveUp?: () => void
   onMoveDown?: () => void
+  onClone?: () => void
 }
 
 function renderMarkdown(source: string): string {
@@ -28,6 +29,7 @@ export function MarkdownCell({
   onChange,
   onMoveUp,
   onMoveDown,
+  onClone,
 }: MarkdownCellProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -91,6 +93,18 @@ export function MarkdownCell({
               title="Move cell down"
             >
               ▼
+            </button>
+            <button
+              type="button"
+              className="nb-btn nb-btn-clone"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClone?.()
+              }}
+              disabled={!onClone}
+              title="Duplicate cell below"
+            >
+              ⧉ Clone
             </button>
             <button
               className="nb-btn nb-btn-delete"
@@ -157,6 +171,18 @@ export function MarkdownCell({
             title="Move cell down"
           >
             ▼
+          </button>
+          <button
+            type="button"
+            className="nb-btn nb-btn-clone"
+            onClick={(e) => {
+              e.stopPropagation()
+              onClone?.()
+            }}
+            disabled={!onClone}
+            title="Duplicate cell below"
+          >
+            ⧉ Clone
           </button>
           <button
             className="nb-btn nb-btn-delete"
