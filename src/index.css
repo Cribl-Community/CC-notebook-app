@@ -1386,14 +1386,14 @@ body {
 
 .nb-cell-ai-prompt-row {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   width: 100%;
   min-height: 32px;
   box-sizing: border-box;
   border: 1px solid var(--nb-border);
   border-radius: 4px;
   background: var(--nb-bg-cell);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 .nb-cell-ai-prompt-row:focus-within {
@@ -1404,9 +1404,8 @@ body {
 
 .nb-cell-ai-prefix {
   flex-shrink: 0;
-  align-self: center;
-  padding-left: 10px;
-  padding-right: 0;
+  align-self: flex-start;
+  padding: 6px 0 6px 10px;
   color: var(--nb-text-dim);
   font-family: var(--mono);
   font-size: 13px;
@@ -1416,6 +1415,7 @@ body {
 }
 
 .nb-cell-ai-prompt {
+  display: block;
   flex: 1;
   min-width: 0;
   margin: 0;
@@ -1428,6 +1428,11 @@ body {
   font-family: var(--mono);
   font-size: 13px;
   line-height: 1.45;
+  resize: none;
+  overflow-y: hidden;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 .nb-cell-ai-prompt:focus {
