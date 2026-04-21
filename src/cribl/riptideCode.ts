@@ -49,6 +49,19 @@ export function extractPythonFromRiptideText(raw: string): string {
   return t.replace(/^```[\w+-]*\s*/i, '').replace(/```\s*$/i, '').trim()
 }
 
+/** Default first words for the inline prompt so the model tends to emit Python. */
+export const DEFAULT_RIPTIDE_PROMPT_PREFIX = 'Generate Python code that ' as const
+
+/**
+ * Prefix the cell with each prompt line as a `#` comment, then the generated code.
+ */
+export function formatGeneratedPythonSource(userPrompt: string, generatedCode: string): string {
+  const lines = userPrompt.trim().split('\n')
+  const commented = lines.map((line) => `# ${line}`).join('\n')
+  const code = generatedCode.trim()
+  return `${commented}\n\n${code}\n`
+}
+
 /**
  * Generate Python source from a natural-language description via the Riptide agent endpoint.
  * See `docs/riptide-api.md`.

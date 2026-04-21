@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AI_RIPTIDE_AGENT_PATH,
+  DEFAULT_RIPTIDE_PROMPT_PREFIX,
   extractPythonFromRiptideText,
+  formatGeneratedPythonSource,
   generatePythonFromPrompt,
   parseRiptideNdjsonBody,
 } from './riptideCode'
@@ -19,6 +21,17 @@ describe('parseRiptideNdjsonBody', () => {
 
   it('ignores invalid lines', () => {
     expect(parseRiptideNdjsonBody('not-json\n{"content":"ok"}\n')).toBe('ok')
+  })
+})
+
+describe('formatGeneratedPythonSource', () => {
+  it('comments each prompt line and appends code', () => {
+    expect(formatGeneratedPythonSource('Hello', 'x = 1')).toBe('# Hello\n\nx = 1\n')
+    expect(formatGeneratedPythonSource('a\nb', 'print(1)')).toBe('# a\n# b\n\nprint(1)\n')
+  })
+
+  it('exports default prefix for UI', () => {
+    expect(DEFAULT_RIPTIDE_PROMPT_PREFIX).toBe('Generate Python code that ')
   })
 })
 

@@ -39,7 +39,7 @@ import {
 import { filterPyodidePackageChatter } from './criblSearchStreamFilter'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '../cribl/searchJobs'
 import { translateEnglishToKql } from '../cribl/aiTranslate'
-import { generatePythonFromPrompt } from '../cribl/riptideCode'
+import { formatGeneratedPythonSource, generatePythonFromPrompt } from '../cribl/riptideCode'
 import { getCriblApiBase } from '../cribl/kvstore'
 import {
   CRIBL_SEARCH_MIME,
@@ -124,16 +124,7 @@ function formatCriblSearchRawRows(rows: Record<string, unknown>[]): string {
 type DialogState =
   | { kind: 'alert'; message: string }
   | { kind: 'confirm'; message: string }
-  | {
-      kind: 'prompt'
-      title: string
-      label: string
-      defaultValue: string
-      input: string
-      multiline?: boolean
-      helperMessage?: string
-      primaryLabel?: string
-    }
+  | { kind: 'prompt'; title: string; label: string; defaultValue: string; input: string }
 
 export function NotebookPage() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -190,28 +181,6 @@ export function NotebookPage() {
           resolve(value)
         }
         setDialog({ kind: 'prompt', title, label, defaultValue, input: defaultValue })
-      })
-    },
-    [],
-  )
-
-  const showPromptMultiline = useCallback(
-    (title: string, label: string, defaultValue: string, helperMessage?: string): Promise<string | null> => {
-      return new Promise((resolve) => {
-        promptRef.current = (value: string | null) => {
-          promptRef.current = null
-          resolve(value)
-        }
-        setDialog({
-          kind: 'prompt',
-          title,
-          label,
-          defaultValue,
-          input: defaultValue,
-          multiline: true,
-          helperMessage,
-          primaryLabel: 'Generate',
-        })
       })
     },
     [],
@@ -402,34 +371,28 @@ export function NotebookPage() {
     [],
   )
 
-  const handleAiGenerateCode = useCallback(
-    async (cellId: CellId) => {
+  const handleAiGenerateFromPrompt = useCallback(
+    async (cellId: CellId, prompt: string) => {
       if (!getCriblApiBase()) {
         showAlert(
           'Riptide code generation requires the app to run inside Cribl with AI APIs enabled. Local development mode has no API base URL.',
         )
         return
       }
-      const text = await showPromptMultiline(
-        'Generate Python',
-        'Describe what the code should do',
-        '',
-        'Tip: use Ctrl+Enter (⌘ Enter on Mac) or click Generate when ready.',
-      )
-      if (text == null) return
-      const prompt = text.trim()
-      if (!prompt) return
+      const trimmed = prompt.trim()
+      if (!trimmed) return
       setAiCodeBusyCellId(cellId)
       try {
-        const code = await generatePythonFromPrompt(prompt)
-        dispatchNotebook({ type: 'UPDATE_SOURCE', id: cellId, source: code })
+        const code = await generatePythonFromPrompt(trimmed)
+        const source = formatGeneratedPythonSource(trimmed, code)
+        dispatchNotebook({ type: 'UPDATE_SOURCE', id: cellId, source })
       } catch (e) {
         showAlert(e instanceof Error ? e.message : 'Riptide request failed.')
       } finally {
         setAiCodeBusyCellId(null)
       }
     },
-    [showAlert, showPromptMultiline, dispatchNotebook],
+    [showAlert, dispatchNotebook],
   )
 
   const runCell = useCallback(
@@ -1032,11 +995,9 @@ export function NotebookPage() {
       ? {
           variant: 'prompt' as const,
           title: dialog.title,
-          message: dialog.helperMessage ?? '',
+          message: '',
           promptLabel: dialog.label,
           promptValue: dialog.input,
-          promptMultiline: dialog.multiline ?? false,
-          primaryLabel: dialog.primaryLabel ?? (dialog.multiline ? 'Generate' : 'OK'),
         }
       : dialog?.kind === 'confirm'
         ? {
@@ -1148,7 +1109,7 @@ export function NotebookPage() {
                           onRunAndAdvance={runCellAndAdvance}
                           theme={theme}
                           completeCode={completeCode}
-                          onAiGenerateCode={handleAiGenerateCode}
+                          onAiGenerateFromPrompt={handleAiGenerateFromPrompt}
                           aiCodeBusyCellId={aiCodeBusyCellId}
                         />
                       </div>
@@ -1168,10 +1129,8 @@ export function NotebookPage() {
         title={'title' in dialogProps ? dialogProps.title : undefined}
         message={'message' in dialogProps ? dialogProps.message : ''}
         promptLabel={'promptLabel' in dialogProps ? dialogProps.promptLabel : undefined}
-        promptMultiline={'promptMultiline' in dialogProps ? dialogProps.promptMultiline : false}
         promptValue={dialog?.kind === 'prompt' ? dialog.input : ''}
         onPromptValueChange={dialogPromptChange}
-        primaryLabel={'primaryLabel' in dialogProps ? dialogProps.primaryLabel : undefined}
         onPrimary={handleDialogPrimary}
         onSecondary={dialog?.kind === 'alert' ? undefined : handleDialogSecondary}
       />

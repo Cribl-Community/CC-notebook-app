@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type RefObject } from 'react'
+import { useEffect, useId, useRef } from 'react'
 
 export type NotebookDialogProps = {
   open: boolean
@@ -8,8 +8,6 @@ export type NotebookDialogProps = {
   message: string
   promptLabel?: string
   promptValue: string
-  /** Multi-line description input (Ctrl/Cmd+Enter to submit) */
-  promptMultiline?: boolean
   onPromptValueChange: (v: string) => void
   primaryLabel?: string
   secondaryLabel?: string
@@ -25,7 +23,6 @@ export function NotebookDialog({
   message,
   promptLabel,
   promptValue,
-  promptMultiline = false,
   onPromptValueChange,
   primaryLabel = 'OK',
   secondaryLabel = 'Cancel',
@@ -33,7 +30,7 @@ export function NotebookDialog({
   onSecondary,
 }: NotebookDialogProps) {
   const titleId = useId()
-  const promptInputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
+  const promptInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -51,9 +48,8 @@ export function NotebookDialog({
   useEffect(() => {
     if (open && variant === 'prompt') {
       const t = window.setTimeout(() => {
-        const el = promptInputRef.current
-        el?.focus()
-        if (el instanceof HTMLInputElement) el.select()
+        promptInputRef.current?.focus()
+        promptInputRef.current?.select()
       }, 0)
       return () => window.clearTimeout(t)
     }
@@ -92,35 +88,19 @@ export function NotebookDialog({
             {message ? <p className="nb-dialog-message nb-dialog-message--muted">{message}</p> : null}
             <label className="nb-dialog-field">
               <span className="nb-dialog-label">{promptLabel}</span>
-              {promptMultiline ? (
-                <textarea
-                  ref={promptInputRef as RefObject<HTMLTextAreaElement>}
-                  className="nb-dialog-input nb-dialog-textarea"
-                  value={promptValue}
-                  rows={8}
-                  onChange={(e) => onPromptValueChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                      e.preventDefault()
-                      onPrimary()
-                    }
-                  }}
-                />
-              ) : (
-                <input
-                  ref={promptInputRef as RefObject<HTMLInputElement>}
-                  type="text"
-                  className="nb-dialog-input"
-                  value={promptValue}
-                  onChange={(e) => onPromptValueChange(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      onPrimary()
-                    }
-                  }}
-                />
-              )}
+              <input
+                ref={promptInputRef}
+                type="text"
+                className="nb-dialog-input"
+                value={promptValue}
+                onChange={(e) => onPromptValueChange(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    onPrimary()
+                  }
+                }}
+              />
             </label>
           </>
         )}

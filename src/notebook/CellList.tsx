@@ -11,7 +11,7 @@ interface CellListProps {
   onRunAndAdvance: (id: CellId, cellIndex: number) => void
   theme: 'dark' | 'light'
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
-  onAiGenerateCode?: (id: CellId) => void
+  onAiGenerateFromPrompt?: (id: CellId, prompt: string) => void
   aiCodeBusyCellId?: CellId | null
 }
 
@@ -22,7 +22,7 @@ export function CellList({
   onRunAndAdvance,
   theme,
   completeCode,
-  onAiGenerateCode,
+  onAiGenerateFromPrompt,
   aiCodeBusyCellId,
 }: CellListProps) {
   return (
@@ -42,7 +42,9 @@ export function CellList({
               onClearOutput={() => dispatch({ type: 'CLEAR_OUTPUTS', id: cell.id })}
               onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
               onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
-              onAiGenerate={onAiGenerateCode ? () => onAiGenerateCode(cell.id) : undefined}
+              onAiGenerateFromPrompt={
+                onAiGenerateFromPrompt ? (p) => onAiGenerateFromPrompt(cell.id, p) : undefined
+              }
               aiGenerateBusy={aiCodeBusyCellId === cell.id}
             />
           ) : (
