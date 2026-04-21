@@ -671,7 +671,9 @@ export function NotebookPage() {
           const res = await fetch(`${notebookStaticPrefix()}Examples/${filename}`)
           if (!res.ok) throw new Error(`Could not load example (${res.status})`)
           const text = await res.text()
-          const { title, cells } = ipynbTextToLoadPayload(text)
+          const parsed = parseIpynbJson(text, { filename })
+          const title = filename.trim() ? filename.trim() : parsed.title
+          const { cells } = parsed
           dispatch({
             type: 'REPLACE_TAB_CONTENT',
             tabId: tab.id,
