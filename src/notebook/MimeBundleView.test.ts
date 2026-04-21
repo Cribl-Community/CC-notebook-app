@@ -28,4 +28,13 @@ describe('MimeBundleView registrations', () => {
     })
     expect(r?.mime).toBe('application/vnd.vega.v5+json')
   })
+
+  it('selects Vega 6 (.json suffix) over HTML (Altair default bundle shape)', () => {
+    const r = pickRenderer({
+      'application/vnd.vega.v6.json': '{"$schema":"https://vega.github.io/schema/vega/v6.json"}',
+      'text/html': '<div id="v"><script></script></div>',
+      'text/plain': 'Chart(...)',
+    })
+    expect(r?.mime).toBe('application/vnd.vega.v6.json')
+  })
 })

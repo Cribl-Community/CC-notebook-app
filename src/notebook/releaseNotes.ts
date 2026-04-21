@@ -11,11 +11,19 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.39',
+    date: '2026-04-21',
+    highlights: [
+      'Altair / Vega-Lite 6: register `application/vnd.vega.v6` and `application/vnd.vegalite.v6` MIME keys (including Altair’s `.json` suffix) and auto-switch Altair to the `jupyterlab` MIME renderer so charts are not emitted as script-heavy HTML (which was sanitized to a blank output).',
+    ],
+  },
+  {
     version: '1.0.38',
     date: '2026-04-21',
     highlights: [
-      'Cell output: Plotly figures (`application/vnd.plotly.v1+json`) and Vega / Vega-Lite specs render interactively in addition to Matplotlib images; Plotly loads on first use to limit main-bundle size.',
-      'Kernel: IOPub formatter includes Plotly’s Jupyter MIME type so `display(fig)` emits the chart bundle.',
+      'Cell output: Matplotlib is still PNG/SVG in the output area; Plotly figures now render as interactive charts from the standard Jupyter MIME type (`application/vnd.plotly.v1+json`). The Plotly UI chunk loads on first chart so the initial app bundle stays smaller.',
+      'Cell output: Vega (`application/vnd.vega.v5+json`) and Vega-Lite (`application/vnd.vegalite.v5+json`) specs render with vega-embed—for example Altair charts—alongside Matplotlib and Plotly.',
+      'Kernel: IOPub includes Plotly’s MIME type in the formatter allowlist so `display(fig)` and trailing `fig` expressions emit a proper figure bundle, consistent with Jupyter.',
     ],
   },
   {

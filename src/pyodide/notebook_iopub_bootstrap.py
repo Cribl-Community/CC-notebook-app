@@ -34,7 +34,11 @@ _DEFAULT_INCLUDE = (
     "application/vnd.cribl.notebook.cribl-search+json",
     "application/vnd.plotly.v1+json",
     "application/vnd.vegalite.v5+json",
+    "application/vnd.vegalite.v6+json",
+    "application/vnd.vegalite.v6.json",
     "application/vnd.vega.v5+json",
+    "application/vnd.vega.v6+json",
+    "application/vnd.vega.v6.json",
     "application/json",
     "text/html",
     "image/svg+xml",
@@ -76,8 +80,26 @@ def _normalize_mime_value(v: Any) -> str | None:
         return None
 
 
+def _ensure_altair_mimetype_renderer() -> None:
+    """Prefer Altair's jupyterlab (MIME) renderer over the default HTML renderer.
+
+    The default renderer emits ``text/html`` with embedded ``<script>`` tags.
+    Our output sanitizer strips scripts, so those charts would render as blank.
+    The jupyterlab renderer uses ``application/vnd.vega*`` bundles (Vega-Lite 6 /
+    Vega 6) which we draw with vega-embed.
+    """
+    try:
+        alt = sys.modules.get("altair")
+        if alt is None:
+            return
+        alt.renderers.enable("jupyterlab")
+    except Exception:
+        pass
+
+
 def _format_object(obj: Any) -> tuple[dict, dict]:
     """Return ``(data, metadata)`` for an object. Prefers IPython's formatter."""
+    _ensure_altair_mimetype_renderer()
     try:
         formatter = _get_display_formatter()
         data, metadata = formatter.format(obj, include=_DEFAULT_INCLUDE)

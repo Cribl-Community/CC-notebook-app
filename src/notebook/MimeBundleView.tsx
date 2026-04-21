@@ -108,16 +108,30 @@ function ensureRegistered() {
     rank: 86,
     render: (plotlyData) => <PlotlyMimeView key={plotlyData} data={plotlyData} />,
   })
-  registerMimeRenderer({
-    mime: 'application/vnd.vegalite.v5+json',
-    rank: 84,
-    render: (spec) => <VegaMimeView key={spec} data={spec} />,
-  })
-  registerMimeRenderer({
-    mime: 'application/vnd.vega.v5+json',
-    rank: 83,
-    render: (spec) => <VegaMimeView key={spec} data={spec} />,
-  })
+  /** Vega-Lite 5/6 (+json and Altair’s historic “.json” suffix). */
+  for (const mime of [
+    'application/vnd.vegalite.v5+json',
+    'application/vnd.vegalite.v6+json',
+    'application/vnd.vegalite.v6.json',
+  ] as const) {
+    registerMimeRenderer({
+      mime,
+      rank: 84,
+      render: (spec) => <VegaMimeView key={spec} data={spec} />,
+    })
+  }
+  /** Vega 5/6 (Vega-Lite is preferred when both appear). */
+  for (const mime of [
+    'application/vnd.vega.v5+json',
+    'application/vnd.vega.v6+json',
+    'application/vnd.vega.v6.json',
+  ] as const) {
+    registerMimeRenderer({
+      mime,
+      rank: 83,
+      render: (spec) => <VegaMimeView key={spec} data={spec} />,
+    })
+  }
   registerMimeRenderer({
     mime: 'text/html',
     rank: 80,
