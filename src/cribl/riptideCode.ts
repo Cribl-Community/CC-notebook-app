@@ -187,9 +187,10 @@ export async function suggestErrorFix(
 
   const prompt = [
     'You are helping debug a Python notebook cell.',
-    'Explain the likely cause and provide a concise fix.',
-    'Keep your response brief: at most three short bullet points.',
-    'Include concrete changes to the code when possible.',
+    'Explain the likely cause and the fix in plain language.',
+    'Use at most three short bullet points for prose.',
+    'Whenever you show replacement Python, put each snippet in its own fenced Markdown block using ```python ... ``` so it can be copied or pasted into the cell.',
+    'If the whole cell should be replaced, put the full replacement in a single ```python ... ``` block.',
     '',
     '## Cell code',
     '```python',

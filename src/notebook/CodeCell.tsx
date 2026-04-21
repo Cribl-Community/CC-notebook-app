@@ -354,7 +354,7 @@ export function CodeCell({
         {cell.outputs.length > 0 && (
           <div className="nb-cell-outputs">
             {cell.outputs.map((output, i) => (
-              <CellOutput key={i} output={output} cellSource={cell.source} />
+              <CellOutput key={i} output={output} cellSource={cell.source} onReplaceCellSource={onChange} />
             ))}
           </div>
         )}
