@@ -16,6 +16,7 @@ import {
   tabIsDirty,
   tabWorkspaceReducer,
 } from './tabWorkspace'
+import { exampleNotebookDisplayLabel } from './examplesManifest'
 import { WelcomePage } from './WelcomePage'
 import {
   createNotebookWithPayload,
@@ -687,7 +688,7 @@ export function NotebookPage() {
           if (!res.ok) throw new Error(`Could not load example (${res.status})`)
           const text = await res.text()
           const parsed = parseIpynbJson(text, { filename })
-          const title = filename.trim() ? filename.trim() : parsed.title
+          const title = filename.trim() ? exampleNotebookDisplayLabel(filename.trim()) : parsed.title
           const { cells } = parsed
           dispatch({
             type: 'REPLACE_TAB_CONTENT',
