@@ -2258,6 +2258,53 @@ body {
   color: var(--nb-text-muted);
 }
 
+.nb-welcome-examples-picker {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.nb-welcome-examples-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nb-text-heading);
+}
+
+.nb-welcome-examples-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--nb-text);
+  background: var(--nb-bg-cell);
+  border: 1px solid var(--nb-border-cell);
+  border-radius: var(--space-2);
+  box-shadow: var(--nb-shadow-elev-1);
+}
+
+.nb-welcome-examples-select:focus {
+  outline: 2px solid var(--nb-focus-ring);
+  outline-offset: 1px;
+}
+
+.nb-welcome-examples-open {
+  align-self: flex-start;
+}
+
+.nb-welcome-examples-status {
+  margin-top: 4px;
+}
+
+.nb-welcome-examples-error {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--nb-error);
+}
+
 .nb-welcome-release {
   padding-top: 8px;
 }
@@ -2312,7 +2359,7 @@ body {
   text-decoration: underline;
 }
 
-.nb-welcome-proxy .nb-welcome-code {
+.nb-welcome .nb-welcome-code {
   font-family: var(--mono);
   font-size: 12px;
   padding: 1px 5px;

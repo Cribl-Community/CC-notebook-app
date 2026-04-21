@@ -1,4 +1,7 @@
+import { useEffect, useMemo, useState } from 'react'
+import { exampleNotebookDisplayLabel, parseExamplesManifest } from './examplesManifest'
 import { RELEASE_NOTES } from './releaseNotes'
+import { notebookStaticPrefix } from './staticAssets'
 import { WelcomeProxyCheck } from './WelcomeProxyCheck'
 
 export type WelcomePageProps = {
@@ -6,8 +9,40 @@ export type WelcomePageProps = {
   onNewNotebook: () => void
 }
 
+type ExamplesLoadState =
+  | { kind: 'loading' }
+  | { kind: 'error'; message: string }
+  | { kind: 'ready'; notebooks: string[]; selectedFilename: string }
+
 export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) {
   const [top, ...rest] = RELEASE_NOTES
+  const staticPrefix = useMemo(() => notebookStaticPrefix(), [])
+  const [examplesLoad, setExamplesLoad] = useState<ExamplesLoadState>({ kind: 'loading' })
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch(`${staticPrefix}Examples/manifest.json`)
+        if (!res.ok) throw new Error(`Could not load examples list (${res.status})`)
+        const json: unknown = await res.json()
+        const notebooks = parseExamplesManifest(json)
+        if (!notebooks) throw new Error('Invalid examples manifest')
+        if (cancelled) return
+        const selectedFilename = notebooks[0] ?? ''
+        setExamplesLoad({ kind: 'ready', notebooks, selectedFilename })
+      } catch (e) {
+        if (cancelled) return
+        setExamplesLoad({
+          kind: 'error',
+          message: e instanceof Error ? e.message : 'Failed to load examples',
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [staticPrefix])
 
   return (
     <div className="nb-welcome">
@@ -50,28 +85,52 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
       <section className="nb-welcome-section">
         <h2>Examples</h2>
         <p className="nb-welcome-muted">
-          Bundled notebooks (read-only templates). Open a copy in a new tab to run cells.
+          Bundled notebooks (read-only templates) from <code className="nb-welcome-code">public/Examples</code>.
+          Open a copy in a new tab to run cells.
         </p>
-        <div className="nb-welcome-cards">
-          <button
-            type="button"
-            className="nb-welcome-card"
-            onClick={() => onOpenExample('Cribl_Search_Example.ipynb')}
-          >
-            <span className="nb-welcome-card-title">Cribl Search</span>
-            <span className="nb-welcome-card-desc">
-              %%cribl_search parameters, sample KQL, pandas follow-ups, and charts.
-            </span>
-          </button>
-          <button
-            type="button"
-            className="nb-welcome-card"
-            onClick={() => onOpenExample('Matplotlib_Examples.ipynb')}
-          >
-            <span className="nb-welcome-card-title">Matplotlib</span>
-            <span className="nb-welcome-card-desc">Plots from JSON and pandas DataFrames.</span>
-          </button>
-        </div>
+        {examplesLoad.kind === 'loading' && (
+          <p className="nb-welcome-muted nb-welcome-examples-status">Loading examples…</p>
+        )}
+        {examplesLoad.kind === 'error' && (
+          <p className="nb-welcome-examples-error" role="alert">
+            {examplesLoad.message}
+          </p>
+        )}
+        {examplesLoad.kind === 'ready' && examplesLoad.notebooks.length === 0 && (
+          <p className="nb-welcome-muted nb-welcome-examples-status">No example notebooks are bundled.</p>
+        )}
+        {examplesLoad.kind === 'ready' && examplesLoad.notebooks.length > 0 && (
+          <div className="nb-welcome-examples-picker">
+            <label className="nb-welcome-examples-label" htmlFor="nb-welcome-examples-select">
+              Choose an example
+            </label>
+            <select
+              id="nb-welcome-examples-select"
+              className="nb-welcome-examples-select"
+              size={Math.min(Math.max(examplesLoad.notebooks.length, 1), 10)}
+              value={examplesLoad.selectedFilename}
+              onChange={(e) =>
+                setExamplesLoad((s) =>
+                  s.kind === 'ready' ? { ...s, selectedFilename: e.target.value } : s,
+                )
+              }
+            >
+              {examplesLoad.notebooks.map((filename) => (
+                <option key={filename} value={filename}>
+                  {exampleNotebookDisplayLabel(filename)}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="nb-btn nb-btn-primary nb-welcome-examples-open"
+              disabled={!examplesLoad.selectedFilename}
+              onClick={() => onOpenExample(examplesLoad.selectedFilename)}
+            >
+              Open example
+            </button>
+          </div>
+        )}
       </section>
 
       <WelcomeProxyCheck />
