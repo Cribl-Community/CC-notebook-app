@@ -88,6 +88,11 @@ def _ensure_altair_mimetype_renderer() -> None:
 
     Altair wheels may name the same MIME path ``jupyterlab``, ``mimetype``, or
     ``nteract`` depending on version — try them in order.
+
+    Additionally, ``TopLevelMixin.show()`` (the method called by ``chart.show()``)
+    is patched to route through ``display()`` so that explicit ``.show()`` calls
+    emit the correct vega-lite MIME bundle rather than silently doing nothing
+    (``altair_viewer`` is not available in Pyodide).
     """
     try:
         alt = sys.modules.get("altair")
@@ -96,15 +101,24 @@ def _ensure_altair_mimetype_renderer() -> None:
         for name in ("jupyterlab", "mimetype", "nteract"):
             try:
                 alt.renderers.enable(name)
-                return
+                break
             except Exception:
                 continue
+
+        # Patch TopLevelMixin.show() so chart.show() emits the MIME bundle.
+        TopLevelMixin = getattr(alt, "TopLevelMixin", None)
+        if TopLevelMixin is not None and not getattr(TopLevelMixin, "_nb_show_patched", False):
+            def _nb_alt_show(self, *_args: Any, **_kwargs: Any) -> None:  # noqa: ANN001
+                display(self)
+
+            TopLevelMixin.show = _nb_alt_show  # type: ignore[method-assign]
+            TopLevelMixin._nb_show_patched = True  # type: ignore[attr-defined]
     except Exception:
         pass
 
 
 def _configure_plotly_renderer() -> None:
-    """Suppress Plotly's nbformat traceback by patching BaseFigure._ipython_display_.
+    """Patch Plotly's BaseFigure so that both IPython display and fig.show() work.
 
     Plotly's default ``_ipython_display_`` calls ``pio.show()`` which requires
     ``nbformat>=4.2.0``.  That package is not installed in Pyodide, so IPython's
@@ -117,6 +131,10 @@ def _configure_plotly_renderer() -> None:
     instead causes ``IPythonDisplayFormatter`` to silently return ``None`` (it special-
     cases ``NotImplementedError`` as "this object has no IPython display") without
     printing any traceback, while keeping the ``_repr_mimebundle_`` path intact.
+
+    Additionally, ``BaseFigure.show()`` is patched to route through ``display()``
+    so that ``fig.show()`` in user code emits the correct MIME bundle rather than
+    raising ``ValueError: Mime type rendering requires nbformat>=4.2.0``.
     """
     try:
         basedatatypes = sys.modules.get("plotly.basedatatypes")
@@ -129,7 +147,11 @@ def _configure_plotly_renderer() -> None:
         def _nb_ipython_display_(self) -> None:  # noqa: ANN001
             raise NotImplementedError
 
+        def _nb_show(self, *_args: Any, **_kwargs: Any) -> None:  # noqa: ANN001
+            display(self)
+
         BaseFigure._ipython_display_ = _nb_ipython_display_  # type: ignore[method-assign]
+        BaseFigure.show = _nb_show  # type: ignore[method-assign]
         BaseFigure._nb_ipython_display_patched = True  # type: ignore[attr-defined]
     except Exception:
         pass
