@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.50',
+    date: '2026-04-22',
+    highlights: [
+      'Execution: when several code cells are queued (for example Run All) and a cell reports an error, remaining cells no longer run and pending cells return to idle.',
+    ],
+  },
+  {
     version: '1.0.49',
     date: '2026-04-21',
     highlights: ['Packaging: refreshed application bundle for distribution.'],
