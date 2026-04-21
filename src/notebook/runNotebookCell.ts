@@ -39,6 +39,9 @@ export const DEFAULT_NOTEBOOK_CELL_EXECUTION_DEPS: NotebookCellExecutionDeps = {
   criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_MAX_ROWS,
 }
 
+/** Outcome of one cell run; `error` stops further queued cells. */
+export type CellRunOutcome = 'ok' | 'error' | 'stale'
+
 /**
  * Runs one code cell after the kernel is ready: Cribl Search magics, then Pyodide execute.
  * Caller owns queueing, SET_RUNNING, execution counter, and kernel busy/ready UI flags.
@@ -53,7 +56,7 @@ export async function runNotebookCellAfterReady(opts: {
   isStale: () => boolean
   dispatchNotebook: (action: NotebookAction) => void
   deps?: Partial<NotebookCellExecutionDeps>
-}): Promise<void> {
+}): Promise<CellRunOutcome> {
   const {
     kernel,
     cellId: id,
@@ -70,7 +73,7 @@ export async function runNotebookCellAfterReady(opts: {
   if (magic.kind === 'error') {
     emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${magic.message}\n` })
     dispatchNotebook({ type: 'ERROR_CELL', id })
-    return
+    return 'error'
   }
 
   if (magic.kind === 'cribl_search') {
@@ -130,7 +133,7 @@ export async function runNotebookCellAfterReady(opts: {
           )
         },
       })
-      if (isStale()) return
+      if (isStale()) return 'stale'
 
       emitIOPub(
         criblSearchIOPub(
@@ -167,18 +170,19 @@ export async function runNotebookCellAfterReady(opts: {
           count,
         )
 
-        if (isStale()) return
+        if (isStale()) return 'stale'
 
         if (sawError) {
           dispatchNotebook({ type: 'ERROR_CELL', id })
-        } else {
-          dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
+          return 'error'
         }
-      } else {
-        const text = response === 'json' ? formatCriblSearchJsonRows(rows) : formatCriblSearchRawRows(rows)
-        emitIOPub({ msg_type: 'stream', name: 'stdout', text })
         dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
+        return 'ok'
       }
+      const text = response === 'json' ? formatCriblSearchJsonRows(rows) : formatCriblSearchRawRows(rows)
+      emitIOPub({ msg_type: 'stream', name: 'stdout', text })
+      dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
+      return 'ok'
     } catch (e) {
       const errMsg = e instanceof Error ? e.message : String(e)
       const pretty = formatCriblSearchError(errMsg, lang === 'english' ? generatedKqlForReport : undefined)
@@ -186,8 +190,8 @@ export async function runNotebookCellAfterReady(opts: {
         emitIOPub(criblSearchIOPub({ kind: 'failed', message: pretty }, displayId, true))
       }
       dispatchNotebook({ type: 'ERROR_CELL', id })
+      return 'error'
     }
-    return
   }
 
   let sawError = false
@@ -200,11 +204,12 @@ export async function runNotebookCellAfterReady(opts: {
     count,
   )
 
-  if (isStale()) return
+  if (isStale()) return 'stale'
 
   if (sawError) {
     dispatchNotebook({ type: 'ERROR_CELL', id })
-  } else {
-    dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
+    return 'error'
   }
+  dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
+  return 'ok'
 }
