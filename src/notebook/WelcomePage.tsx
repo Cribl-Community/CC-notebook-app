@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { exampleNotebookDisplayLabel, parseExamplesManifest } from './examplesManifest'
+import { parseExamplesManifest } from './examplesManifest'
 import { RELEASE_NOTES } from './releaseNotes'
 import { notebookStaticPrefix } from './staticAssets'
 import { WelcomeProxyCheck } from './WelcomeProxyCheck'
@@ -114,10 +114,14 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
                   s.kind === 'ready' ? { ...s, selectedFilename: e.target.value } : s,
                 )
               }
+              onDoubleClick={(e) => {
+                const v = e.currentTarget.value
+                if (v) onOpenExample(v)
+              }}
             >
               {examplesLoad.notebooks.map((filename) => (
                 <option key={filename} value={filename}>
-                  {exampleNotebookDisplayLabel(filename)}
+                  {filename}
                 </option>
               ))}
             </select>
@@ -129,6 +133,10 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
             >
               Open example
             </button>
+            <p className="nb-welcome-muted nb-welcome-examples-hint">
+              Names match files under <code className="nb-welcome-code">public/Examples</code>. Double-click a
+              row or use Open example.
+            </p>
           </div>
         )}
       </section>

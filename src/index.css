@@ -2295,6 +2295,13 @@ body {
   align-self: flex-start;
 }
 
+.nb-welcome-examples-hint {
+  margin: 4px 0 0;
+  max-width: 420px;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .nb-welcome-examples-status {
   margin-top: 4px;
 }
