@@ -1,18 +1,10 @@
 import type { NotebookState, NotebookAction, CodeCell, MarkdownCell, Cell } from './types'
-import { applyIOPub, createOutputArea, type OutputAreaState } from './outputArea'
-
-/**
- * Per-cell deferred-clear state for `clear_output { wait: true }`. Lives on a
- * module-level WeakMap keyed by the cell object so it survives reducer state
- * transitions without polluting the serializable {@link CodeCell} shape.
- */
-const cellOutputAreaStates = new WeakMap<CodeCell, OutputAreaState>()
-
-function getOrInitArea(cell: CodeCell): OutputAreaState {
-  const existing = cellOutputAreaStates.get(cell)
-  if (existing && existing.records === cell.outputs) return existing
-  return { records: cell.outputs, pendingClear: false }
-}
+import { applyIOPub } from './outputArea'
+import {
+  getOrInitCellOutputAreaState,
+  persistCellOutputAreaState,
+  resetCellOutputAreaForRun,
+} from './notebookOutputAreaSideState'
 
 function makeCodeCell(): CodeCell {
   return {
@@ -70,6 +62,10 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         return { ...state, cells: [...state.cells, newCell], selectedId: newCell.id }
       }
       const idx = state.cells.findIndex((c) => c.id === action.afterId)
+      // Stale afterId (e.g. replaced notebook): append instead of splice(0, …), which would prepend.
+      if (idx === -1) {
+        return { ...state, cells: [...state.cells, newCell], selectedId: newCell.id }
+      }
       const cells = [...state.cells]
       cells.splice(idx + 1, 0, newCell)
       return { ...state, cells, selectedId: newCell.id }
@@ -147,7 +143,7 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
             outputs: [],
             execution_count: null,
           }
-          cellOutputAreaStates.set(updated, createOutputArea())
+          resetCellOutputAreaForRun(updated)
           return updated
         }),
       }
@@ -186,13 +182,13 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ...state,
         cells: state.cells.map((c): Cell => {
           if (c.id !== action.id || c.cell_type !== 'code') return c
-          const area = getOrInitArea(c)
+          const area = getOrInitCellOutputAreaState(c)
           const next = applyIOPub(area, action.msg)
           if (next.records === area.records && next.pendingClear === area.pendingClear) {
             return c
           }
           const updated: CodeCell = { ...c, outputs: next.records }
-          cellOutputAreaStates.set(updated, next)
+          persistCellOutputAreaState(updated, next)
           return updated
         }),
       }
