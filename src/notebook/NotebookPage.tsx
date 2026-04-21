@@ -34,6 +34,7 @@ import { formatGeneratedPythonSource, generatePythonFromPrompt } from '../cribl/
 import { getCriblApiBase } from '../cribl/kvstore'
 import type { IOPubMessage } from '../pyodide/types'
 import { runNotebookCellAfterReady } from './runNotebookCell'
+import { RunQueueAbortedError } from './runQueueAbort'
 import { useTabNotebookRuntime } from './useTabNotebookRuntime'
 import { notebookStaticPrefix } from './staticAssets'
 
@@ -271,56 +272,70 @@ export function NotebookPage() {
       dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ENQUEUE_CELL', id } })
 
       const q = getRunQueue(tid)
-      q.p = q.p.then(async () => {
-        if (tabGensRef.current.get(tid) !== myGen) {
-          scheduled.delete(id)
-          return
-        }
+      q.p = q.p
+        .then(async () => {
+          if (tabGensRef.current.get(tid) !== myGen) {
+            scheduled.delete(id)
+            return
+          }
 
-        dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_RUNNING', id } })
+          dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_RUNNING', id } })
 
-        try {
-          await kernel.ready
-          if (tabGensRef.current.get(tid) !== myGen) return
-
-          dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_KERNEL_STATUS', status: 'busy' } })
-          const prevCount = tabExecCountersRef.current.get(tid) ?? 0
-          const count = prevCount + 1
-          tabExecCountersRef.current.set(tid, count)
-
-          const emitIOPub = (msg: IOPubMessage) => {
+          try {
+            await kernel.ready
             if (tabGensRef.current.get(tid) !== myGen) return
-            dispatch({
-              type: 'TAB_NOTEBOOK',
-              tabId: tid,
-              action: { type: 'IOPUB', id, msg, executionCount: count },
+
+            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_KERNEL_STATUS', status: 'busy' } })
+            const prevCount = tabExecCountersRef.current.get(tid) ?? 0
+            const count = prevCount + 1
+            tabExecCountersRef.current.set(tid, count)
+
+            const emitIOPub = (msg: IOPubMessage) => {
+              if (tabGensRef.current.get(tid) !== myGen) return
+              dispatch({
+                type: 'TAB_NOTEBOOK',
+                tabId: tid,
+                action: { type: 'IOPUB', id, msg, executionCount: count },
+              })
+            }
+
+            const dispatchTabNotebook = (action: NotebookAction) => {
+              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action })
+            }
+
+            const outcome = await runNotebookCellAfterReady({
+              kernel,
+              cellId: id,
+              source,
+              executionCount: count,
+              emitIOPub,
+              isStale: () => tabGensRef.current.get(tid) !== myGen,
+              dispatchNotebook: dispatchTabNotebook,
             })
+            if (outcome === 'error') {
+              tabScheduledIdsRef.current.get(tid)?.clear()
+              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'CLEAR_ALL_PENDING' } })
+              throw new RunQueueAbortedError()
+            }
+          } catch (e) {
+            if (e instanceof RunQueueAbortedError) throw e
+            if (tabGensRef.current.get(tid) === myGen) {
+              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
+              tabScheduledIdsRef.current.get(tid)?.clear()
+              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'CLEAR_ALL_PENDING' } })
+            }
+            throw new RunQueueAbortedError()
+          } finally {
+            scheduled.delete(id)
+            if (tabGensRef.current.get(tid) === myGen) {
+              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_KERNEL_STATUS', status: 'ready' } })
+            }
           }
-
-          const dispatchTabNotebook = (action: NotebookAction) => {
-            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action })
-          }
-
-          await runNotebookCellAfterReady({
-            kernel,
-            cellId: id,
-            source,
-            executionCount: count,
-            emitIOPub,
-            isStale: () => tabGensRef.current.get(tid) !== myGen,
-            dispatchNotebook: dispatchTabNotebook,
-          })
-        } catch {
-          if (tabGensRef.current.get(tid) === myGen) {
-            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
-          }
-        } finally {
-          scheduled.delete(id)
-          if (tabGensRef.current.get(tid) === myGen) {
-            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_KERNEL_STATUS', status: 'ready' } })
-          }
-        }
-      })
+        })
+        .catch((e) => {
+          if (e instanceof RunQueueAbortedError) return
+          console.error(e)
+        })
     },
     [getRunQueue, getScheduledSet],
   )

@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.50',
+    date: '2026-04-22',
+    highlights: [
+      'Execution: if several code cells are queued (Run All or multiple runs) and a cell ends with an error, remaining queued cells are skipped and cells that were only waiting return to idle—similar to Jupyter.',
+      'After that error the Pyodide kernel keeps running so you can edit and re-run; use Stop when you want to interrupt execution and restart the kernel (Stop still clears pending cells as before).',
+    ],
+  },
+  {
     version: '1.0.49',
     date: '2026-04-21',
     highlights: ['Packaging: refreshed application bundle for distribution.'],
