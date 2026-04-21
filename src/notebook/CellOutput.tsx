@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type {
   OutputRecord,
   StreamOutput,
@@ -7,6 +8,7 @@ import type {
 } from '../pyodide/types'
 import { MimeBundleView } from './MimeBundleView'
 import { stripAnsi, extractCellLineRefs } from './ansiUtils'
+import { suggestErrorFix } from '../cribl/riptideCode'
 
 type SourceSnippetLine = {
   lineNumber: number
@@ -50,9 +52,27 @@ function DisplayDataView({ output }: { output: DisplayDataOutput }) {
 }
 
 function ErrorOutputView({ output, cellSource }: { output: ErrorOutput; cellSource?: string }) {
+  const [fixState, setFixState] = useState<'idle' | 'loading' | 'shown' | 'dismissed'>('idle')
+  const [fixText, setFixText] = useState('')
+  const [fixError, setFixError] = useState('')
   const cleanedTraceback = output.traceback.map((line) => stripAnsi(line))
   const refs = extractCellLineRefs(cleanedTraceback)
   const snippet = cellSource ? buildSourceSnippet(cellSource, refs) : []
+  const canSuggestFix = Boolean(cellSource)
+
+  const handleSuggestFix = async () => {
+    if (!cellSource || fixState === 'loading') return
+    setFixError('')
+    setFixState('loading')
+    try {
+      const suggested = await suggestErrorFix(cellSource, output.ename, output.evalue, cleanedTraceback)
+      setFixText(suggested)
+      setFixState('shown')
+    } catch (e) {
+      setFixError(e instanceof Error ? e.message : 'Unable to fetch AI fix suggestion.')
+      setFixState('idle')
+    }
+  }
 
   return (
     <div className="nb-output-error">
@@ -77,6 +97,46 @@ function ErrorOutputView({ output, cellSource }: { output: ErrorOutput; cellSour
       <pre className="nb-output-pre nb-output-traceback">
         {cleanedTraceback.join('\n')}
       </pre>
+      {canSuggestFix && (
+        <div className="nb-output-error-fix-footer">
+          {fixState === 'idle' && (
+            <button type="button" className="nb-btn nb-btn-ai-fix" onClick={handleSuggestFix}>
+              ✦ Suggest Fix
+            </button>
+          )}
+          {fixState === 'loading' && (
+            <button type="button" className="nb-btn nb-btn-ai-fix" disabled>
+              Generating…
+            </button>
+          )}
+          {fixState === 'shown' && (
+            <div className="nb-output-error-fix">
+              <div className="nb-output-error-fix-title">
+                AI suggestion
+                <button
+                  type="button"
+                  className="nb-output-error-fix-dismiss"
+                  onClick={() => setFixState('dismissed')}
+                  title="Hide suggestion"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="nb-output-error-fix-body">{fixText}</div>
+            </div>
+          )}
+          {fixState === 'dismissed' && (
+            <button
+              type="button"
+              className="nb-btn nb-btn-ai-fix-link"
+              onClick={() => setFixState('shown')}
+            >
+              Show suggestion
+            </button>
+          )}
+          {fixError && <div className="nb-output-error-fix-error">{fixError}</div>}
+        </div>
+      )}
     </div>
   )
 }
