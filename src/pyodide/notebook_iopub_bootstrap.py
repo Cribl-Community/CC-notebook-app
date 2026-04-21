@@ -19,6 +19,8 @@ and other IPython-based libraries forward through the same channel.
 from __future__ import annotations
 
 import ast
+
+import IPython  # noqa: F401 — top-level so Pyodide loadPackagesFromImports loads the wheel before this module runs.
 import base64
 import json
 import sys

@@ -6,7 +6,12 @@ import type {
   WorkerInbound,
   WorkerOutbound,
 } from './types'
-import { PYODIDE_PACKAGE_BASE_URL, resolvePyodidePackageBaseUrl } from './pyodideVersion'
+import { fetchWithPackageSessionCache } from './packageFetchCache'
+import {
+  getSameOriginPyodideBaseUrl,
+  getSameOriginPyodideLockFileUrl,
+  PYODIDE_PACKAGE_BASE_URL,
+} from './pyodideVersion'
 import completionPy from './notebook_complete.py?raw'
 import iopubBootstrapPy from './notebook_iopub_bootstrap.py?raw'
 
@@ -40,7 +45,7 @@ function postIOPub(execId, msg) {
 // Strategy: forward every cross-origin \`fetch()\` to the main thread via
 // postMessage, let it call the patched \`fetch\` there, and reconstruct a
 // Response from the bytes/headers the main thread sends back. Same-origin
-// requests (vendored wheels, the lock file, our own assets) keep going
+// requests (Pyodide runtime on the app host, our own assets) keep going
 // directly through the worker for speed.
 const _origFetch = self.fetch.bind(self);
 const _fetchPending = new Map();
@@ -178,20 +183,11 @@ self.onmessage = async function(e) {
       pyodide = await loadPyodide({
         indexURL: msg.pyodideBaseUrl,
         packageBaseUrl: msg.pyodidePackageBaseUrl,
-        // Default lock is indexURL/pyodide-lock.json (full upstream index). Micropip
-        // uses this lock to decide "in Pyodide repo" vs PyPI — must match packageBaseUrl
-        // (trimmed vendored lock under ./pyodide/full/ when present).
-        lockFileURL: new URL('pyodide-lock.json', msg.pyodidePackageBaseUrl).href,
+        // Same-origin lock from the shipped \`public/pyodide/\` tree; avoids CSP blocks on jsDelivr in iframes.
+        lockFileURL: msg.pyodideLockFileUrl,
       });
-      // Preload IPython (so notebook_iopub_bootstrap can install its
-      // DisplayPublisher) and micropip (optional user installs from PyPI when
-      // network allows). Vendored lock packages; if load fails, bootstrap falls back.
-      try {
-        await pyodide.loadPackage(['ipython', 'micropip', 'jedi']);
-      } catch (_) {
-        // optional
-      }
       await pyodide.runPythonAsync(COMPLETION_PY);
+      await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY);
       await pyodide.runPythonAsync(IOPUB_BOOTSTRAP_PY);
       self.postMessage({ type: 'ready' });
     } catch (err) {
@@ -204,6 +200,7 @@ self.onmessage = async function(e) {
     if (!pyodide) return;
     const id = msg.id;
     try {
+      await pyodide.loadPackagesFromImports('import jedi\\n');
       pyodide.globals.set('_nb_code', msg.code);
       pyodide.globals.set('_nb_cursor', msg.cursor);
       const jsonStr = await pyodide.runPythonAsync(
@@ -357,26 +354,20 @@ export class PyodideKernel {
       }
     }
 
-    this.worker.onerror = (e) => onFail(e.message)
+    this.worker.onerror = (e: ErrorEvent) => {
+      console.error('[PyodideKernel] worker error', e.message, e.filename, e.lineno, e.colno, e.error)
+      onFail(e.message || 'Worker failed')
+    }
 
-    // Prefer same-origin vendored wheels when `vendor-pyodide-wheels` has run; else jsDelivr CDN.
-    const worker = this.worker
-    void (async () => {
-      let pyodidePackageBaseUrl: string
-      try {
-        pyodidePackageBaseUrl = await resolvePyodidePackageBaseUrl()
-      } catch {
-        pyodidePackageBaseUrl = PYODIDE_PACKAGE_BASE_URL
-      }
-      const pyodideBaseUrl = new URL('./pyodide/', window.location.href).href
-      const initMsg: WorkerInbound = {
-        type: 'init',
-        pyodideBaseUrl,
-        pyodidePackageBaseUrl,
-        appOrigin: window.location.origin,
-      }
-      worker.postMessage(initMsg)
-    })()
+    const pyodideBaseUrl = getSameOriginPyodideBaseUrl()
+    const pyodideLockFileUrl = getSameOriginPyodideLockFileUrl()
+    this.worker.postMessage({
+      type: 'init',
+      pyodideBaseUrl,
+      pyodidePackageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
+      pyodideLockFileUrl,
+      appOrigin: window.location.origin,
+    } satisfies WorkerInbound)
   }
 
   execute(
@@ -408,7 +399,7 @@ export class PyodideKernel {
 
   /**
    * Bridge for the worker's cross-origin `fetch()` calls (micropip → PyPI,
-   * jsDelivr fallback wheels, etc). The Cribl iframe patches the main-thread
+   * jsDelivr wheels, etc). The Cribl iframe patches the main-thread
    * `fetch` so external URLs are routed through `/api/v1/p/<pack>/proxy/...`
    * with auth injected by the parent window. Workers don't see that patch, so
    * they delegate up here and we hand back a serialised Response.
@@ -433,7 +424,7 @@ export class PyodideKernel {
       if (init.body != null && init.method && init.method !== 'GET' && init.method !== 'HEAD') {
         fetchInit.body = init.body as BodyInit
       }
-      const r = await fetch(url, fetchInit)
+      const r = await fetchWithPackageSessionCache(url, fetchInit)
       const buf = await r.arrayBuffer()
       const headers: Record<string, string> = {}
       r.headers.forEach((v, k) => {

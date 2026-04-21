@@ -11,6 +11,22 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.34',
+    date: '2026-04-21',
+    highlights: [
+      'Pyodide: same-origin runtime URL now resolves `BASE_URL` against `document.baseURI` so installs under an Apps mount path load `pyodide.js` next to the bundle (fixes ORB / kernel failures when the runtime was requested from the site root).',
+    ],
+  },
+  {
+    version: '1.0.33',
+    date: '2026-04-21',
+    highlights: [
+      'Pyodide: runtime and lock file URLs resolve from the app base path and origin — not the client route — so kernels load on nested SPA paths (e.g. trailing slashes) and the lock file stays same-origin for CSP.',
+      'Kernel fetch bridge uses the real window fetch; jsDelivr / PyPI / pythonhosted GETs are deduped and session-cached so new notebook tabs reuse wheels without re-downloading when possible.',
+      'Worker blob: fixed escaped newline in the lazy jedi completion load so the worker parses reliably.',
+    ],
+  },
+  {
     version: '1.0.32',
     date: '2026-04-21',
     highlights: [
