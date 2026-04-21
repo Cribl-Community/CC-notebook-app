@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useLayoutEffect, useCallback, useState } from 'react'
 import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import type { CodeCell as CellData } from './types'
@@ -53,9 +53,9 @@ export function CodeCell({
   aiGenerateBusy = false,
 }: CodeCellProps) {
   const [aiPanelOpen, setAiPanelOpen] = useState(false)
-  /** Typed continuation after `DEFAULT_RIPTIDE_PROMPT_PREFIX` (prefix shown muted beside this input). */
+  /** Typed continuation after `DEFAULT_RIPTIDE_PROMPT_PREFIX` (prefix shown muted beside this field). */
   const [aiPromptSuffix, setAiPromptSuffix] = useState('')
-  const aiPromptRef = useRef<HTMLInputElement>(null)
+  const aiPromptRef = useRef<HTMLTextAreaElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const viewRef = useRef<EditorView | null>(null)
   const onRunRef = useRef(onRun)
@@ -139,6 +139,18 @@ export function CodeCell({
   const onEditorMouseDown = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
   }, [])
+
+  const syncAiPromptHeight = useCallback(() => {
+    const el = aiPromptRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!aiPanelOpen) return
+    syncAiPromptHeight()
+  }, [aiPanelOpen, aiPromptSuffix, syncAiPromptHeight])
 
   useEffect(() => {
     if (!aiPanelOpen) return
@@ -288,11 +300,11 @@ export function CodeCell({
                 <span className="nb-cell-ai-prefix" aria-hidden>
                   {DEFAULT_RIPTIDE_PROMPT_PREFIX}
                 </span>
-                <input
+                <textarea
                   ref={aiPromptRef}
                   id={`nb-ai-prompt-${cell.id}`}
-                  type="text"
                   className="nb-cell-ai-prompt"
+                  rows={1}
                   autoComplete="off"
                   value={aiPromptSuffix}
                   onChange={(e) => setAiPromptSuffix(e.target.value)}
