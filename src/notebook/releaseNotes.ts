@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.40',
+    date: '2026-04-21',
+    highlights: [
+      'Vega cell output: pin the app bundle to vega-embed 6 + vega-lite 5 so Altair’s Vega-Lite v5 specs match the embedded compiler (fixes blank charts when the console warned that the spec was v5 but npm shipped Vega-Lite v6).',
+    ],
+  },
+  {
     version: '1.0.39',
     date: '2026-04-21',
     highlights: [
