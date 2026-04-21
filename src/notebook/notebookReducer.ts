@@ -70,6 +70,10 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         return { ...state, cells: [...state.cells, newCell], selectedId: newCell.id }
       }
       const idx = state.cells.findIndex((c) => c.id === action.afterId)
+      // Stale afterId (e.g. replaced notebook): append instead of splice(0, …), which would prepend.
+      if (idx === -1) {
+        return { ...state, cells: [...state.cells, newCell], selectedId: newCell.id }
+      }
       const cells = [...state.cells]
       cells.splice(idx + 1, 0, newCell)
       return { ...state, cells, selectedId: newCell.id }

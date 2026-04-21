@@ -116,3 +116,39 @@ describe('notebookReducer DUPLICATE_CELL', () => {
     expect(same).toEqual(state)
   })
 })
+
+describe('notebookReducer ADD_CELL', () => {
+  it('appends when afterId is omitted', () => {
+    const cells = createEmptyNotebookCells()
+    const id0 = cells[0]!.id
+    let state = readyStateFromCells(cells)
+    state = notebookReducer(state, { type: 'ADD_CELL', cellType: 'markdown' })
+    expect(state.cells.length).toBe(2)
+    expect(state.cells[1]?.cell_type).toBe('markdown')
+    expect(state.selectedId).toBe(state.cells[1]?.id)
+    expect(state.cells[0]?.id).toBe(id0)
+  })
+
+  it('inserts below afterId when that cell exists', () => {
+    const cells = createEmptyNotebookCells()
+    const id0 = cells[0]!.id
+    let state = readyStateFromCells(cells)
+    state = notebookReducer(state, { type: 'ADD_CELL', afterId: id0, cellType: 'markdown' })
+    expect(state.cells.length).toBe(2)
+    expect(state.cells[0]?.id).toBe(id0)
+    expect(state.cells[1]?.cell_type).toBe('markdown')
+    expect(state.selectedId).toBe(state.cells[1]?.id)
+  })
+
+  it('appends when afterId does not exist (stale id)', () => {
+    const cells = createEmptyNotebookCells()
+    const id0 = cells[0]!.id
+    let state = readyStateFromCells(cells)
+    state = notebookReducer(state, { type: 'ADD_CELL', afterId: 'nonexistent-cell-id', cellType: 'code' })
+    expect(state.cells.length).toBe(2)
+    expect(state.cells[0]?.id).toBe(id0)
+    const added = state.cells[1]
+    expect(added?.cell_type).toBe('code')
+    expect(state.selectedId).toBe(added?.id)
+  })
+})
