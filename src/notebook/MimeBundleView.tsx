@@ -4,6 +4,8 @@ import { marked } from 'marked'
 import type { MimeBundle, MimeMetadata } from '../pyodide/types'
 import { CRIBL_SEARCH_MIME, type CriblSearchPayload } from '../pyodide/types'
 import { CriblSearchOutputView } from './CriblSearchOutput'
+import { PlotlyMimeView } from './PlotlyMimeView'
+import { VegaMimeView } from './VegaMimeView'
 import { pickRenderer, registerMimeRenderer } from './mimeRegistry'
 
 function HtmlMime({ data }: { data: string }) {
@@ -101,6 +103,40 @@ function ensureRegistered() {
     rank: 90,
     render: () => <WidgetFallback />,
   })
+  /*
+   * Plotly + Vega must rank above the Jupyter widget stub (90). Otherwise a
+   * bundle that includes both real chart MIME and ipywidgets placeholder keys
+   * loses the chart to “[Jupyter widget — interactive rendering not yet implemented]”.
+   */
+  registerMimeRenderer({
+    mime: 'application/vnd.plotly.v1+json',
+    rank: 96,
+    render: (plotlyData) => <PlotlyMimeView key={plotlyData} data={plotlyData} />,
+  })
+  /** Vega-Lite 5/6 (+json and Altair’s historic “.json” suffix). */
+  for (const mime of [
+    'application/vnd.vegalite.v5+json',
+    'application/vnd.vegalite.v6+json',
+    'application/vnd.vegalite.v6.json',
+  ] as const) {
+    registerMimeRenderer({
+      mime,
+      rank: 95,
+      render: (spec) => <VegaMimeView key={spec} data={spec} />,
+    })
+  }
+  /** Vega 5/6 (Vega-Lite is preferred when both appear). */
+  for (const mime of [
+    'application/vnd.vega.v5+json',
+    'application/vnd.vega.v6+json',
+    'application/vnd.vega.v6.json',
+  ] as const) {
+    registerMimeRenderer({
+      mime,
+      rank: 94,
+      render: (spec) => <VegaMimeView key={spec} data={spec} />,
+    })
+  }
   registerMimeRenderer({
     mime: 'text/html',
     rank: 80,

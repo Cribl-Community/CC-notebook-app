@@ -11,6 +11,43 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.42',
+    date: '2026-04-21',
+    highlights: [
+      'Code cells with top-level ``await`` (e.g. ``await micropip.install("altair")``) now emit ``execute_result`` for a trailing variable line such as ``chart``, matching Jupyter. Previously ``eval_code_async`` ran the cell but never invoked ``displayhook``, so Vega-Lite / Altair output areas stayed empty.',
+    ],
+  },
+  {
+    version: '1.0.41',
+    date: '2026-04-21',
+    highlights: [
+      'Vega-Lite / Altair in cells: chart MIME types now rank above the Jupyter widget placeholder so real Vega bundles are not replaced by “interactive rendering not yet implemented”; Altair renderer selection tries jupyterlab, mimetype, and nteract.',
+    ],
+  },
+  {
+    version: '1.0.40',
+    date: '2026-04-21',
+    highlights: [
+      'Vega cell output: pin the app bundle to vega-embed 6 + vega-lite 5 so Altair’s Vega-Lite v5 specs match the embedded compiler (fixes blank charts when the console warned that the spec was v5 but npm shipped Vega-Lite v6).',
+    ],
+  },
+  {
+    version: '1.0.39',
+    date: '2026-04-21',
+    highlights: [
+      'Altair / Vega-Lite 6: register `application/vnd.vega.v6` and `application/vnd.vegalite.v6` MIME keys (including Altair’s `.json` suffix) and auto-switch Altair to the `jupyterlab` MIME renderer so charts are not emitted as script-heavy HTML (which was sanitized to a blank output).',
+    ],
+  },
+  {
+    version: '1.0.38',
+    date: '2026-04-21',
+    highlights: [
+      'Cell output: Matplotlib is still PNG/SVG in the output area; Plotly figures now render as interactive charts from the standard Jupyter MIME type (`application/vnd.plotly.v1+json`). The Plotly UI chunk loads on first chart so the initial app bundle stays smaller.',
+      'Cell output: Vega (`application/vnd.vega.v5+json`) and Vega-Lite (`application/vnd.vegalite.v5+json`) specs render with vega-embed—for example Altair charts—alongside Matplotlib and Plotly.',
+      'Kernel: IOPub includes Plotly’s MIME type in the formatter allowlist so `display(fig)` and trailing `fig` expressions emit a proper figure bundle, consistent with Jupyter.',
+    ],
+  },
+  {
     version: '1.0.37',
     date: '2026-04-21',
     highlights: [

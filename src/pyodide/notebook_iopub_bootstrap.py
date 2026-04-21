@@ -32,8 +32,13 @@ _DEFAULT_INCLUDE = (
     "application/vnd.jupyter.widget-view+json",
     "application/vnd.jupyter.widget-state+json",
     "application/vnd.cribl.notebook.cribl-search+json",
+    "application/vnd.plotly.v1+json",
     "application/vnd.vegalite.v5+json",
+    "application/vnd.vegalite.v6+json",
+    "application/vnd.vegalite.v6.json",
     "application/vnd.vega.v5+json",
+    "application/vnd.vega.v6+json",
+    "application/vnd.vega.v6.json",
     "application/json",
     "text/html",
     "image/svg+xml",
@@ -75,8 +80,65 @@ def _normalize_mime_value(v: Any) -> str | None:
         return None
 
 
+def _ensure_altair_mimetype_renderer() -> None:
+    """Prefer Altair's MIME renderers over HTML (script stripped) or JupyterChart widgets.
+
+    The default renderer emits ``text/html`` with embedded ``<script>`` tags.
+    Our output sanitizer strips scripts, so those charts would render as blank.
+
+    Altair wheels may name the same MIME path ``jupyterlab``, ``mimetype``, or
+    ``nteract`` depending on version — try them in order.
+    """
+    try:
+        alt = sys.modules.get("altair")
+        if alt is None:
+            return
+        for name in ("jupyterlab", "mimetype", "nteract"):
+            try:
+                alt.renderers.enable(name)
+                return
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+
+def _configure_plotly_renderer() -> None:
+    """Suppress Plotly's nbformat traceback by patching BaseFigure._ipython_display_.
+
+    Plotly's default ``_ipython_display_`` calls ``pio.show()`` which requires
+    ``nbformat>=4.2.0``.  That package is not installed in Pyodide, so IPython's
+    ``IPythonDisplayFormatter`` catches the resulting ``ValueError``, prints a
+    multi-line traceback to stderr, and returns ``None`` — which lets the
+    ``MimeBundleFormatter`` fall through and produce the correct
+    ``application/vnd.plotly.v1+json`` data (so the chart still renders).
+
+    Replacing ``_ipython_display_`` with a method that raises ``NotImplementedError``
+    instead causes ``IPythonDisplayFormatter`` to silently return ``None`` (it special-
+    cases ``NotImplementedError`` as "this object has no IPython display") without
+    printing any traceback, while keeping the ``_repr_mimebundle_`` path intact.
+    """
+    try:
+        basedatatypes = sys.modules.get("plotly.basedatatypes")
+        if basedatatypes is None:
+            return
+        BaseFigure = getattr(basedatatypes, "BaseFigure", None)
+        if BaseFigure is None or getattr(BaseFigure, "_nb_ipython_display_patched", False):
+            return
+
+        def _nb_ipython_display_(self) -> None:  # noqa: ANN001
+            raise NotImplementedError
+
+        BaseFigure._ipython_display_ = _nb_ipython_display_  # type: ignore[method-assign]
+        BaseFigure._nb_ipython_display_patched = True  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+
 def _format_object(obj: Any) -> tuple[dict, dict]:
     """Return ``(data, metadata)`` for an object. Prefers IPython's formatter."""
+    _ensure_altair_mimetype_renderer()
+    _configure_plotly_renderer()
     try:
         formatter = _get_display_formatter()
         data, metadata = formatter.format(obj, include=_DEFAULT_INCLUDE)
@@ -351,6 +413,36 @@ def _cell_needs_eval_code_async(tree: ast.Module) -> bool:
     return False
 
 
+def _displayhook_last_expr_after_async(
+    tree: ast.Module, user_ns: dict[str, Any], displayhook: Any
+) -> None:
+    """Apply ``sys.displayhook`` to the cell's last expression after ``eval_code_async``.
+
+    Pyodide's ``eval_code_async`` executes the full cell but, unlike Jupyter's REPL
+    split for sync cells, does not emit the value of a trailing expression (e.g.
+    ``chart`` after ``await micropip.install(...)``). Without this, there is no
+    ``execute_result`` / Altair MIME output—only ``[*]`` and empty output area.
+
+    Only **simple names** (``chart`` / ``fig``) are re-evaluated for display. Other
+    trailing expressions (e.g. ``make()`` calls) already ran once as statements;
+    re-``eval`` would execute them a second time.
+    """
+    if not tree.body or not isinstance(tree.body[-1], ast.Expr):
+        return
+    expr_node = tree.body[-1].value
+    if isinstance(expr_node, ast.Await):
+        return
+    if not isinstance(expr_node, ast.Name):
+        return
+    expr_mod = ast.Expression(body=expr_node)
+    ast.fix_missing_locations(expr_mod)
+    value = eval(compile(expr_mod, "<cell>", "eval"), user_ns, user_ns)
+    try:
+        displayhook(value)
+    except Exception:
+        pass
+
+
 async def _nb_run(code: str, execution_count: int) -> None:
     """Execute ``code`` in the user namespace, emitting IOPub for the trailing expr.
 
@@ -363,7 +455,8 @@ async def _nb_run(code: str, execution_count: int) -> None:
 
     user_ns = globals()
     prev_hook = sys.displayhook
-    sys.displayhook = _displayhook_factory(execution_count)
+    hook = _displayhook_factory(execution_count)
+    sys.displayhook = hook
     try:
         try:
             tree = ast.parse(code, mode="exec")
@@ -376,6 +469,7 @@ async def _nb_run(code: str, execution_count: int) -> None:
                 from pyodide.code import eval_code_async
 
                 await eval_code_async(code, user_ns)
+                _displayhook_last_expr_after_async(tree, user_ns, hook)
             except ImportError:
                 co = compile(code, "<cell>", "exec", ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
                 result = exec(co, user_ns, user_ns)
@@ -383,6 +477,7 @@ async def _nb_run(code: str, execution_count: int) -> None:
                     inspect.isawaitable(result) or asyncio.iscoroutine(result)
                 ):
                     await result
+                _displayhook_last_expr_after_async(tree, user_ns, hook)
         elif tree.body and isinstance(tree.body[-1], ast.Expr):
             exec_part = ast.Module(body=tree.body[:-1], type_ignores=[])
             expr_part = ast.Expression(body=tree.body[-1].value)  # type: ignore[arg-type]
