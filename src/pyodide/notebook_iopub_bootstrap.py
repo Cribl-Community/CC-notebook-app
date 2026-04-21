@@ -32,6 +32,7 @@ _DEFAULT_INCLUDE = (
     "application/vnd.jupyter.widget-view+json",
     "application/vnd.jupyter.widget-state+json",
     "application/vnd.cribl.notebook.cribl-search+json",
+    "application/vnd.plotly.v1+json",
     "application/vnd.vegalite.v5+json",
     "application/vnd.vega.v5+json",
     "application/json",

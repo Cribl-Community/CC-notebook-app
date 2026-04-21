@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.38',
+    date: '2026-04-21',
+    highlights: [
+      'Cell output: Plotly figures (`application/vnd.plotly.v1+json`) and Vega / Vega-Lite specs render interactively in addition to Matplotlib images; Plotly loads on first use to limit main-bundle size.',
+      'Kernel: IOPub formatter includes Plotly’s Jupyter MIME type so `display(fig)` emits the chart bundle.',
+    ],
+  },
+  {
     version: '1.0.37',
     date: '2026-04-21',
     highlights: [

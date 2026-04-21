@@ -4,6 +4,8 @@ import { marked } from 'marked'
 import type { MimeBundle, MimeMetadata } from '../pyodide/types'
 import { CRIBL_SEARCH_MIME, type CriblSearchPayload } from '../pyodide/types'
 import { CriblSearchOutputView } from './CriblSearchOutput'
+import { PlotlyMimeView } from './PlotlyMimeView'
+import { VegaMimeView } from './VegaMimeView'
 import { pickRenderer, registerMimeRenderer } from './mimeRegistry'
 
 function HtmlMime({ data }: { data: string }) {
@@ -100,6 +102,21 @@ function ensureRegistered() {
     mime: 'application/vnd.jupyter.widget-view+json',
     rank: 90,
     render: () => <WidgetFallback />,
+  })
+  registerMimeRenderer({
+    mime: 'application/vnd.plotly.v1+json',
+    rank: 86,
+    render: (plotlyData) => <PlotlyMimeView key={plotlyData} data={plotlyData} />,
+  })
+  registerMimeRenderer({
+    mime: 'application/vnd.vegalite.v5+json',
+    rank: 84,
+    render: (spec) => <VegaMimeView key={spec} data={spec} />,
+  })
+  registerMimeRenderer({
+    mime: 'application/vnd.vega.v5+json',
+    rank: 83,
+    render: (spec) => <VegaMimeView key={spec} data={spec} />,
   })
   registerMimeRenderer({
     mime: 'text/html',

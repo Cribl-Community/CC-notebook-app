@@ -1245,6 +1245,33 @@ body {
   padding-left: 8px;
 }
 
+.nb-mime-chart-loading {
+  color: var(--nb-text-muted);
+  font-size: 12px;
+  padding: var(--space-3) 0;
+}
+
+.nb-mime-plotly {
+  width: 100%;
+  min-height: 200px;
+  overflow-x: auto;
+}
+
+.nb-mime-plotly .js-plotly-plot {
+  width: 100% !important;
+}
+
+.nb-mime-vega {
+  width: 100%;
+  min-height: 120px;
+  overflow-x: auto;
+}
+
+.nb-mime-vega-error {
+  border-left: 3px solid var(--nb-error);
+  padding-left: var(--space-2);
+}
+
 .nb-mime-markdown p {
   margin: 4px 0;
 }
