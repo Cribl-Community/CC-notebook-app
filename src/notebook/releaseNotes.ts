@@ -14,7 +14,8 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
     version: '1.0.50',
     date: '2026-04-22',
     highlights: [
-      'Execution: when several code cells are queued (for example Run All) and a cell reports an error, remaining cells no longer run and pending cells return to idle.',
+      'Execution: if several code cells are queued (Run All or multiple runs) and a cell ends with an error, remaining queued cells are skipped and cells that were only waiting return to idle—similar to Jupyter.',
+      'After that error the Pyodide kernel keeps running so you can edit and re-run; use Stop when you want to interrupt execution and restart the kernel (Stop still clears pending cells as before).',
     ],
   },
   {
