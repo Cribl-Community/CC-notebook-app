@@ -30,96 +30,11 @@ import {
   saveNotebookState,
   storeManifest,
 } from './notebookLibrary'
-import {
-  buildCriblSearchDataframeCode,
-  encodeRowsJsonForPythonBase64,
-  parseCriblSearchMagic,
-} from './criblSearchMagic'
-import { filterPyodidePackageChatter } from './criblSearchStreamFilter'
-import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '../cribl/searchJobs'
-import { translateEnglishToKql } from '../cribl/aiTranslate'
 import { formatGeneratedPythonSource, generatePythonFromPrompt } from '../cribl/riptideCode'
 import { getCriblApiBase } from '../cribl/kvstore'
-import {
-  CRIBL_SEARCH_MIME,
-  type CriblSearchPayload,
-  type IOPubMessage,
-} from '../pyodide/types'
+import type { IOPubMessage } from '../pyodide/types'
+import { runNotebookCellAfterReady } from './runNotebookCell'
 import { useTabNotebookRuntime } from './useTabNotebookRuntime'
-
-function criblSearchPlainSummary(p: CriblSearchPayload): string {
-  if (p.kind === 'running') return `Cribl Search: ${p.label}`
-  if (p.kind === 'failed') return `Cribl Search failed: ${p.message}`
-  const total =
-    p.totalRecords != null && p.totalRecords !== p.recordsReturned
-      ? `${p.recordsReturned} records (${p.totalRecords} total)`
-      : `${p.recordsReturned} records`
-  return `Cribl Search: ${total}`
-}
-
-function criblSearchIOPub(
-  payload: CriblSearchPayload,
-  display_id: string,
-  update: boolean,
-): IOPubMessage {
-  const data = {
-    'text/plain': criblSearchPlainSummary(payload),
-    [CRIBL_SEARCH_MIME]: JSON.stringify(payload),
-  }
-  if (update) {
-    return {
-      msg_type: 'update_display_data',
-      data,
-      metadata: {},
-      transient: { display_id },
-    }
-  }
-  return {
-    msg_type: 'display_data',
-    data,
-    metadata: {},
-    transient: { display_id },
-  }
-}
-
-function formatCriblSearchError(raw: string, generatedQuery?: string): string {
-  const msg = raw.trim()
-  if (/Search job create failed \(400\)/i.test(msg) && /no viable alternative/i.test(msg)) {
-    const parts = [
-      'Generated KQL is invalid for Cribl Search (parser error).',
-      'Try refining the English prompt, include `dataset=...` in the magic header, or run with `lang=kql`.',
-    ]
-    if (generatedQuery && generatedQuery.trim().length > 0) {
-      parts.push(`Generated KQL:\n${generatedQuery}`)
-    }
-    return parts.join('\n\n')
-  }
-  if (/AI translation/i.test(msg) || /did not return a valid KQL/i.test(msg)) {
-    const parts = ['Natural-language to KQL translation failed.']
-    if (generatedQuery && generatedQuery.trim().length > 0) {
-      parts.push(`Generated KQL candidate:\n${generatedQuery}`)
-    }
-    parts.push(msg)
-    return parts.join('\n\n')
-  }
-  if (generatedQuery && generatedQuery.trim().length > 0) {
-    return `${msg}\n\nGenerated KQL:\n${generatedQuery}`
-  }
-  return msg
-}
-
-function formatCriblSearchJsonRows(rows: Record<string, unknown>[]): string {
-  return `${JSON.stringify(rows, null, 2)}\n`
-}
-
-function formatCriblSearchRawRows(rows: Record<string, unknown>[]): string {
-  const lines = rows.map((row) => {
-    const raw = row._raw
-    if (typeof raw === 'string') return raw
-    return JSON.stringify(row)
-  })
-  return `${lines.join('\n')}\n`
-}
 
 type DialogState =
   | { kind: 'alert'; message: string }
@@ -381,165 +296,19 @@ export function NotebookPage() {
             })
           }
 
-          const magic = parseCriblSearchMagic(source)
-          if (magic.kind === 'error') {
-            emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${magic.message}\n` })
-            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
-            return
+          const dispatchTabNotebook = (action: NotebookAction) => {
+            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action })
           }
 
-          if (magic.kind === 'cribl_search') {
-            const { varName, query, preview, response, earliest, latest, limit, lang, dataset } = magic.value
-            const displayId = `cribl-search-${id}`
-            let generatedKqlForReport: string | undefined
-            try {
-              emitIOPub(
-                criblSearchIOPub(
-                  { kind: 'running', progress: 0.06, label: 'Starting search…' },
-                  displayId,
-                  false,
-                ),
-              )
-
-              let searchQuery = query
-              if (lang === 'english') {
-                if (!getCriblApiBase()) {
-                  emitIOPub(
-                    criblSearchIOPub(
-                      {
-                        kind: 'running',
-                        progress: 0.14,
-                        label: 'Local dev mode: skipping AI translation (using query as-is)…',
-                      },
-                      displayId,
-                      true,
-                    ),
-                  )
-                } else {
-                  emitIOPub(
-                    criblSearchIOPub(
-                      { kind: 'running', progress: 0.14, label: 'Translating query to KQL…' },
-                      displayId,
-                      true,
-                    ),
-                  )
-                  searchQuery = await translateEnglishToKql(query, { datasetHint: dataset })
-                  generatedKqlForReport = searchQuery
-                  emitIOPub({
-                    msg_type: 'stream',
-                    name: 'stdout',
-                    text: `Generated KQL:\n${searchQuery}\n`,
-                  })
-                }
-              }
-
-              const { rows, columns, totalRecords } = await runCriblSearchJob({
-                query: searchQuery,
-                queryMode: 'verbatim',
-                maxRows: limit,
-                earliest,
-                latest,
-                onProgress: (ev) => {
-                  emitIOPub(
-                    criblSearchIOPub(
-                      { kind: 'running', progress: ev.fraction, label: ev.label },
-                      displayId,
-                      true,
-                    ),
-                  )
-                },
-              })
-              if (tabGensRef.current.get(tid) !== myGen) return
-
-              emitIOPub(
-                criblSearchIOPub(
-                  {
-                    kind: 'completed',
-                    columns,
-                    rows: preview && response === 'dataframe' ? rows.slice(0, DEFAULT_CRIBL_SEARCH_MAX_ROWS) : [],
-                    recordsReturned: rows.length,
-                    totalRecords,
-                    dataframeVar: varName,
-                    showTable: preview && response === 'dataframe',
-                  },
-                  displayId,
-                  true,
-                ),
-              )
-              if (response === 'dataframe') {
-                const b64 = encodeRowsJsonForPythonBase64(rows)
-                /** Rich table already shows rows; never add `print(df.head())` (avoids duplicate text). */
-                const code = buildCriblSearchDataframeCode(varName, b64, false)
-                let sawError = false
-                await kernel.execute(
-                  code,
-                  (msg) => {
-                    if (msg.msg_type === 'stream') {
-                      const filtered = filterPyodidePackageChatter(msg.text)
-                      if (filtered.length === 0) return
-                      emitIOPub({ ...msg, text: filtered })
-                      return
-                    }
-                    if (msg.msg_type === 'error') sawError = true
-                    emitIOPub(msg)
-                  },
-                  count,
-                )
-
-                if (tabGensRef.current.get(tid) !== myGen) return
-
-                if (sawError) {
-                  dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
-                } else {
-                  dispatch({
-                    type: 'TAB_NOTEBOOK',
-                    tabId: tid,
-                    action: { type: 'FINISH_CELL', id, execution_count: count },
-                  })
-                }
-              } else {
-                const text = response === 'json' ? formatCriblSearchJsonRows(rows) : formatCriblSearchRawRows(rows)
-                emitIOPub({ msg_type: 'stream', name: 'stdout', text })
-                dispatch({
-                  type: 'TAB_NOTEBOOK',
-                  tabId: tid,
-                  action: { type: 'FINISH_CELL', id, execution_count: count },
-                })
-              }
-            } catch (e) {
-              const errMsg = e instanceof Error ? e.message : String(e)
-              const pretty = formatCriblSearchError(errMsg, lang === 'english' ? generatedKqlForReport : undefined)
-              if (tabGensRef.current.get(tid) === myGen) {
-                emitIOPub(
-                  criblSearchIOPub(
-                    { kind: 'failed', message: pretty },
-                    displayId,
-                    true,
-                  ),
-                )
-              }
-              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
-            }
-            return
-          }
-
-          let sawError = false
-          await kernel.execute(
+          await runNotebookCellAfterReady({
+            kernel,
+            cellId: id,
             source,
-            (msg) => {
-              if (msg.msg_type === 'error') sawError = true
-              emitIOPub(msg)
-            },
-            count,
-          )
-
-          if (tabGensRef.current.get(tid) !== myGen) return
-
-          if (sawError) {
-            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
-          } else {
-            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'FINISH_CELL', id, execution_count: count } })
-          }
+            executionCount: count,
+            emitIOPub,
+            isStale: () => tabGensRef.current.get(tid) !== myGen,
+            dispatchNotebook: dispatchTabNotebook,
+          })
         } catch {
           if (tabGensRef.current.get(tid) === myGen) {
             dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })

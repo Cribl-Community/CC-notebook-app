@@ -11,6 +11,15 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.46',
+    date: '2026-04-21',
+    highlights: [
+      'Architecture: `useTabNotebookRuntime` centralizes per-tab Pyodide kernels, serialized run queues, execution counters, and generation tokens used to drop stale runs after restart/stop.',
+      'Cell execution: Cribl Search helpers and `runNotebookCellAfterReady` live in dedicated modules with injectable dependencies for easier unit testing.',
+      'Reducer: `ADD_CELL` with a stale `afterId` now appends instead of prepending at index 0; output-area `clear_output(wait=True)` state lives in `notebookOutputAreaSideState.ts` with a short rationale.',
+    ],
+  },
+  {
     version: '1.0.45',
     date: '2026-04-21',
     highlights: [
