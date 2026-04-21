@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.47',
+    date: '2026-04-21',
+    highlights: [
+      'Welcome: bundled Examples are listed from a Vite-generated `public/Examples/manifest.json` (all `*.ipynb` in that folder). Adding or removing notebooks updates the list after dev reload or on the next production build.',
+      'Welcome: choose an example from a compact list control (up to ten visible rows) and open it with one click; static asset URLs share `notebookStaticPrefix()` with example notebook loads.',
+    ],
+  },
+  {
     version: '1.0.46',
     date: '2026-04-21',
     highlights: [
