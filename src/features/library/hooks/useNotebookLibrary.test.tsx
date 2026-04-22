@@ -42,8 +42,8 @@ describe('useNotebookLibrary', () => {
     fetchManifestMock.mockResolvedValue({
       version: 1,
       items: [
-        { id: 'f1', kind: 'folder', parentId: null, name: 'Folder' },
-        { id: 'n1', kind: 'notebook', parentId: null, name: 'N' },
+        { id: 'f1', type: 'folder', parentId: null, name: 'Folder', updatedAt: '' },
+        { id: 'n1', type: 'notebook', parentId: null, name: 'N', updatedAt: '' },
       ],
     })
     const { result } = renderHook(() => useNotebookLibrary())
