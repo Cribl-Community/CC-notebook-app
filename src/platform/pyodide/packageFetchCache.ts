@@ -83,6 +83,12 @@ export type SerializedFetchPayload = {
 const sessionMemory = new Map<string, SerializedFetchPayload>()
 const inflight = new Map<string, Promise<SerializedFetchPayload>>()
 
+/** Clears session and in-flight maps. Used from Vitest only (parallel cases need a cold start). */
+export function __resetPackageFetchCacheForTest(): void {
+  sessionMemory.clear()
+  inflight.clear()
+}
+
 function payloadToResponse(p: SerializedFetchPayload): Response {
   const headers = new Headers()
   for (const [k, v] of p.headerPairs) {
