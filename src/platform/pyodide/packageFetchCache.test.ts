@@ -66,7 +66,7 @@ describe('shouldCachePackageFetchUrl', () => {
  * (browser cache may or may not collapse them to one network read).
  */
 describe('fetchWithPackageSessionCache (same-origin pyodide — network efficiency)', () => {
-  const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+  const fetchMock = vi.fn<typeof fetch>()
 
   beforeEach(() => {
     __resetPackageFetchCacheForTest()
