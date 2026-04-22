@@ -1,10 +1,5 @@
 import type { NotebookState, NotebookAction, CodeCell, MarkdownCell, Cell } from '@features/notebook/model/types'
 import { applyIOPub } from '@features/notebook/reducer/outputArea'
-import {
-  getOrInitCellOutputAreaState,
-  persistCellOutputAreaState,
-  resetCellOutputAreaForRun,
-} from '@features/notebook/reducer/notebookOutputAreaSideState'
 
 function makeCodeCell(): CodeCell {
   return {
@@ -35,6 +30,7 @@ function duplicateCell(c: Cell): Cell {
       outputs: [],
       execution_count: null,
       execution_state: 'idle',
+      pendingClear: false,
     }
   }
   return { ...c, id }
@@ -142,8 +138,8 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
             execution_state: 'running',
             outputs: [],
             execution_count: null,
+            pendingClear: false,
           }
-          resetCellOutputAreaForRun(updated)
           return updated
         }),
       }
@@ -182,14 +178,12 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ...state,
         cells: state.cells.map((c): Cell => {
           if (c.id !== action.id || c.cell_type !== 'code') return c
-          const area = getOrInitCellOutputAreaState(c)
+          const area = { records: c.outputs, pendingClear: c.pendingClear ?? false }
           const next = applyIOPub(area, action.msg)
           if (next.records === area.records && next.pendingClear === area.pendingClear) {
             return c
           }
-          const updated: CodeCell = { ...c, outputs: next.records }
-          persistCellOutputAreaState(updated, next)
-          return updated
+          return { ...c, outputs: next.records, pendingClear: next.pendingClear }
         }),
       }
     }
@@ -220,7 +214,7 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ...state,
         cells: state.cells.map((c): Cell =>
           c.id === action.id && c.cell_type === 'code'
-            ? { ...c, outputs: [], execution_count: null }
+            ? { ...c, outputs: [], execution_count: null, pendingClear: false }
             : c,
         ),
       }
@@ -229,7 +223,9 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
       return {
         ...state,
         cells: state.cells.map((c): Cell =>
-          c.cell_type === 'code' ? { ...c, outputs: [], execution_count: null } : c,
+          c.cell_type === 'code'
+            ? { ...c, outputs: [], execution_count: null, pendingClear: false }
+            : c,
         ),
       }
 
@@ -252,7 +248,13 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ...state,
         cells: state.cells.map((c): Cell =>
           c.cell_type === 'code'
-            ? { ...c, outputs: [], execution_count: null, execution_state: 'idle' }
+            ? {
+                ...c,
+                outputs: [],
+                execution_count: null,
+                execution_state: 'idle',
+                pendingClear: false,
+              }
             : c,
         ),
         executionCounter: 0,

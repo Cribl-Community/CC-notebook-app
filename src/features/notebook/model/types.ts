@@ -13,6 +13,12 @@ export interface CodeCell {
   outputs: OutputRecord[]
   execution_count: number | null
   execution_state: ExecutionState
+  /**
+   * Set to true by a `clear_output { wait: true }` IOPub message; consumed on
+   * the next non-status message when the output area is actually cleared.
+   * Not serialised to .ipynb — stripped by the codec on save/load.
+   */
+  pendingClear?: boolean
 }
 
 export interface MarkdownCell {
