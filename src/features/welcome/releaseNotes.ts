@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.56',
+    date: '2026-04-23',
+    highlights: [
+      'UI: the toolbar theme dropdown is now a **style** selector with ten palettes (Cribl Pro, Cribl Midnight, Nord, Dracula, Catppuccin Mocha, Tokyo Night, Rosé Pine, Solarized, Gruvbox, One Monokai). App chrome, surfaces, and code cell syntax tokens follow CSS variables in `src/app/styles/nb-palettes.css`, keyed by `data-nb-style` on the document root; choice persists under `localStorage` `nb-app-style`, with a one-time read of legacy `nb-theme` (light/dark) mapped to Cribl Pro / Cribl Midnight. CodeMirror still takes a light/dark luma hint for its built-in chrome. Added `src/app/styles/nbStyles.ts`, updated `ThemeProvider` + tests, and docs in `docs/ARCHITECTURE.md`.',
+    ],
+  },
+  {
     version: '1.0.55',
     date: '2026-04-22',
     highlights: [
@@ -29,7 +36,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
     date: '2026-04-22',
     highlights: [
       'Architecture: reorganised the codebase into a feature-sliced, hexagonal layout (`app/`, `features/`, `platform/`, `ports/`, `ui/`). Path aliases now enforce layering and make intent obvious at the import site.',
-      'Architecture: slimmed `NotebookPage` to composition—per-tab kernel lifecycle, workspace state, library, cell execution, theme, dialogs, environment, AI code, and examples each live in their own hook or provider.',
+      'Architecture: slimmed `NotebookPage` to composition—per-tab kernel lifecycle, workspace state, library, cell execution, notebook style, dialogs, environment, AI code, and examples each live in their own hook or provider.',
       'Architecture: introduced a `CellExecutor` registry so `%cribl_search` and Python execution share a single dispatch point and are independently testable.',
       'Reliability: reducer is now pure—deferred `clear_output { wait: true }` lives on the cell itself rather than a module-level WeakMap; added regression tests.',
       'Kernel: extracted the Pyodide worker source into its own `.worker.js` (type-checked + lintable) while keeping the Blob-URL runtime path.',
@@ -201,7 +208,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
       'Notebook execution queue behaves more like Jupyter: cells waiting to run show a busy [*] gutter; only the active cell is read-only while executing.',
       'Shift+Enter and Run (▶) run the cell, move selection to the next cell, and insert a new code cell below when you run the last cell.',
       'Stop cancels queued work: pending cells return to idle alongside the usual interrupt of the running cell.',
-      'Theme: default is light unless nb-theme is set to dark; the theme picker lists Light first.',
+      'Style: choose among 10 notebook color themes (Cribl Pro, Nord, Dracula, …) via the toolbar; `nb-app-style` persists, with legacy `nb-theme` light/dark mapped once on read.',
       'Cribl Search example notebook: externaldata sample uses var=kql_df and clarifies the magic header.',
     ],
   },

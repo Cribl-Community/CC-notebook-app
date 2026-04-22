@@ -10,7 +10,8 @@ import { DEFAULT_RIPTIDE_PROMPT_PREFIX, parseRiptidePromptFromCellSource } from 
 interface CodeCellProps {
   cell: CellData
   isSelected: boolean
-  theme: 'dark' | 'light'
+  /** CodeMirror light/dark chrome; syntax comes from CSS variables. */
+  codeMirrorLuma: 'light' | 'dark'
   onSelect: () => void
   onRun: () => void
   onDelete: () => void
@@ -39,7 +40,7 @@ function GutterLabel({ cell }: { cell: CellData }) {
 export function CodeCell({
   cell,
   isSelected,
-  theme,
+  codeMirrorLuma,
   onSelect,
   onRun,
   onDelete,
@@ -79,7 +80,7 @@ export function CodeCell({
     readOnlyCompartmentRef.current = readOnlyCompartment
 
     const extensions = createPythonCellExtensions({
-      theme,
+      theme: codeMirrorLuma,
       readOnlyCompartment,
       readOnly: cell.execution_state === 'running',
       placeholderText: '# Enter Python code here…',
@@ -108,9 +109,9 @@ export function CodeCell({
       view.destroy()
       viewRef.current = null
     }
-    // Editor is tied to cell identity and theme; document text and read-only are updated in other effects.
+    // Editor is tied to cell identity and luma; document text and read-only are updated in other effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
-  }, [cell.id, theme])
+  }, [cell.id, codeMirrorLuma])
 
   useEffect(() => {
     const view = viewRef.current

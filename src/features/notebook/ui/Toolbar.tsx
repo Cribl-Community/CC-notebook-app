@@ -1,8 +1,9 @@
 import { useRef } from 'react'
+import { NOTEBOOK_STYLES, type AppStyleId } from '@app/styles/nbStyles'
 import type { KernelStatus } from '@features/notebook/model/types'
 
 interface ToolbarProps {
-  /** Welcome tab: theme only; notebook actions hidden. */
+  /** Welcome tab: style only; notebook actions hidden. */
   variant?: 'notebook' | 'welcome'
   kernelStatus: KernelStatus
   title: string
@@ -19,8 +20,8 @@ interface ToolbarProps {
   onStop: () => void
   stopEnabled: boolean
   onRestart: () => void
-  theme: 'dark' | 'light'
-  onThemeChange: (t: 'dark' | 'light') => void
+  appStyle: AppStyleId
+  onAppStyleChange: (s: AppStyleId) => void
 }
 
 function KernelIndicator({ status }: { status: KernelStatus }) {
@@ -65,8 +66,8 @@ export function Toolbar({
   onStop,
   stopEnabled,
   onRestart,
-  theme,
-  onThemeChange,
+  appStyle,
+  onAppStyleChange,
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
@@ -161,13 +162,17 @@ export function Toolbar({
           </>
         )}
         <select
-          className="nb-theme-select"
-          value={theme}
-          onChange={(e) => onThemeChange(e.target.value as 'dark' | 'light')}
-          title="Select theme"
+          className="nb-style-select"
+          value={appStyle}
+          onChange={(e) => onAppStyleChange(e.target.value as AppStyleId)}
+          title="Notebook color style"
+          aria-label="Notebook color style"
         >
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
+          {NOTEBOOK_STYLES.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
+            </option>
+          ))}
         </select>
       </div>
       {!welcome && <KernelIndicator status={kernelStatus} />}
