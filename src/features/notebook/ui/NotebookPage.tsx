@@ -25,8 +25,8 @@ import {
   saveNotebookState,
   storeManifest,
 } from '@features/library/notebookLibrary'
-import { formatGeneratedPythonSource, generatePythonFromPrompt } from '@features/ai-riptide/riptideService'
-import { getCriblApiBase } from '@platform/cribl/kvstore'
+import { formatGeneratedPythonSource } from '@features/ai-riptide/riptideService'
+import { useAiCodeService } from '@app/providers'
 import type { IOPubMessage } from '@platform/pyodide/types'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
@@ -183,9 +183,11 @@ export function NotebookPage() {
     [],
   )
 
+  const aiCode = useAiCodeService()
+
   const handleAiGenerateFromPrompt = useCallback(
     async (cellId: CellId, prompt: string) => {
-      if (!getCriblApiBase()) {
+      if (!aiCode.isAvailable()) {
         showAlert(
           'Riptide code generation requires the app to run inside Cribl with AI APIs enabled. Local development mode has no API base URL.',
         )
@@ -195,7 +197,7 @@ export function NotebookPage() {
       if (!trimmed) return
       setAiCodeBusyCellId(cellId)
       try {
-        const code = await generatePythonFromPrompt(trimmed)
+        const code = await aiCode.generatePythonFromPrompt(trimmed)
         const source = formatGeneratedPythonSource(trimmed, code)
         dispatchNotebook({ type: 'UPDATE_SOURCE', id: cellId, source })
       } catch (e) {
@@ -204,7 +206,7 @@ export function NotebookPage() {
         setAiCodeBusyCellId(null)
       }
     },
-    [showAlert, dispatchNotebook],
+    [aiCode, showAlert, dispatchNotebook],
   )
 
   const runCell = useCallback(

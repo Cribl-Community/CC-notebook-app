@@ -1,13 +1,15 @@
 import { NotebookPage } from '@features/notebook/ui/NotebookPage'
-import { DialogProvider, EnvProvider, ThemeProvider } from '@app/providers'
+import { AiCodeProvider, DialogProvider, EnvProvider, ThemeProvider } from '@app/providers'
 
 export default function App() {
   return (
     <EnvProvider>
       <ThemeProvider>
-        <DialogProvider>
-          <NotebookPage />
-        </DialogProvider>
+        <AiCodeProvider>
+          <DialogProvider>
+            <NotebookPage />
+          </DialogProvider>
+        </AiCodeProvider>
       </ThemeProvider>
     </EnvProvider>
   )

@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { exampleNotebookDisplayLabel, parseExamplesManifest } from '@features/examples/examplesManifest'
+import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
+import { useExamples } from '@features/examples/useExamples'
 import { RELEASE_NOTES } from '@features/welcome/releaseNotes'
-import { notebookStaticPrefix } from '@platform/staticAssets'
 import { WelcomeProxyCheck } from '@features/welcome/WelcomeProxyCheck'
 
 export type WelcomePageProps = {
@@ -9,40 +8,9 @@ export type WelcomePageProps = {
   onNewNotebook: () => void
 }
 
-type ExamplesLoadState =
-  | { kind: 'loading' }
-  | { kind: 'error'; message: string }
-  | { kind: 'ready'; notebooks: string[]; selectedFilename: string }
-
 export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) {
   const [top, ...rest] = RELEASE_NOTES
-  const staticPrefix = useMemo(() => notebookStaticPrefix(), [])
-  const [examplesLoad, setExamplesLoad] = useState<ExamplesLoadState>({ kind: 'loading' })
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      try {
-        const res = await fetch(`${staticPrefix}Examples/manifest.json`)
-        if (!res.ok) throw new Error(`Could not load examples list (${res.status})`)
-        const json: unknown = await res.json()
-        const notebooks = parseExamplesManifest(json)
-        if (!notebooks) throw new Error('Invalid examples manifest')
-        if (cancelled) return
-        const selectedFilename = notebooks[0] ?? ''
-        setExamplesLoad({ kind: 'ready', notebooks, selectedFilename })
-      } catch (e) {
-        if (cancelled) return
-        setExamplesLoad({
-          kind: 'error',
-          message: e instanceof Error ? e.message : 'Failed to load examples',
-        })
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [staticPrefix])
+  const { state: examplesLoad, setSelected } = useExamples()
 
   return (
     <div className="nb-welcome">
@@ -109,11 +77,7 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
               className="nb-welcome-examples-select"
               size={Math.min(Math.max(examplesLoad.notebooks.length, 1), 10)}
               value={examplesLoad.selectedFilename}
-              onChange={(e) =>
-                setExamplesLoad((s) =>
-                  s.kind === 'ready' ? { ...s, selectedFilename: e.target.value } : s,
-                )
-              }
+              onChange={(e) => setSelected(e.target.value)}
               onDoubleClick={(e) => {
                 const v = e.currentTarget.value
                 if (v) onOpenExample(v)
