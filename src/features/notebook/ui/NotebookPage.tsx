@@ -1,4 +1,4 @@
-import { useReducer, useRef, useCallback, useEffect, useState, useMemo } from 'react'
+import { useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import type { CompletionItem } from '@platform/pyodide/types'
 import { createEmptyNotebookCells } from '@features/notebook/reducer/notebookReducer'
 import type { CellId, NotebookAction } from '@features/notebook/model/types'
@@ -10,12 +10,8 @@ import { NotebookTabs } from '@features/notebook/ui/NotebookTabs'
 import { NotebookDialog } from '@features/notebook/ui/NotebookDialog'
 import { listMoveTargets } from '@features/library/manifest'
 import type { Manifest } from '@features/library/manifest'
-import {
-  createEmptyTab,
-  createInitialWorkspace,
-  tabIsDirty,
-  tabWorkspaceReducer,
-} from '@features/notebook/reducer/tabWorkspace'
+import { createEmptyTab, tabIsDirty } from '@features/notebook/reducer/tabWorkspace'
+import { useNotebookWorkspace } from '@features/notebook/hooks/useNotebookWorkspace'
 import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
 import { WelcomePage } from '@features/welcome/WelcomePage'
 import {
@@ -64,7 +60,17 @@ export function NotebookPage() {
     }
   }, [theme])
 
-  const [workspace, dispatch] = useReducer(tabWorkspaceReducer, undefined, () => createInitialWorkspace())
+  const {
+    workspace,
+    dispatch,
+    workspaceRef,
+    activeTabIdRef,
+    activeTab,
+    tabIdsKey,
+    dirty,
+    dispatchNotebook,
+    dispatchNotebookForTab,
+  } = useNotebookWorkspace()
 
   const [manifest, setManifest] = useState<Manifest | null>(null)
   const [libraryLoading, setLibraryLoading] = useState(true)
@@ -137,21 +143,7 @@ export function NotebookPage() {
     setDialog((d) => (d?.kind === 'prompt' ? { ...d, input } : d))
   }, [])
 
-  const workspaceRef = useRef(workspace)
-  const activeTabIdRef = useRef(workspace.activeTabId)
-  useEffect(() => {
-    workspaceRef.current = workspace
-    activeTabIdRef.current = workspace.activeTabId
-  })
-
-  const activeTab = useMemo(
-    () => workspace.tabs.find((t) => t.id === workspace.activeTabId) ?? workspace.tabs[0],
-    [workspace.tabs, workspace.activeTabId],
-  )
-
   const state = activeTab?.notebook
-
-  const dirty = activeTab ? tabIsDirty(activeTab) : false
 
   const loadLibrary = useCallback(async () => {
     setLibraryLoading(true)
@@ -188,17 +180,7 @@ export function NotebookPage() {
     [manifest, movingId],
   )
 
-  const tabIdsKey = workspace.tabs.map((t) => t.id).join(',')
-
   const runtime = useTabNotebookRuntime(dispatch, workspaceRef, tabIdsKey)
-
-  const dispatchNotebook = useCallback((action: NotebookAction) => {
-    dispatch({ type: 'TAB_NOTEBOOK', tabId: activeTabIdRef.current, action })
-  }, [])
-
-  const dispatchNotebookForTab = useCallback((tabId: string, action: NotebookAction) => {
-    dispatch({ type: 'TAB_NOTEBOOK', tabId, action })
-  }, [])
 
   const completeCode = useCallback(
     async (code: string, cursor: number): Promise<CompletionItem[] | null> => {
