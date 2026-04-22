@@ -19,7 +19,18 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* Path aliases enforce the hexagonal layering */
+    "paths": {
+      "@/*": ["./src/*"],
+      "@app/*": ["./src/app/*"],
+      "@features/*": ["./src/features/*"],
+      "@platform/*": ["./src/platform/*"],
+      "@ports/*": ["./src/ports/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@testing/*": ["./src/testing/*"]
+    }
   },
   "include": ["src"]
 }

@@ -81,6 +81,7 @@ const injectScriptFromQueryPlugin = () => {
 };
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   plugins: [
     react(),
     packageEndpointPlugin(),
@@ -97,8 +98,10 @@ export default defineConfig({
     assetsDir: 'assets',
   },
   test: {
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
+    environment: 'jsdom',
+    globals: false,
+    setupFiles: ['./src/testing/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })
 

@@ -10,13 +10,55 @@ npm run build      # TypeScript check (tsc -b) then Vite bundle → dist/
 npm run lint       # ESLint
 npm run preview    # Preview production build locally
 npm run package    # Build + create .tgz in build/ for Cribl deployment
+npm test           # Vitest (JSDOM + React Testing Library) — UI hooks,
+                   # providers, reducer, executors, and an App smoke test
 ```
 
-No test framework is currently installed.
+Tests live next to the code they cover (`*.test.ts` / `*.test.tsx`) and
+run against a JSDOM environment. Setup lives in `src/testing/setup.ts`
+and wires up `@testing-library/jest-dom` matchers + automatic cleanup.
 
 ## Architecture
 
 This is a React 19 + TypeScript SPA that runs as a **Cribl App Platform widget** — loaded inside a sandboxed iframe within the Cribl UI. It is packaged as a `.tgz` and deployed as a Cribl App.
+
+### Source layout (feature-sliced hexagonal)
+
+```
+src/
+  app/           Composition root + cross-cutting React providers
+    App.tsx
+    providers/   AiCodeProvider, DialogProvider, EnvProvider, ThemeProvider
+  features/      Product features — one folder per vertical
+    notebook/      model, reducer, codec, executor, hooks, ui (NotebookPage lives here)
+    library/       manifest + NotebookSidebar + useNotebookLibrary
+    cribl-search/  %cribl_search magic parser/renderer
+    ai-riptide/    Riptide AI code gen + AiCodeService adapter
+    examples/      Examples manifest + useExamples hook
+    welcome/       WelcomePage + release notes
+  platform/    Adapters for real I/O (Pyodide, Cribl KV, Search, AI,
+               env detection, static assets)
+  ports/       Interfaces features depend on
+               (KernelPort, NotebookRepo, AiCodeService, SearchService,
+                DialogService, EnvService)
+  ui/          Framework-agnostic UI primitives
+               (currently CodeMirror python/KQL highlighting)
+  testing/     Test setup + shared smoke tests
+```
+
+Import aliases (`tsconfig.app.json > paths`):
+`@/*`, `@app/*`, `@features/*`, `@platform/*`, `@ports/*`, `@ui/*`,
+`@testing/*`. Prefer aliases over relative paths that cross layer
+boundaries so the layering is obvious in every import.
+
+Rules of thumb:
+- Features **never** import from each other except through their public
+  surface (reducer, hook, or UI component). Cross-feature coordination
+  is done in `app/` (the composition root) and via ports.
+- Features import from `ports/*` (interfaces) and from `platform/*`
+  (real adapters) — not the other way around.
+- `app/` is the only layer allowed to reach into `platform/` to
+  instantiate adapters and pass them down via providers.
 
 ### Platform Integration
 
@@ -69,7 +111,7 @@ api.example.com:
 
 Sensitive headers (`cookie`, `authorization`, `host`, etc.) are always stripped from the original request — use `headers.inject` for auth. Header values support string literals (`"'static'"`) and KV lookups (`kv.myKey`).
 
-**Pyodide packages:** The kernel loads the interpreter from the app origin, but extra packages (for example after `import matplotlib`) are fetched from `cdn.jsdelivr.net` using `packageBaseUrl` in `src/pyodide/PyodideKernel.ts`. That domain must stay listed in `config/proxies.yml`. When upgrading the `pyodide` npm package, update `src/pyodide/pyodideVersion.ts` and the allowlisted path in `proxies.yml` to the same release.
+**Pyodide packages:** The kernel loads the interpreter from the app origin, but extra packages (for example after `import matplotlib`) are fetched from `cdn.jsdelivr.net` using `packageBaseUrl` in `src/platform/pyodide/PyodideKernel.ts`. That domain must stay listed in `config/proxies.yml`. When upgrading the `pyodide` npm package, update `src/platform/pyodide/pyodideVersion.ts` and the allowlisted path in `proxies.yml` to the same release. The Web Worker source itself lives in `src/platform/pyodide/kernel.worker.js` and is loaded as a `?raw` import, so it is type-checked and lintable.
 
 ### Local Testing (Pyodide Kernel)
 

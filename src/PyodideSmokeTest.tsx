@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { PyodideKernel } from './pyodide/PyodideKernel'
-import type { KernelResult } from './pyodide/types'
+import { PyodideKernel } from '@platform/pyodide/PyodideKernel'
+import type { KernelResult } from '@platform/pyodide/types'
 
 type CheckStatus = 'pending' | 'pass' | 'fail'
 

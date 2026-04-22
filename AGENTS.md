@@ -1,5 +1,28 @@
 # Cribl App Platform Developer Guide
 
+## Notebook app architecture (read this first)
+
+This repo is a feature-sliced hexagonal React app. See
+[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full map.
+TL;DR:
+
+```
+src/
+  app/          Composition root (App.tsx, providers/)
+  features/     Vertical slices (notebook, library, cribl-search,
+                ai-riptide, examples, welcome)
+  platform/    Real-world adapters (pyodide, cribl, env, staticAssets)
+  ports/       Interfaces features depend on
+  ui/          Framework-agnostic UI primitives
+  testing/     Vitest setup + smoke tests
+```
+
+Use alias imports (`@app/*`, `@features/*`, `@platform/*`, `@ports/*`,
+`@ui/*`) to keep layering obvious. Features must not cross into each
+other's internals or into `platform/*` directly — depend on a port.
+
+Run tests with `npm test` (Vitest + JSDOM + React Testing Library).
+
 ## Git workflow (agents & humans)
 
 - **Branch before implementing:** create a feature branch from the current `main` (or `origin/main`) before writing code or committing (`git checkout -b feature/...`). Do not stack feature work directly on `main`.

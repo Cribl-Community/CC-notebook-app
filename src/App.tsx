@@ -1,5 +1,16 @@
-import { NotebookPage } from './notebook/NotebookPage'
+import { NotebookPage } from '@features/notebook/ui/NotebookPage'
+import { AiCodeProvider, DialogProvider, EnvProvider, ThemeProvider } from '@app/providers'
 
 export default function App() {
-  return <NotebookPage />
+  return (
+    <EnvProvider>
+      <ThemeProvider>
+        <AiCodeProvider>
+          <DialogProvider>
+            <NotebookPage />
+          </DialogProvider>
+        </AiCodeProvider>
+      </ThemeProvider>
+    </EnvProvider>
+  )
 }

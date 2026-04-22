@@ -1,0 +1,186 @@
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import type { Dispatch, MutableRefObject } from 'react'
+import type { KernelFactory, KernelPort } from '@ports/KernelPort'
+import { pyodideKernelFactory } from '@platform/pyodide/PyodideKernelAdapter'
+import type { CellId } from '@features/notebook/model/types'
+import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
+
+/**
+ * Per-tab runtime state. Previously the hook exposed five parallel
+ * `useRef<Map<string, X>>` maps, one per concern. Collapsing them into a
+ * single record keyed by `tabId` makes lifecycle clean-up trivial (delete
+ * the record → everything disappears at once) and gives consumers a typed
+ * accessor surface via {@link TabRuntimeController}.
+ */
+export interface TabRuntime {
+  /** Active Pyodide kernel for the tab, or null before init / after dispose. */
+  kernel: KernelPort | null
+  /**
+   * Generation counter bumped on every restart/stop so in-flight runs can
+   * detect and bail if they outlive their kernel.
+   */
+  generation: number
+  /** Serialized run queue (a chainable Promise). One cell runs at a time. */
+  runQueue: { p: Promise<void> }
+  /** Last execution_count returned by the kernel for this tab. */
+  executionCount: number
+  /** Set of cell ids currently scheduled or running; used to de-dupe clicks. */
+  scheduledIds: Set<CellId>
+}
+
+export interface TabRuntimeController {
+  /** Read (or lazily initialise) the runtime record for a tab. */
+  get(tabId: string): TabRuntime
+  kernelFor(tabId: string): KernelPort | null
+  generationOf(tabId: string): number
+  bumpGeneration(tabId: string): number
+  runQueueOf(tabId: string): { p: Promise<void> }
+  executionCountOf(tabId: string): number
+  setExecutionCount(tabId: string, count: number): void
+  scheduledSetOf(tabId: string): Set<CellId>
+  /** Fire-and-forget: start a kernel for the tab if one is not already active. */
+  initKernelForTab(tabId: string): void
+  /** Dispose the current kernel, clear per-tab state, then start a fresh kernel. */
+  restartKernelForTab(tabId: string): void
+  /** Drop the run queue, reset execution count and scheduled set. Does NOT bump gen. */
+  resetQueueState(tabId: string): void
+  /** Dispose the kernel if present and forget the tab entirely. */
+  disposeTab(tabId: string): void
+}
+
+function makeTabRuntime(): TabRuntime {
+  return {
+    kernel: null,
+    generation: 0,
+    runQueue: { p: Promise.resolve() },
+    executionCount: 0,
+    scheduledIds: new Set<CellId>(),
+  }
+}
+
+/**
+ * Per-tab Pyodide kernel plus serialized execution queue and generation
+ * counter. Accepts a KernelFactory for tests and so features don't depend on
+ * the Pyodide adapter directly.
+ */
+export function useTabNotebookRuntime(
+  dispatch: Dispatch<WorkspaceAction>,
+  workspaceRef: MutableRefObject<WorkspaceState>,
+  tabIdsKey: string,
+  kernelFactory: KernelFactory = pyodideKernelFactory,
+): TabRuntimeController {
+  const runtimesRef = useRef<Map<string, TabRuntime>>(new Map())
+
+  const get = useCallback((tabId: string): TabRuntime => {
+    const m = runtimesRef.current
+    let r = m.get(tabId)
+    if (!r) {
+      r = makeTabRuntime()
+      m.set(tabId, r)
+    }
+    return r
+  }, [])
+
+  const initKernelForTab = useCallback(
+    (tabId: string) => {
+      const r = get(tabId)
+      const gen = r.generation + 1
+      r.generation = gen
+      dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'loading' } })
+      const kernel = kernelFactory()
+      r.kernel = kernel
+      kernel.ready
+        .then(() => {
+          if (r.generation === gen) {
+            dispatch({
+              type: 'TAB_NOTEBOOK',
+              tabId,
+              action: { type: 'SET_KERNEL_STATUS', status: 'ready' },
+            })
+          }
+        })
+        .catch(() => {
+          if (r.generation === gen) {
+            dispatch({
+              type: 'TAB_NOTEBOOK',
+              tabId,
+              action: { type: 'SET_KERNEL_STATUS', status: 'error' },
+            })
+          }
+        })
+    },
+    [dispatch, kernelFactory, get],
+  )
+
+  const resetQueueState = useCallback(
+    (tabId: string) => {
+      const r = get(tabId)
+      r.runQueue.p = Promise.resolve()
+      r.executionCount = 0
+      r.scheduledIds.clear()
+    },
+    [get],
+  )
+
+  const restartKernelForTab = useCallback(
+    (tabId: string) => {
+      const r = get(tabId)
+      r.kernel?.dispose()
+      r.kernel = null
+      r.runQueue.p = Promise.resolve()
+      r.executionCount = 0
+      r.scheduledIds.clear()
+      dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'RESTART' } })
+      initKernelForTab(tabId)
+    },
+    [dispatch, initKernelForTab, get],
+  )
+
+  const disposeTab = useCallback((tabId: string) => {
+    const m = runtimesRef.current
+    const r = m.get(tabId)
+    if (!r) return
+    r.kernel?.dispose()
+    m.delete(tabId)
+  }, [])
+
+  useEffect(() => {
+    const tabs = workspaceRef.current.tabs
+    const ids = new Set(tabs.map((t) => t.id))
+    for (const id of [...runtimesRef.current.keys()]) {
+      if (!ids.has(id)) disposeTab(id)
+    }
+    for (const tab of tabs) {
+      if (tab.kind === 'welcome') continue
+      if (!runtimesRef.current.get(tab.id)?.kernel) {
+        initKernelForTab(tab.id)
+      }
+    }
+  }, [tabIdsKey, initKernelForTab, workspaceRef, disposeTab])
+
+  const controller = useMemo<TabRuntimeController>(
+    () => ({
+      get,
+      kernelFor: (tabId) => get(tabId).kernel,
+      generationOf: (tabId) => get(tabId).generation,
+      bumpGeneration: (tabId) => {
+        const r = get(tabId)
+        r.generation += 1
+        return r.generation
+      },
+      runQueueOf: (tabId) => get(tabId).runQueue,
+      executionCountOf: (tabId) => get(tabId).executionCount,
+      setExecutionCount: (tabId, count) => {
+        get(tabId).executionCount = count
+      },
+      scheduledSetOf: (tabId) => get(tabId).scheduledIds,
+      initKernelForTab,
+      restartKernelForTab,
+      resetQueueState,
+      disposeTab,
+    }),
+    [get, initKernelForTab, restartKernelForTab, resetQueueState, disposeTab],
+  )
+
+  return controller
+}

@@ -1,0 +1,55 @@
+import { describe, it, expect, vi } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { useExamples } from './useExamples'
+
+function fakeResponse(status: number, body: unknown): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: () => Promise.resolve(body),
+  } as unknown as Response
+}
+
+describe('useExamples', () => {
+  it('loads the manifest and exposes its notebooks', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      fakeResponse(200, { version: 1, notebooks: ['a.ipynb', 'b.ipynb'] }),
+    )
+
+    const { result } = renderHook(() =>
+      useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+    )
+
+    expect(result.current.state.kind).toBe('loading')
+    await waitFor(() => expect(result.current.state.kind).toBe('ready'))
+    if (result.current.state.kind !== 'ready') throw new Error('expected ready')
+    expect(result.current.state.notebooks).toEqual(['a.ipynb', 'b.ipynb'])
+    expect(result.current.state.selectedFilename).toBe('a.ipynb')
+    expect(fetchImpl).toHaveBeenCalledWith('/x/Examples/manifest.json')
+  })
+
+  it('reports parse failures as error state', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(200, { nope: true }))
+    const { result } = renderHook(() =>
+      useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+    )
+
+    await waitFor(() => expect(result.current.state.kind).toBe('error'))
+    if (result.current.state.kind !== 'error') throw new Error('expected error')
+    expect(result.current.state.message).toMatch(/Invalid examples manifest/)
+  })
+
+  it('setSelected updates the selected filename', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      fakeResponse(200, { version: 1, notebooks: ['a.ipynb', 'b.ipynb'] }),
+    )
+    const { result } = renderHook(() =>
+      useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+    )
+    await waitFor(() => expect(result.current.state.kind).toBe('ready'))
+
+    act(() => result.current.setSelected('b.ipynb'))
+    if (result.current.state.kind !== 'ready') throw new Error('expected ready')
+    expect(result.current.state.selectedFilename).toBe('b.ipynb')
+  })
+})
