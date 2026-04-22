@@ -81,6 +81,7 @@ const injectScriptFromQueryPlugin = () => {
 };
 
 export default defineConfig({
+  resolve: { tsconfigPaths: true },
   plugins: [
     react(),
     packageEndpointPlugin(),
