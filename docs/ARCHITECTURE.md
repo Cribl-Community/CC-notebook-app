@@ -55,8 +55,9 @@ change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
 - `app/providers/` — React Context providers that expose ports.
   - `EnvProvider` / `useEnv` — current `EnvService` snapshot (Cribl
     API base, KV-mock flag, hosted-or-local flag).
-  - `ThemeProvider` / `useTheme` — light/dark theme with
-    localStorage + `document.documentElement.dataset` sync.
+  - `ThemeProvider` / `useTheme` — notebook **visual style** (10 palettes) with
+    `localStorage` + `document.documentElement.dataset.nbStyle` sync; CodeMirror
+    still receives a `light`/`dark` luma hint for its built-in theme chrome.
   - `DialogProvider` / `useDialogs` — imperative alert/confirm/prompt
     built on `NotebookDialog`. Replaces the old inline dialog state
     inside `NotebookPage`.

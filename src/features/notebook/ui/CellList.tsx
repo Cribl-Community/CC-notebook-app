@@ -9,7 +9,7 @@ interface CellListProps {
   dispatch: React.Dispatch<NotebookAction>
   /** Run and move selection down / insert cell below last (Shift+Enter, ▶). `runAll` uses the same queue without UI advance. */
   onRunAndAdvance: (id: CellId, cellIndex: number) => void
-  theme: 'dark' | 'light'
+  codeMirrorLuma: 'light' | 'dark'
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
   onAiGenerateFromPrompt?: (id: CellId, prompt: string) => void
   aiCodeBusyCellId?: CellId | null
@@ -20,7 +20,7 @@ export function CellList({
   selectedId,
   dispatch,
   onRunAndAdvance,
-  theme,
+  codeMirrorLuma,
   completeCode,
   onAiGenerateFromPrompt,
   aiCodeBusyCellId,
@@ -33,7 +33,7 @@ export function CellList({
             <CodeCell
               cell={cell}
               isSelected={cell.id === selectedId}
-              theme={theme}
+              codeMirrorLuma={codeMirrorLuma}
               completeCode={completeCode}
               onSelect={() => dispatch({ type: 'SELECT_CELL', id: cell.id })}
               onRun={() => onRunAndAdvance(cell.id, index)}

@@ -31,7 +31,7 @@ import { useCellRunner } from '@features/notebook/hooks/useCellRunner'
 import { notebookStaticPrefix } from '@platform/staticAssets'
 
 export function NotebookPage() {
-  const { theme, setTheme } = useTheme()
+  const { appStyle, setAppStyle, codeMirrorLuma } = useTheme()
   const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useDialogs()
 
   const {
@@ -468,8 +468,8 @@ export function NotebookPage() {
                     onStop={stopExecution}
                     stopEnabled={canStopExecution}
                     onRestart={restartKernel}
-                    theme={theme}
-                    onThemeChange={setTheme}
+                    appStyle={appStyle}
+                    onAppStyleChange={setAppStyle}
                   />
                 </div>
                 {isWelcome ? (
@@ -495,7 +495,7 @@ export function NotebookPage() {
                           selectedId={state.selectedId}
                           dispatch={dispatchNotebook}
                           onRunAndAdvance={runCellAndAdvance}
-                          theme={theme}
+                          codeMirrorLuma={codeMirrorLuma}
                           completeCode={completeCode}
                           onAiGenerateFromPrompt={handleAiGenerateFromPrompt}
                           aiCodeBusyCellId={aiCodeBusyCellId}
