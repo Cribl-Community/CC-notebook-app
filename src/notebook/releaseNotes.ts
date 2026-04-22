@@ -11,6 +11,15 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.52',
+    date: '2026-04-22',
+    highlights: [
+      'Visualisations: `fig.show()` and `chart.show()` now work in Plotly and Altair cells—library display hooks are applied eagerly after imports run, before the trailing expression is evaluated.',
+      'Visualisations: Plotly\'s init `display_data` (a script-only 4.8 MB HTML frame) no longer leaves a blank gap above the chart; script-only iframe outputs collapse to zero height.',
+      'Visualisations example notebook updated to use `fig.show()` and `chart.show()` idioms.',
+    ],
+  },
+  {
     version: '1.0.51',
     date: '2026-04-22',
     highlights: [

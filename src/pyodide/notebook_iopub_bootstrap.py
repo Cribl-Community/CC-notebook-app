@@ -88,6 +88,11 @@ def _ensure_altair_mimetype_renderer() -> None:
 
     Altair wheels may name the same MIME path ``jupyterlab``, ``mimetype``, or
     ``nteract`` depending on version — try them in order.
+
+    Additionally, ``TopLevelMixin.show()`` (the method called by ``chart.show()``)
+    is patched to route through ``display()`` so that explicit ``.show()`` calls
+    emit the correct vega-lite MIME bundle rather than silently doing nothing
+    (``altair_viewer`` is not available in Pyodide).
     """
     try:
         alt = sys.modules.get("altair")
@@ -96,15 +101,24 @@ def _ensure_altair_mimetype_renderer() -> None:
         for name in ("jupyterlab", "mimetype", "nteract"):
             try:
                 alt.renderers.enable(name)
-                return
+                break
             except Exception:
                 continue
+
+        # Patch TopLevelMixin.show() so chart.show() emits the MIME bundle.
+        TopLevelMixin = getattr(alt, "TopLevelMixin", None)
+        if TopLevelMixin is not None and not getattr(TopLevelMixin, "_nb_show_patched", False):
+            def _nb_alt_show(self, *_args: Any, **_kwargs: Any) -> None:  # noqa: ANN001
+                display(self)
+
+            TopLevelMixin.show = _nb_alt_show  # type: ignore[method-assign]
+            TopLevelMixin._nb_show_patched = True  # type: ignore[attr-defined]
     except Exception:
         pass
 
 
 def _configure_plotly_renderer() -> None:
-    """Suppress Plotly's nbformat traceback by patching BaseFigure._ipython_display_.
+    """Patch Plotly's BaseFigure so that both IPython display and fig.show() work.
 
     Plotly's default ``_ipython_display_`` calls ``pio.show()`` which requires
     ``nbformat>=4.2.0``.  That package is not installed in Pyodide, so IPython's
@@ -117,6 +131,10 @@ def _configure_plotly_renderer() -> None:
     instead causes ``IPythonDisplayFormatter`` to silently return ``None`` (it special-
     cases ``NotImplementedError`` as "this object has no IPython display") without
     printing any traceback, while keeping the ``_repr_mimebundle_`` path intact.
+
+    Additionally, ``BaseFigure.show()`` is patched to route through ``display()``
+    so that ``fig.show()`` in user code emits the correct MIME bundle rather than
+    raising ``ValueError: Mime type rendering requires nbformat>=4.2.0``.
     """
     try:
         basedatatypes = sys.modules.get("plotly.basedatatypes")
@@ -129,7 +147,11 @@ def _configure_plotly_renderer() -> None:
         def _nb_ipython_display_(self) -> None:  # noqa: ANN001
             raise NotImplementedError
 
+        def _nb_show(self, *_args: Any, **_kwargs: Any) -> None:  # noqa: ANN001
+            display(self)
+
         BaseFigure._ipython_display_ = _nb_ipython_display_  # type: ignore[method-assign]
+        BaseFigure.show = _nb_show  # type: ignore[method-assign]
         BaseFigure._nb_ipython_display_patched = True  # type: ignore[attr-defined]
     except Exception:
         pass
@@ -468,6 +490,13 @@ async def _nb_run(code: str, execution_count: int) -> None:
             try:
                 from pyodide.code import eval_code_async
 
+                # Best-effort early patch: if plotly/altair were imported in a
+                # prior cell they are already in sys.modules and will be patched
+                # before this cell's body runs.  If they are being imported for
+                # the first time inside this cell the patch is a no-op here but
+                # will be applied when _format_object() is called later.
+                _configure_plotly_renderer()
+                _ensure_altair_mimetype_renderer()
                 await eval_code_async(code, user_ns)
                 _displayhook_last_expr_after_async(tree, user_ns, hook)
             except ImportError:
@@ -485,6 +514,11 @@ async def _nb_run(code: str, execution_count: int) -> None:
             ast.fix_missing_locations(expr_part)
             if exec_part.body:
                 exec(compile(exec_part, "<cell>", "exec"), user_ns, user_ns)
+            # Patch display hooks after imports have run but before the trailing
+            # expression is evaluated.  This ensures fig.show() / chart.show()
+            # work even when the import and the show() call are in the same cell.
+            _configure_plotly_renderer()
+            _ensure_altair_mimetype_renderer()
             value = eval(compile(expr_part, "<cell>", "eval"), user_ns, user_ns)
             sys.displayhook(value)
         else:
