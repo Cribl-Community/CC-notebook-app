@@ -32,13 +32,38 @@ function postIOPub(execId, msg) {
 // Strategy: forward every cross-origin `fetch()` to the main thread via
 // postMessage, let it call the patched `fetch` there, and reconstruct a
 // Response from the bytes/headers the main thread sends back. Same-origin
-// requests (Pyodide runtime on the app host, our own assets) keep going
-// directly through the worker for speed.
+// requests for the `public/pyodide/` tree *also* go to the main thread so
+// `packageFetchCache` can dedupe across multiple notebook kernels. Other
+// same-origin fetches use the native worker `fetch` for speed.
 const _origFetch = self.fetch.bind(self)
 const _fetchPending = new Map()
 let _fetchSeq = 0
 /** App document origin from the main thread (reliable in blob workers; avoids self.location quirks). */
 let _appOrigin = ''
+/** `getSameOriginPyodideBaseUrl()` (from init). Used to route pyodide assets to the main-thread cache. */
+let _appPyodideBaseUrl = ''
+
+/**
+ * @param {string} absUrl
+ * @param {string} appPyodideBaseUrl
+ */
+function _isAppPyodideAssetUrl(absUrl, appPyodideBaseUrl) {
+  if (!appPyodideBaseUrl) {
+    return false
+  }
+  try {
+    var u = new URL(absUrl)
+    var b = new URL(appPyodideBaseUrl)
+    if (u.origin !== b.origin) {
+      return false
+    }
+    var p = b.pathname
+    var childPrefix = p.charAt(p.length - 1) === '/' ? p : p + '/'
+    return u.pathname === p || u.pathname.startsWith(childPrefix)
+  } catch (_) {
+    return false
+  }
+}
 
 // Pyodide's pyfetch (0.29.x) checks the Service Worker Cache API before making
 // real network requests.  In a sandboxed iframe without the allow-same-origin
@@ -185,7 +210,8 @@ self.fetch = async function (input, init) {
     }
   })()
 
-  if (sameOrigin) {
+  // Cross-origin, or app-hosted /pyodide/ lazy loads — use main `fetch` + `packageFetchCache`
+  if (sameOrigin && !_isAppPyodideAssetUrl(absUrl, _appPyodideBaseUrl)) {
     return _origFetch(input, init)
   }
 
@@ -238,6 +264,7 @@ self.onmessage = async function (e) {
 
   if (msg.type === 'init') {
     _appOrigin = msg.appOrigin || ''
+    _appPyodideBaseUrl = (msg.pyodideBaseUrl && String(msg.pyodideBaseUrl)) || ''
     try {
       importScripts(msg.pyodideBaseUrl + 'pyodide.js')
       pyodide = await loadPyodide({

@@ -133,9 +133,12 @@ touch the network, `window`, or browser workers directly.
   - `kernel.worker.js` — dedicated worker source (type/lint coverage).
   - `PyodideKernelAdapter.ts` — `KernelFactory` /
     `pyodideKernelFactory` satisfying the `KernelPort` port.
-  - `packageFetchCache.ts`, `pyodideVersion.ts` — plumbing.
+  - `packageFetchCache.ts` — in-memory + Cache API for lazy Pyodide fetches
+    (registry hosts plus same-origin `pyodide/*` when bridged from the worker;
+    see `PyodideKernel` / `kernel.worker.js`). `pyodideVersion.ts` — runtime
+    URLs and release string.
 - `platform/cribl/` — Cribl network clients: `kvstore`, `searchJobs`,
-  `aiTranslate`, and pyodide package caching.
+  `aiTranslate`, …
 - `platform/env/env.ts` — environment detection
   (`getCriblApiBase`, `isKvMockMode`, `readEnv`).
 - `platform/staticAssets.ts` — resolving static asset URLs under

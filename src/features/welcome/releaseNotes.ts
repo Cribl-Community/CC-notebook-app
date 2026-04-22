@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.55',
+    date: '2026-04-22',
+    highlights: [
+      'Kernel: same-origin `public/pyodide/` fetches (runtime assets) are routed through the main thread like cross-origin fetches, so `packageFetchCache` deduplicates and persists them for additional notebook tabs and reloads. Remote registry allowlist behaviour unchanged. Unit tests for URL matching.',
+    ],
+  },
+  {
     version: '1.0.54',
     date: '2026-04-22',
     highlights: [
