@@ -97,8 +97,10 @@ export default defineConfig({
     assetsDir: 'assets',
   },
   test: {
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
+    environment: 'jsdom',
+    globals: false,
+    setupFiles: ['./src/testing/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })
 
