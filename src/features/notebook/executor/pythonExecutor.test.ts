@@ -1,23 +1,26 @@
 import { describe, it, expect, vi } from 'vitest'
 import { pythonExecutor } from './pythonExecutor'
 import type { CellExecutionContext } from './cellExecutor'
-import type { KernelPort } from '@ports/KernelPort'
+import type { IOPubMessage, KernelPort } from '@ports/KernelPort'
 import type { CellId } from '@features/notebook/model/types'
 
-function makeKernel(onExecute: (cb: (msg: { msg_type: string } & Record<string, unknown>) => void) => void): KernelPort {
+type IOPubHandler = (msg: IOPubMessage) => void
+
+function makeKernel(emitFromExecute?: (onMsg: IOPubHandler) => void): KernelPort {
   return {
     ready: Promise.resolve(),
-    execute: vi.fn().mockImplementation(async (_src: string, onMsg: (m: never) => void, _count: number) => {
-      onExecute(onMsg as unknown as (cb: (msg: { msg_type: string } & Record<string, unknown>) => void) => void)
-    }) as unknown as KernelPort['execute'],
-    complete: vi.fn(),
+    execute: vi.fn(async (_code: string, onMsg?: IOPubHandler) => {
+      if (emitFromExecute && onMsg) emitFromExecute(onMsg)
+      return { outputs: [] }
+    }),
+    complete: vi.fn(async () => []),
     dispose: vi.fn(),
   }
 }
 
 function makeCtx(overrides: Partial<CellExecutionContext> = {}): CellExecutionContext {
   return {
-    kernel: makeKernel(() => {}),
+    kernel: makeKernel(),
     cellId: 'c1' as CellId,
     source: 'print(1)',
     executionCount: 1,
@@ -50,8 +53,13 @@ describe('pythonExecutor', () => {
   it('dispatches ERROR_CELL and returns error on kernel error msg', async () => {
     const dispatch = vi.fn()
     const emit = vi.fn()
-    const kernel = makeKernel((emitIOPub) => {
-      emitIOPub({ msg_type: 'error', ename: 'Boom', evalue: 'bad', traceback: [] })
+    const kernel = makeKernel((onMsg) => {
+      onMsg({
+        msg_type: 'error',
+        ename: 'Boom',
+        evalue: 'bad',
+        traceback: [],
+      } as unknown as IOPubMessage)
     })
     const ctx = makeCtx({ kernel, dispatchNotebook: dispatch, emitIOPub: emit })
     const outcome = await pythonExecutor.execute(ctx)

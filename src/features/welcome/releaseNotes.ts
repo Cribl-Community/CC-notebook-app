@@ -11,6 +11,19 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.53',
+    date: '2026-04-22',
+    highlights: [
+      'Architecture: reorganised the codebase into a feature-sliced, hexagonal layout (`app/`, `features/`, `platform/`, `ports/`, `ui/`). Path aliases now enforce layering and make intent obvious at the import site.',
+      'Architecture: slimmed `NotebookPage` to composition—per-tab kernel lifecycle, workspace state, library, cell execution, theme, dialogs, environment, AI code, and examples each live in their own hook or provider.',
+      'Architecture: introduced a `CellExecutor` registry so `%cribl_search` and Python execution share a single dispatch point and are independently testable.',
+      'Reliability: reducer is now pure—deferred `clear_output { wait: true }` lives on the cell itself rather than a module-level WeakMap; added regression tests.',
+      'Kernel: extracted the Pyodide worker source into its own `.worker.js` (type-checked + lintable) while keeping the Blob-URL runtime path.',
+      'Testing: added JSDOM + React Testing Library, smoke test for the full App composition, plus unit tests for hooks, providers, and executors.',
+      'Docs: new `docs/ARCHITECTURE.md` spells out the layering, import rules, execution pipeline, and recipes for adding features or execution modes.',
+    ],
+  },
+  {
     version: '1.0.52',
     date: '2026-04-22',
     highlights: [
