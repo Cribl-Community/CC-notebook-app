@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect, useState, useMemo } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import type { CompletionItem } from '@platform/pyodide/types'
 import { createEmptyNotebookCells } from '@features/notebook/reducer/notebookReducer'
 import type { CellId, NotebookAction } from '@features/notebook/model/types'
@@ -7,7 +7,6 @@ import { Toolbar } from '@features/notebook/ui/Toolbar'
 import { CellList } from '@features/notebook/ui/CellList'
 import { NotebookSidebar } from '@features/library/ui/NotebookSidebar'
 import { NotebookTabs } from '@features/notebook/ui/NotebookTabs'
-import { NotebookDialog } from '@features/notebook/ui/NotebookDialog'
 import { useNotebookLibrary } from '@features/library/hooks/useNotebookLibrary'
 import { createEmptyTab, tabIsDirty } from '@features/notebook/reducer/tabWorkspace'
 import { useNotebookWorkspace } from '@features/notebook/hooks/useNotebookWorkspace'
@@ -26,37 +25,16 @@ import {
   storeManifest,
 } from '@features/library/notebookLibrary'
 import { formatGeneratedPythonSource } from '@features/ai-riptide/riptideService'
-import { useAiCodeService } from '@app/providers'
+import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import type { IOPubMessage } from '@platform/pyodide/types'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { notebookStaticPrefix } from '@platform/staticAssets'
 
-type DialogState =
-  | { kind: 'alert'; message: string }
-  | { kind: 'confirm'; message: string }
-  | { kind: 'prompt'; title: string; label: string; defaultValue: string; input: string }
-
 export function NotebookPage() {
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    try {
-      const s = localStorage.getItem('nb-theme')
-      if (s === 'dark') return 'dark'
-    } catch {
-      /* localStorage unavailable */
-    }
-    return 'light'
-  })
-
-  useEffect(() => {
-    document.documentElement.dataset.theme = theme
-    try {
-      localStorage.setItem('nb-theme', theme)
-    } catch {
-      // localStorage unavailable in sandboxed iframe — theme resets on reload
-    }
-  }, [theme])
+  const { theme, setTheme } = useTheme()
+  const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useDialogs()
 
   const {
     workspace,
@@ -86,69 +64,6 @@ export function NotebookPage() {
     reload: loadLibrary,
   } = library
   const [aiCodeBusyCellId, setAiCodeBusyCellId] = useState<CellId | null>(null)
-  const [dialog, setDialog] = useState<DialogState | null>(null)
-  const confirmRef = useRef<((ok: boolean) => void) | null>(null)
-  const promptRef = useRef<((value: string | null) => void) | null>(null)
-
-  const showAlert = useCallback((message: string) => {
-    setDialog({ kind: 'alert', message })
-  }, [])
-
-  const showConfirm = useCallback((message: string): Promise<boolean> => {
-    return new Promise((resolve) => {
-      confirmRef.current = (ok: boolean) => {
-        confirmRef.current = null
-        resolve(ok)
-      }
-      setDialog({ kind: 'confirm', message })
-    })
-  }, [])
-
-  const showPrompt = useCallback(
-    (title: string, label: string, defaultValue: string): Promise<string | null> => {
-      return new Promise((resolve) => {
-        promptRef.current = (value: string | null) => {
-          promptRef.current = null
-          resolve(value)
-        }
-        setDialog({ kind: 'prompt', title, label, defaultValue, input: defaultValue })
-      })
-    },
-    [],
-  )
-
-  const dismissAlert = useCallback(() => setDialog(null), [])
-
-  const dialogConfirmOk = useCallback(() => {
-    confirmRef.current?.(true)
-    setDialog(null)
-  }, [])
-
-  const dialogConfirmCancel = useCallback(() => {
-    confirmRef.current?.(false)
-    setDialog(null)
-  }, [])
-
-  const dialogPromptSubmit = useCallback(() => {
-    setDialog((d) => {
-      if (d?.kind !== 'prompt') return d
-      const fn = promptRef.current
-      if (fn) {
-        promptRef.current = null
-        fn(d.input)
-      }
-      return null
-    })
-  }, [])
-
-  const dialogPromptCancel = useCallback(() => {
-    promptRef.current?.(null)
-    setDialog(null)
-  }, [])
-
-  const dialogPromptChange = useCallback((input: string) => {
-    setDialog((d) => (d?.kind === 'prompt' ? { ...d, input } : d))
-  }, [])
 
   const state = activeTab?.notebook
 
@@ -669,38 +584,6 @@ export function NotebookPage() {
     [workspace.tabs],
   )
 
-  const dialogProps =
-    dialog?.kind === 'prompt'
-      ? {
-          variant: 'prompt' as const,
-          title: dialog.title,
-          message: '',
-          promptLabel: dialog.label,
-          promptValue: dialog.input,
-        }
-      : dialog?.kind === 'confirm'
-        ? {
-            variant: 'confirm' as const,
-            message: dialog.message,
-          }
-        : {
-            variant: 'alert' as const,
-            message: dialog?.message ?? '',
-          }
-
-  const handleDialogPrimary = () => {
-    if (!dialog) return
-    if (dialog.kind === 'alert') dismissAlert()
-    else if (dialog.kind === 'confirm') dialogConfirmOk()
-    else dialogPromptSubmit()
-  }
-
-  const handleDialogSecondary = () => {
-    if (!dialog) return
-    if (dialog.kind === 'confirm') dialogConfirmCancel()
-    else if (dialog.kind === 'prompt') dialogPromptCancel()
-  }
-
   const ready = Boolean(state && activeTab)
   const isWelcome = activeTab?.kind === 'welcome'
 
@@ -802,17 +685,6 @@ export function NotebookPage() {
           )}
         </div>
       </div>
-      <NotebookDialog
-        open={dialog !== null}
-        variant={dialogProps.variant}
-        title={'title' in dialogProps ? dialogProps.title : undefined}
-        message={'message' in dialogProps ? dialogProps.message : ''}
-        promptLabel={'promptLabel' in dialogProps ? dialogProps.promptLabel : undefined}
-        promptValue={dialog?.kind === 'prompt' ? dialog.input : ''}
-        onPromptValueChange={dialogPromptChange}
-        onPrimary={handleDialogPrimary}
-        onSecondary={dialog?.kind === 'alert' ? undefined : handleDialogSecondary}
-      />
     </>
   )
 }
