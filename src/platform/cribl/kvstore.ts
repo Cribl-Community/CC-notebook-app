@@ -51,16 +51,11 @@ function persistMockMap(): void {
   }
 }
 
-/** Returns empty string when not running inside Cribl (dev / tests) — use mock store. */
-export function getCriblApiBase(): string {
-  if (typeof window === 'undefined') return ''
-  const u = window.CRIBL_API_URL?.trim()
-  return u ? u.replace(/\/$/, '') : ''
-}
-
-export function isKvMockMode(): boolean {
-  return getCriblApiBase() === ''
-}
+// Environment detection lives in `@platform/env/env` — re-exported here for
+// backwards compatibility with existing call sites. New code should prefer
+// importing from `@platform/env/env` (or via the `EnvService` port).
+export { getCriblApiBase, isKvMockMode } from '@platform/env/env'
+import { getCriblApiBase, isKvMockMode } from '@platform/env/env'
 
 function parseKeysResponse(data: unknown): string[] {
   if (Array.isArray(data)) {
