@@ -1,99 +1,186 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { Dispatch, MutableRefObject } from 'react'
-import { PyodideKernel } from '@platform/pyodide/PyodideKernel'
+import type { KernelFactory, KernelPort } from '@ports/KernelPort'
+import { pyodideKernelFactory } from '@platform/pyodide/PyodideKernelAdapter'
 import type { CellId } from '@features/notebook/model/types'
 import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 
 /**
- * Per-tab Pyodide kernel plus a serialized execution queue and generation counter.
- * Generation bumps invalidate in-flight cell runs after kernel restart/stop.
+ * Per-tab runtime state. Previously the hook exposed five parallel
+ * `useRef<Map<string, X>>` maps, one per concern. Collapsing them into a
+ * single record keyed by `tabId` makes lifecycle clean-up trivial (delete
+ * the record → everything disappears at once) and gives consumers a typed
+ * accessor surface via {@link TabRuntimeController}.
+ */
+export interface TabRuntime {
+  /** Active Pyodide kernel for the tab, or null before init / after dispose. */
+  kernel: KernelPort | null
+  /**
+   * Generation counter bumped on every restart/stop so in-flight runs can
+   * detect and bail if they outlive their kernel.
+   */
+  generation: number
+  /** Serialized run queue (a chainable Promise). One cell runs at a time. */
+  runQueue: { p: Promise<void> }
+  /** Last execution_count returned by the kernel for this tab. */
+  executionCount: number
+  /** Set of cell ids currently scheduled or running; used to de-dupe clicks. */
+  scheduledIds: Set<CellId>
+}
+
+export interface TabRuntimeController {
+  /** Read (or lazily initialise) the runtime record for a tab. */
+  get(tabId: string): TabRuntime
+  kernelFor(tabId: string): KernelPort | null
+  generationOf(tabId: string): number
+  bumpGeneration(tabId: string): number
+  runQueueOf(tabId: string): { p: Promise<void> }
+  executionCountOf(tabId: string): number
+  setExecutionCount(tabId: string, count: number): void
+  scheduledSetOf(tabId: string): Set<CellId>
+  /** Fire-and-forget: start a kernel for the tab if one is not already active. */
+  initKernelForTab(tabId: string): void
+  /** Dispose the current kernel, clear per-tab state, then start a fresh kernel. */
+  restartKernelForTab(tabId: string): void
+  /** Drop the run queue, reset execution count and scheduled set. Does NOT bump gen. */
+  resetQueueState(tabId: string): void
+  /** Dispose the kernel if present and forget the tab entirely. */
+  disposeTab(tabId: string): void
+}
+
+function makeTabRuntime(): TabRuntime {
+  return {
+    kernel: null,
+    generation: 0,
+    runQueue: { p: Promise.resolve() },
+    executionCount: 0,
+    scheduledIds: new Set<CellId>(),
+  }
+}
+
+/**
+ * Per-tab Pyodide kernel plus serialized execution queue and generation
+ * counter. Accepts a KernelFactory for tests and so features don't depend on
+ * the Pyodide adapter directly.
  */
 export function useTabNotebookRuntime(
   dispatch: Dispatch<WorkspaceAction>,
   workspaceRef: MutableRefObject<WorkspaceState>,
   tabIdsKey: string,
-) {
-  const kernelsRef = useRef<Map<string, PyodideKernel>>(new Map())
-  const tabGensRef = useRef<Map<string, number>>(new Map())
-  const tabQueuesRef = useRef<Map<string, { p: Promise<void> }>>(new Map())
-  const tabExecCountersRef = useRef<Map<string, number>>(new Map())
-  const tabScheduledIdsRef = useRef<Map<string, Set<CellId>>>(new Map())
+  kernelFactory: KernelFactory = pyodideKernelFactory,
+): TabRuntimeController {
+  const runtimesRef = useRef<Map<string, TabRuntime>>(new Map())
 
-  const getRunQueue = useCallback((tabId: string) => {
-    const m = tabQueuesRef.current
-    if (!m.has(tabId)) m.set(tabId, { p: Promise.resolve() })
-    return m.get(tabId)!
+  const get = useCallback((tabId: string): TabRuntime => {
+    const m = runtimesRef.current
+    let r = m.get(tabId)
+    if (!r) {
+      r = makeTabRuntime()
+      m.set(tabId, r)
+    }
+    return r
   }, [])
 
-  const getScheduledSet = useCallback((tabId: string) => {
-    const m = tabScheduledIdsRef.current
-    if (!m.has(tabId)) m.set(tabId, new Set())
-    return m.get(tabId)!
-  }, [])
+  const initKernelForTab = useCallback(
+    (tabId: string) => {
+      const r = get(tabId)
+      const gen = r.generation + 1
+      r.generation = gen
+      dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'loading' } })
+      const kernel = kernelFactory()
+      r.kernel = kernel
+      kernel.ready
+        .then(() => {
+          if (r.generation === gen) {
+            dispatch({
+              type: 'TAB_NOTEBOOK',
+              tabId,
+              action: { type: 'SET_KERNEL_STATUS', status: 'ready' },
+            })
+          }
+        })
+        .catch(() => {
+          if (r.generation === gen) {
+            dispatch({
+              type: 'TAB_NOTEBOOK',
+              tabId,
+              action: { type: 'SET_KERNEL_STATUS', status: 'error' },
+            })
+          }
+        })
+    },
+    [dispatch, kernelFactory, get],
+  )
 
-  const initKernelForTab = useCallback((tabId: string) => {
-    const gen = (tabGensRef.current.get(tabId) ?? 0) + 1
-    tabGensRef.current.set(tabId, gen)
-    dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'loading' } })
-    const kernel = new PyodideKernel()
-    kernelsRef.current.set(tabId, kernel)
-    kernel.ready
-      .then(() => {
-        if (tabGensRef.current.get(tabId) === gen) {
-          dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'ready' } })
-        }
-      })
-      .catch(() => {
-        if (tabGensRef.current.get(tabId) === gen) {
-          dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'error' } })
-        }
-      })
-  }, [dispatch])
+  const resetQueueState = useCallback(
+    (tabId: string) => {
+      const r = get(tabId)
+      r.runQueue.p = Promise.resolve()
+      r.executionCount = 0
+      r.scheduledIds.clear()
+    },
+    [get],
+  )
 
   const restartKernelForTab = useCallback(
     (tabId: string) => {
-      kernelsRef.current.get(tabId)?.dispose()
-      kernelsRef.current.delete(tabId)
-      const q = tabQueuesRef.current.get(tabId)
-      if (q) q.p = Promise.resolve()
-      tabExecCountersRef.current.set(tabId, 0)
-      tabScheduledIdsRef.current.get(tabId)?.clear()
+      const r = get(tabId)
+      r.kernel?.dispose()
+      r.kernel = null
+      r.runQueue.p = Promise.resolve()
+      r.executionCount = 0
+      r.scheduledIds.clear()
       dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'RESTART' } })
       initKernelForTab(tabId)
     },
-    [dispatch, initKernelForTab],
+    [dispatch, initKernelForTab, get],
   )
+
+  const disposeTab = useCallback((tabId: string) => {
+    const m = runtimesRef.current
+    const r = m.get(tabId)
+    if (!r) return
+    r.kernel?.dispose()
+    m.delete(tabId)
+  }, [])
 
   useEffect(() => {
     const tabs = workspaceRef.current.tabs
     const ids = new Set(tabs.map((t) => t.id))
-    for (const [id, k] of [...kernelsRef.current.entries()]) {
-      if (!ids.has(id)) {
-        k.dispose()
-        kernelsRef.current.delete(id)
-        tabGensRef.current.delete(id)
-        tabQueuesRef.current.delete(id)
-        tabExecCountersRef.current.delete(id)
-        tabScheduledIdsRef.current.delete(id)
-      }
+    for (const id of [...runtimesRef.current.keys()]) {
+      if (!ids.has(id)) disposeTab(id)
     }
     for (const tab of tabs) {
       if (tab.kind === 'welcome') continue
-      if (!kernelsRef.current.has(tab.id)) {
+      if (!runtimesRef.current.get(tab.id)?.kernel) {
         initKernelForTab(tab.id)
       }
     }
-  }, [tabIdsKey, initKernelForTab, workspaceRef])
+  }, [tabIdsKey, initKernelForTab, workspaceRef, disposeTab])
 
-  return {
-    kernelsRef,
-    tabGensRef,
-    tabQueuesRef,
-    tabExecCountersRef,
-    tabScheduledIdsRef,
-    getRunQueue,
-    getScheduledSet,
-    initKernelForTab,
-    restartKernelForTab,
-  }
+  const controller = useMemo<TabRuntimeController>(
+    () => ({
+      get,
+      kernelFor: (tabId) => get(tabId).kernel,
+      generationOf: (tabId) => get(tabId).generation,
+      bumpGeneration: (tabId) => {
+        const r = get(tabId)
+        r.generation += 1
+        return r.generation
+      },
+      runQueueOf: (tabId) => get(tabId).runQueue,
+      executionCountOf: (tabId) => get(tabId).executionCount,
+      setExecutionCount: (tabId, count) => {
+        get(tabId).executionCount = count
+      },
+      scheduledSetOf: (tabId) => get(tabId).scheduledIds,
+      initKernelForTab,
+      restartKernelForTab,
+      resetQueueState,
+      disposeTab,
+    }),
+    [get, initKernelForTab, restartKernelForTab, resetQueueState, disposeTab],
+  )
+
+  return controller
 }

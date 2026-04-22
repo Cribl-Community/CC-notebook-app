@@ -190,17 +190,7 @@ export function NotebookPage() {
 
   const tabIdsKey = workspace.tabs.map((t) => t.id).join(',')
 
-  const {
-    kernelsRef,
-    tabGensRef,
-    tabQueuesRef,
-    tabExecCountersRef,
-    tabScheduledIdsRef,
-    getRunQueue,
-    getScheduledSet,
-    initKernelForTab,
-    restartKernelForTab,
-  } = useTabNotebookRuntime(dispatch, workspaceRef, tabIdsKey)
+  const runtime = useTabNotebookRuntime(dispatch, workspaceRef, tabIdsKey)
 
   const dispatchNotebook = useCallback((action: NotebookAction) => {
     dispatch({ type: 'TAB_NOTEBOOK', tabId: activeTabIdRef.current, action })
@@ -215,7 +205,7 @@ export function NotebookPage() {
       const tid = activeTabIdRef.current
       const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
       if (!tab || tab.kind === 'welcome') return null
-      const kernel = kernelsRef.current.get(tid)
+      const kernel = runtime.kernelFor(tid)
       if (!kernel) return null
       const ks = tab.notebook.kernelStatus
       if (ks === 'loading' || ks === 'error') return null
@@ -258,24 +248,24 @@ export function NotebookPage() {
       const tid = activeTabIdRef.current
       const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
       if (!tab || tab.kind === 'welcome') return
-      const kernel = kernelsRef.current.get(tid)
+      const kernel = runtime.kernelFor(tid)
       if (!kernel) return
 
       const cell = tab.notebook.cells.find((c) => c.id === id)
       if (!cell || cell.cell_type !== 'code') return
       const source = cell.source
-      const myGen = tabGensRef.current.get(tid) ?? 0
+      const myGen = runtime.generationOf(tid)
 
-      const scheduled = getScheduledSet(tid)
+      const scheduled = runtime.scheduledSetOf(tid)
       if (scheduled.has(id)) return
       scheduled.add(id)
 
       dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ENQUEUE_CELL', id } })
 
-      const q = getRunQueue(tid)
+      const q = runtime.runQueueOf(tid)
       q.p = q.p
         .then(async () => {
-          if (tabGensRef.current.get(tid) !== myGen) {
+          if (runtime.generationOf(tid) !== myGen) {
             scheduled.delete(id)
             return
           }
@@ -284,15 +274,14 @@ export function NotebookPage() {
 
           try {
             await kernel.ready
-            if (tabGensRef.current.get(tid) !== myGen) return
+            if (runtime.generationOf(tid) !== myGen) return
 
             dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_KERNEL_STATUS', status: 'busy' } })
-            const prevCount = tabExecCountersRef.current.get(tid) ?? 0
-            const count = prevCount + 1
-            tabExecCountersRef.current.set(tid, count)
+            const count = runtime.executionCountOf(tid) + 1
+            runtime.setExecutionCount(tid, count)
 
             const emitIOPub = (msg: IOPubMessage) => {
-              if (tabGensRef.current.get(tid) !== myGen) return
+              if (runtime.generationOf(tid) !== myGen) return
               dispatch({
                 type: 'TAB_NOTEBOOK',
                 tabId: tid,
@@ -310,25 +299,25 @@ export function NotebookPage() {
               source,
               executionCount: count,
               emitIOPub,
-              isStale: () => tabGensRef.current.get(tid) !== myGen,
+              isStale: () => runtime.generationOf(tid) !== myGen,
               dispatchNotebook: dispatchTabNotebook,
             })
             if (outcome === 'error') {
-              tabScheduledIdsRef.current.get(tid)?.clear()
+              runtime.scheduledSetOf(tid).clear()
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'CLEAR_ALL_PENDING' } })
               throw new RunQueueAbortedError()
             }
           } catch (e) {
             if (e instanceof RunQueueAbortedError) throw e
-            if (tabGensRef.current.get(tid) === myGen) {
+            if (runtime.generationOf(tid) === myGen) {
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
-              tabScheduledIdsRef.current.get(tid)?.clear()
+              runtime.scheduledSetOf(tid).clear()
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'CLEAR_ALL_PENDING' } })
             }
             throw new RunQueueAbortedError()
           } finally {
             scheduled.delete(id)
-            if (tabGensRef.current.get(tid) === myGen) {
+            if (runtime.generationOf(tid) === myGen) {
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_KERNEL_STATUS', status: 'ready' } })
             }
           }
@@ -338,7 +327,7 @@ export function NotebookPage() {
           console.error(e)
         })
     },
-    [getRunQueue, getScheduledSet],
+    [runtime],
   )
 
   const runCellAndAdvance = useCallback(
@@ -378,17 +367,15 @@ export function NotebookPage() {
     const tid = activeTabIdRef.current
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
     if (tab?.kind === 'welcome') return
-    restartKernelForTab(tid)
-  }, [restartKernelForTab])
+    runtime.restartKernelForTab(tid)
+  }, [runtime])
 
   const stopExecution = useCallback(() => {
     const tid = activeTabIdRef.current
     const tab0 = workspaceRef.current.tabs.find((t) => t.id === tid)
     if (tab0?.kind === 'welcome') return
-    const prevGen = tabGensRef.current.get(tid) ?? 0
-    tabGensRef.current.set(tid, prevGen + 1)
-
-    tabScheduledIdsRef.current.get(tid)?.clear()
+    runtime.bumpGeneration(tid)
+    runtime.scheduledSetOf(tid).clear()
     dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'CLEAR_ALL_PENDING' } })
 
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
@@ -396,11 +383,11 @@ export function NotebookPage() {
       (c) => c.cell_type === 'code' && c.execution_state === 'running',
     )?.id
 
-    kernelsRef.current.get(tid)?.dispose()
-    kernelsRef.current.delete(tid)
-
-    const q = tabQueuesRef.current.get(tid)
-    if (q) q.p = Promise.resolve()
+    // Dispose the old kernel and reset queue state, but don't bump generation again.
+    const r = runtime.get(tid)
+    r.kernel?.dispose()
+    r.kernel = null
+    r.runQueue.p = Promise.resolve()
 
     if (runningId) {
       dispatch({
@@ -416,8 +403,8 @@ export function NotebookPage() {
       dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id: runningId } })
     }
 
-    initKernelForTab(tid)
-  }, [initKernelForTab])
+    runtime.initKernelForTab(tid)
+  }, [runtime])
 
   const canStopExecution = useMemo(() => {
     if (!activeTab || activeTab.kind === 'welcome') return false
@@ -668,14 +655,14 @@ export function NotebookPage() {
             cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
             kvNotebookId: null,
           })
-          restartKernelForTab(tab.id)
+          runtime.restartKernelForTab(tab.id)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to open notebook'
           showAlert(msg)
         }
       })()
     },
-    [restartKernelForTab, showAlert],
+    [runtime, showAlert],
   )
 
   const handleOpenExample = useCallback(
@@ -697,13 +684,13 @@ export function NotebookPage() {
             cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
             kvNotebookId: null,
           })
-          restartKernelForTab(tab.id)
+          runtime.restartKernelForTab(tab.id)
         } catch (e) {
           showAlert(e instanceof Error ? e.message : 'Failed to open example')
         }
       })()
     },
-    [restartKernelForTab, showAlert],
+    [runtime, showAlert],
   )
 
   const tabLabels = useMemo(

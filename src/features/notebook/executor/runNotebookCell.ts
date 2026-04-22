@@ -1,4 +1,4 @@
-import type { PyodideKernel } from '@platform/pyodide/PyodideKernel'
+import type { KernelPort } from '@ports/KernelPort'
 import type { IOPubMessage } from '@platform/pyodide/types'
 import { translateEnglishToKql } from '@platform/cribl/aiTranslate'
 import { getCriblApiBase } from '@platform/cribl/kvstore'
@@ -47,7 +47,7 @@ export type CellRunOutcome = 'ok' | 'error' | 'stale'
  * Caller owns queueing, SET_RUNNING, execution counter, and kernel busy/ready UI flags.
  */
 export async function runNotebookCellAfterReady(opts: {
-  kernel: PyodideKernel
+  kernel: KernelPort
   cellId: CellId
   source: string
   executionCount: number

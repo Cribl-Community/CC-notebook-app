@@ -8,9 +8,8 @@
 //   through the first `init` message rather than hard-coding a CDN.
 //
 // Two Python bootstrap sources are injected at load time by replacing the
-// placeholders `__NB_COMPLETION_PY__` and `__NB_IOPUB_BOOTSTRAP_PY__`. They
-// live as `?raw` imports in PyodideKernel.ts so they are type-checked and
-// bundled with the worker source.
+// quoted string placeholders defined below. They live as `?raw` imports in
+// PyodideKernel.ts so they are type-checked and bundled with the worker source.
 /* eslint-disable no-var */
 
 let pyodide = null
