@@ -41,25 +41,59 @@ export interface NotebookState {
   kernelStatus: KernelStatus
 }
 
-export type NotebookAction =
+/**
+ * Actions that mutate the set of cells and their authoring state. These
+ * map to direct user actions on the cell toolbar (add/delete/duplicate,
+ * move up/down, toggle markdown edit) plus source edits.
+ */
+export type CellStructureAction =
   | { type: 'ADD_CELL'; afterId?: CellId; cellType?: 'code' | 'markdown' }
   | { type: 'DELETE_CELL'; id: CellId }
   | { type: 'DUPLICATE_CELL'; id: CellId }
+  | { type: 'MOVE_CELL'; id: CellId; direction: 'up' | 'down' }
   | { type: 'UPDATE_SOURCE'; id: CellId; source: string }
   | { type: 'SELECT_CELL'; id: CellId }
   | { type: 'TOGGLE_MARKDOWN_EDIT'; id: CellId }
+
+/**
+ * Actions driving the per-cell execution lifecycle: enqueue → run →
+ * finish/error. `CLEAR_ALL_PENDING` is used when a run is aborted.
+ */
+export type CellExecutionAction =
   | { type: 'ENQUEUE_CELL'; id: CellId }
   | { type: 'CLEAR_ALL_PENDING' }
   | { type: 'SET_RUNNING'; id: CellId }
+  | { type: 'FINISH_CELL'; id: CellId; execution_count: number }
+  | { type: 'ERROR_CELL'; id: CellId }
+
+/**
+ * Actions manipulating cell outputs. `IOPUB` is the streaming path that
+ * the kernel drives; the others are direct user "Clear outputs" clicks
+ * or internal append/replace used by the executor.
+ */
+export type CellOutputAction =
   | { type: 'APPEND_OUTPUT'; id: CellId; output: OutputRecord }
   | { type: 'REPLACE_OUTPUT_AT'; id: CellId; index: number; output: OutputRecord }
   | { type: 'IOPUB'; id: CellId; msg: IOPubMessage; executionCount: number | null }
-  | { type: 'FINISH_CELL'; id: CellId; execution_count: number }
-  | { type: 'ERROR_CELL'; id: CellId }
   | { type: 'CLEAR_OUTPUTS'; id: CellId }
   | { type: 'CLEAR_ALL_OUTPUTS' }
+
+/** Notebook-wide lifecycle actions: kernel status, restart, title, load. */
+export type NotebookLifecycleAction =
   | { type: 'SET_KERNEL_STATUS'; status: KernelStatus }
-  | { type: 'MOVE_CELL'; id: CellId; direction: 'up' | 'down' }
   | { type: 'RESTART' }
   | { type: 'SET_NOTEBOOK_TITLE'; title: string }
   | { type: 'LOAD_NOTEBOOK'; title: string; cells: Cell[] }
+
+/**
+ * Union of every action the notebook reducer accepts. Consumers should
+ * accept `NotebookAction` for maximum flexibility; grouped subtypes are
+ * available for code that only handles a single concern (e.g. a test or
+ * a focused middleware). All subtypes unconditionally flow through the
+ * same reducer — the split is purely documentational.
+ */
+export type NotebookAction =
+  | CellStructureAction
+  | CellExecutionAction
+  | CellOutputAction
+  | NotebookLifecycleAction
