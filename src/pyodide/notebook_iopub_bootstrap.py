@@ -490,6 +490,13 @@ async def _nb_run(code: str, execution_count: int) -> None:
             try:
                 from pyodide.code import eval_code_async
 
+                # Best-effort early patch: if plotly/altair were imported in a
+                # prior cell they are already in sys.modules and will be patched
+                # before this cell's body runs.  If they are being imported for
+                # the first time inside this cell the patch is a no-op here but
+                # will be applied when _format_object() is called later.
+                _configure_plotly_renderer()
+                _ensure_altair_mimetype_renderer()
                 await eval_code_async(code, user_ns)
                 _displayhook_last_expr_after_async(tree, user_ns, hook)
             except ImportError:
@@ -507,6 +514,11 @@ async def _nb_run(code: str, execution_count: int) -> None:
             ast.fix_missing_locations(expr_part)
             if exec_part.body:
                 exec(compile(exec_part, "<cell>", "exec"), user_ns, user_ns)
+            # Patch display hooks after imports have run but before the trailing
+            # expression is evaluated.  This ensures fig.show() / chart.show()
+            # work even when the import and the show() call are in the same cell.
+            _configure_plotly_renderer()
+            _ensure_altair_mimetype_renderer()
             value = eval(compile(expr_part, "<cell>", "eval"), user_ns, user_ns)
             sys.displayhook(value)
         else:

@@ -32,7 +32,10 @@ const SCRIPT_RE = /<script[\s>]/i
  */
 function ScriptedHtmlMime({ data }: { data: string }) {
   const frameId = useRef(`nb_iframe_${Math.random().toString(36).slice(2)}`)
-  const [height, setHeight] = useState(300)
+  // Start at 0 so script-only frames (e.g. Plotly's init display_data, which
+  // contains only <script> tags and no visible DOM) collapse automatically.
+  // The resize postMessage will expand this to the real content height.
+  const [height, setHeight] = useState(0)
 
   const srcdoc = useMemo(() => {
     const id = frameId.current
@@ -75,7 +78,11 @@ function ScriptedHtmlMime({ data }: { data: string }) {
     const id = frameId.current
     function onMsg(e: MessageEvent) {
       if (e.data?.type === 'nb-iframe-resize' && e.data?.id === id) {
-        setHeight((prev) => Math.max(prev, (e.data.h as number) + 24))
+        const h = e.data.h as number
+        // If the content height is negligible the frame contains only scripts
+        // with no visible DOM (e.g. Plotly's init display_data). Collapse it
+        // to zero so it doesn't appear as a blank gap in the output.
+        setHeight(h > 10 ? h + 24 : 0)
       }
     }
     window.addEventListener('message', onMsg)
@@ -84,7 +91,7 @@ function ScriptedHtmlMime({ data }: { data: string }) {
 
   // Reset height when cell output is replaced (data changes).
   useEffect(() => {
-    setHeight(300)
+    setHeight(0)
   }, [data])
 
   return (
