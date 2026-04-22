@@ -1,13 +1,14 @@
 /**
- * Pyodide workers fetch wheels from jsDelivr / PyPI / pythonhosted via the main-thread
- * fetch bridge. Each notebook tab creates a new worker, so without shared caching the same
+ * Pyodide workers fetch wheels from jsDelivr / PyPI / pythonhosted, and the same-origin
+ * runtime tree under `public/pyodide/`, via the main-thread fetch bridge for whitelisted
+ * URLs. Each notebook tab creates a new worker, so without shared caching the same
  * URLs would be hit repeatedly. This module:
  *
  * - Dedupes in-flight GETs for the same URL (multiple tabs / kernels starting together)
  * - Keeps a session memory cache so later kernels reuse bytes without another network hit
  * - Persists successful responses in the Cache API (when available) for faster reloads
  *
- * Same-origin asset fetches do not go through this path (they stay in the worker).
+ * Other same-origin fetches (not under the app Pyodide base) stay in the worker.
  */
 import { PYODIDE_RELEASE } from '@platform/pyodide/pyodideVersion'
 
@@ -38,6 +39,37 @@ export function shouldCacheRemotePackageUrl(url: string): boolean {
     host === 'files.pythonhosted.org' ||
     host === 'www.pypi.org'
   )
+}
+
+/**
+ * True when `url` is a GET target under the app-hosted Pyodide tree
+ * (same `getSameOriginPyodideBaseUrl()` prefix on the document).
+ */
+export function isAppHostedPyodideUrl(url: string, appPyodideBaseUrl: string): boolean {
+  if (!appPyodideBaseUrl) return false
+  try {
+    const u = new URL(url)
+    const b = new URL(appPyodideBaseUrl)
+    if (u.origin !== b.origin) return false
+    const p = b.pathname
+    const childPrefix = p.endsWith('/') ? p : `${p}/`
+    return u.pathname === p || u.pathname.startsWith(childPrefix)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Returns true for remote registry URLs or same-origin `pyodide/` app assets
+ * (when `appPyodideBaseUrl` is provided from the main thread).
+ */
+export function shouldCachePackageFetchUrl(
+  url: string,
+  appPyodideBaseUrl: string | undefined,
+): boolean {
+  if (shouldCacheRemotePackageUrl(url)) return true
+  if (appPyodideBaseUrl && isAppHostedPyodideUrl(url, appPyodideBaseUrl)) return true
+  return false
 }
 
 export type SerializedFetchPayload = {
@@ -116,6 +148,7 @@ async function fetchAndSerialize(
   url: string,
   init: RequestInit,
   key: string,
+  appPyodideBaseUrl: string | undefined,
 ): Promise<SerializedFetchPayload> {
   const fromDisk = await readFromPersistentCache(url)
   if (fromDisk !== null) {
@@ -126,7 +159,7 @@ async function fetchAndSerialize(
   const r = await window.fetch(url, init)
   const payload = await responseToPayload(r)
 
-  if (r.ok && shouldCacheRemotePackageUrl(url)) {
+  if (r.ok && shouldCachePackageFetchUrl(url, appPyodideBaseUrl)) {
     await writeToPersistentCache(url, init, payload)
   }
 
@@ -135,12 +168,17 @@ async function fetchAndSerialize(
 }
 
 /**
- * For remote package GETs that we recognize, returns a Response built from shared cached bytes.
- * Other requests delegate to `window.fetch` unchanged.
+ * `appPyodideBaseUrl` (from `getSameOriginPyodideBaseUrl()` on the main thread) extends
+ * caching to same-origin `pyodide/*` fetches that use this bridge. Omit it to only cache
+ * the remote registry allowlist.
  */
-export async function fetchWithPackageSessionCache(url: string, init: RequestInit = {}): Promise<Response> {
+export async function fetchWithPackageSessionCache(
+  url: string,
+  init: RequestInit = {},
+  appPyodideBaseUrl?: string,
+): Promise<Response> {
   const method = (init.method || 'GET').toUpperCase()
-  if (method !== 'GET' || !shouldCacheRemotePackageUrl(url) || init.integrity) {
+  if (method !== 'GET' || !shouldCachePackageFetchUrl(url, appPyodideBaseUrl) || init.integrity) {
     return window.fetch(url, init)
   }
 
@@ -152,7 +190,7 @@ export async function fetchWithPackageSessionCache(url: string, init: RequestIni
 
   let p = inflight.get(key)
   if (!p) {
-    p = fetchAndSerialize(url, init, key).finally(() => {
+    p = fetchAndSerialize(url, init, key, appPyodideBaseUrl).finally(() => {
       inflight.delete(key)
     })
     inflight.set(key, p)

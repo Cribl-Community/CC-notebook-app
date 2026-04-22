@@ -43,6 +43,7 @@ type Pending = {
 
 export class PyodideKernel {
   readonly ready: Promise<void>
+  private readonly appPyodideBaseUrl: string
   private worker: Worker
   private pending = new Map<string, Pending>()
   private pendingComplete = new Map<string, (opts: CompletionItem[]) => void>()
@@ -106,6 +107,7 @@ export class PyodideKernel {
     }
 
     const pyodideBaseUrl = getSameOriginPyodideBaseUrl()
+    this.appPyodideBaseUrl = pyodideBaseUrl
     const pyodideLockFileUrl = getSameOriginPyodideLockFileUrl()
     this.worker.postMessage({
       type: 'init',
@@ -144,11 +146,13 @@ export class PyodideKernel {
   }
 
   /**
-   * Bridge for the worker's cross-origin `fetch()` calls (micropip → PyPI,
-   * jsDelivr wheels, etc). The Cribl iframe patches the main-thread
-   * `fetch` so external URLs are routed through `/api/v1/p/<pack>/proxy/...`
-   * with auth injected by the parent window. Workers don't see that patch, so
-   * they delegate up here and we hand back a serialised Response.
+   * Bridge for the worker's `fetch()` calls: cross-origin (micropip → PyPI,
+   * jsDelivr wheels) and same-origin `public/pyodide/` assets (routed to the
+   * main thread so `packageFetchCache` dedupes across kernels). The Cribl
+   * iframe patches the main-thread `fetch` so external URLs are routed through
+   * `/api/v1/p/<pack>/proxy/...` with auth injected by the parent window.
+   * Workers don't see that patch, so they delegate up here and we hand back a
+   * serialised Response.
    *
    * NOTE: We intentionally do NOT forward the worker's custom `headers` to
    * `window.fetch`. The Cribl platform patch injects the `Authorization` header
@@ -180,7 +184,7 @@ export class PyodideKernel {
       if (init.body != null && init.method && init.method !== 'GET' && init.method !== 'HEAD') {
         fetchInit.body = init.body as BodyInit
       }
-      const r = await fetchWithPackageSessionCache(url, fetchInit)
+      const r = await fetchWithPackageSessionCache(url, fetchInit, this.appPyodideBaseUrl)
       const buf = await r.arrayBuffer()
       const headers: Record<string, string> = {}
       r.headers.forEach((v, k) => {
