@@ -8,8 +8,7 @@ import { CellList } from '@features/notebook/ui/CellList'
 import { NotebookSidebar } from '@features/library/ui/NotebookSidebar'
 import { NotebookTabs } from '@features/notebook/ui/NotebookTabs'
 import { NotebookDialog } from '@features/notebook/ui/NotebookDialog'
-import { listMoveTargets } from '@features/library/manifest'
-import type { Manifest } from '@features/library/manifest'
+import { useNotebookLibrary } from '@features/library/hooks/useNotebookLibrary'
 import { createEmptyTab, tabIsDirty } from '@features/notebook/reducer/tabWorkspace'
 import { useNotebookWorkspace } from '@features/notebook/hooks/useNotebookWorkspace'
 import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
@@ -17,7 +16,6 @@ import { WelcomePage } from '@features/welcome/WelcomePage'
 import {
   createNotebookWithPayload,
   deleteNotebookPayloads,
-  fetchManifest,
   fetchNotebookPayload,
   ipynbTextToLoadPayload,
   manifestAddFolder,
@@ -72,12 +70,21 @@ export function NotebookPage() {
     dispatchNotebookForTab,
   } = useNotebookWorkspace()
 
-  const [manifest, setManifest] = useState<Manifest | null>(null)
-  const [libraryLoading, setLibraryLoading] = useState(true)
-  const [libraryError, setLibraryError] = useState<string | null>(null)
-  const [selectedParentId, setSelectedParentId] = useState<string | null>(null)
-  const [movingId, setMovingId] = useState<string | null>(null)
-  const [saveBusy, setSaveBusy] = useState(false)
+  const library = useNotebookLibrary()
+  const {
+    manifest,
+    setManifest,
+    loading: libraryLoading,
+    error: libraryError,
+    selectedParentId,
+    setSelectedParentId,
+    movingId,
+    setMovingId,
+    saveBusy,
+    setSaveBusy,
+    moveDestinations,
+    reload: loadLibrary,
+  } = library
   const [aiCodeBusyCellId, setAiCodeBusyCellId] = useState<CellId | null>(null)
   const [dialog, setDialog] = useState<DialogState | null>(null)
   const confirmRef = useRef<((ok: boolean) => void) | null>(null)
@@ -145,26 +152,6 @@ export function NotebookPage() {
 
   const state = activeTab?.notebook
 
-  const loadLibrary = useCallback(async () => {
-    setLibraryLoading(true)
-    setLibraryError(null)
-    try {
-      const m = await fetchManifest()
-      setManifest(m)
-    } catch (e) {
-      setLibraryError(e instanceof Error ? e.message : 'Failed to load notebooks')
-    } finally {
-      setLibraryLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const id = window.setTimeout(() => {
-      void loadLibrary()
-    }, 0)
-    return () => clearTimeout(id)
-  }, [loadLibrary])
-
   useEffect(() => {
     try {
       if (activeTab && activeTab.kind === 'notebook') {
@@ -174,11 +161,6 @@ export function NotebookPage() {
       // ignore
     }
   }, [activeTab])
-
-  const moveDestinations = useMemo(
-    () => (movingId ? listMoveTargets(manifest?.items ?? [], movingId) : []),
-    [manifest, movingId],
-  )
 
   const runtime = useTabNotebookRuntime(dispatch, workspaceRef, tabIdsKey)
 
