@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.54',
+    date: '2026-04-22',
+    highlights: [
+      'Cribl Search: fix regression from 1.0.53 where `%%cribl_search` cells were routed to the Python executor and failed with `SyntaxError: invalid syntax` on the magic line. The cell-executor matcher now correctly recognises the double-percent cell magic; added a regression test covering the dispatch path.',
+    ],
+  },
+  {
     version: '1.0.53',
     date: '2026-04-22',
     highlights: [

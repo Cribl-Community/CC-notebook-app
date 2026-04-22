@@ -39,14 +39,19 @@ export const DEFAULT_CRIBL_SEARCH_EXECUTOR_DEPS: CriblSearchExecutorDeps = {
 
 /**
  * Returns true for any source whose first non-empty line starts with the
- * `%cribl_search` magic. Cheap so it is safe to run on every cell without
- * invoking the full parser.
+ * `%%cribl_search` cell magic. Cheap so it is safe to run on every cell
+ * without invoking the full parser.
+ *
+ * NOTE: two percent signs — this is a Jupyter-style cell magic, not an
+ * IPython line magic. Using a single `%` here routes every search cell to
+ * the Python executor, which then throws `SyntaxError: invalid syntax` on
+ * the very first line.
  */
 export function looksLikeCriblSearchMagic(source: string): boolean {
   for (const line of source.split('\n')) {
     const trimmed = line.trim()
     if (trimmed === '') continue
-    return trimmed.startsWith('%cribl_search')
+    return trimmed.startsWith('%%cribl_search')
   }
   return false
 }

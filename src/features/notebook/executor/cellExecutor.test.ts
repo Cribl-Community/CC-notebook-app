@@ -26,12 +26,27 @@ const noopContext = (
 })
 
 describe('looksLikeCriblSearchMagic', () => {
-  it('matches only when first non-empty line starts with %cribl_search', () => {
-    expect(looksLikeCriblSearchMagic('%cribl_search foo')).toBe(true)
-    expect(looksLikeCriblSearchMagic('\n\n  %cribl_search foo')).toBe(true)
+  it('matches only when first non-empty line starts with %%cribl_search', () => {
+    expect(looksLikeCriblSearchMagic('%%cribl_search foo')).toBe(true)
+    expect(looksLikeCriblSearchMagic('%%cribl_search var=df\nfoo')).toBe(true)
+    expect(looksLikeCriblSearchMagic('\n\n  %%cribl_search foo')).toBe(true)
+    // A single % is the IPython line-magic prefix; the cribl magic is a
+    // cell magic (%%...) so a single percent must NOT match.
+    expect(looksLikeCriblSearchMagic('%cribl_search foo')).toBe(false)
     expect(looksLikeCriblSearchMagic('print("hi")')).toBe(false)
-    expect(looksLikeCriblSearchMagic('# %cribl_search (in comment)')).toBe(false)
+    expect(looksLikeCriblSearchMagic('# %%cribl_search (in comment)')).toBe(false)
     expect(looksLikeCriblSearchMagic('')).toBe(false)
+  })
+})
+
+describe('executor registry', () => {
+  // Regression: a %%cribl_search cell used to fall through to pythonExecutor
+  // (matcher checked %cribl_search with a single percent) and the kernel
+  // would raise `SyntaxError: invalid syntax` on line 1.
+  it('routes a %%cribl_search cell to the criblSearchExecutor and NOT to pythonExecutor', async () => {
+    const { DEFAULT_CELL_EXECUTORS } = await import('./executorRegistry')
+    const source = '%%cribl_search var=kql_df\ndataset=cribl_search_sample | limit 1000'
+    expect(selectExecutor(source, DEFAULT_CELL_EXECUTORS)?.name).toBe('cribl-search')
   })
 })
 
