@@ -1,7 +1,8 @@
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
  * First line:
- * %%cribl_search [var=name] [preview=true|false] [response=dataframe|json|raw] [limit=N] [earliest=…] [latest=…] [lang=kql|kusto|english] [dataset=name]
+ * %%cribl_search [var=name] [preview=true|false] [response=dataframe|json|raw] [limit=N] [earliest=…] [latest=…]
+ * [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false]
  * Following lines: query body (KQL when `lang=kql|kusto`, natural language when `lang=english`).
  *
  * `earliest` / `latest` are passed to the Cribl Search job API (defaults in the client if omitted).
@@ -15,9 +16,16 @@
  * `preview`: when true (default), shows the result table in the cell output. When false,
  * the table is hidden (metadata lines still show). The DataFrame is always populated in
  * the named variable; pandas text preview is not printed (the table is the preview).
+ *
+ * `template=auto` (default): if the body looks like Jinja (`{{`, `{%`, `{#`), the query
+ * is rendered in the Pyodide kernel (Jinja2) so `{{ my_var }}` can embed notebook
+ * variables. `template=on` always runs Jinja; `template=off` never does.
  */
 
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+/** How `%%cribl_search` decides to run a Jinja template pass in the kernel. */
+export type CriblSearchTemplateMode = 'auto' | 'on' | 'off'
 
 /** Default pandas DataFrame name for `%%cribl_search` when `var=` is omitted. */
 export const DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR = 'results_df'
@@ -45,6 +53,11 @@ export type CriblSearchMagicOk = {
   latest?: string
   /** Optional dataset hint for NL->KQL translation (e.g. `cribl_search_sample`). */
   dataset?: string
+  /**
+   * `auto` (default): Jinja when the body contains `{{`, `{%`, or `{#`.
+   * `on`: always run Jinja. `off`: never (body is always literal for Search).
+   */
+  template: CriblSearchTemplateMode
 }
 
 export type CriblSearchMagicParse =
@@ -63,6 +76,7 @@ function parseKeyValueParams(paramLine: string):
       earliest?: string
       latest?: string
       dataset?: string
+      template: CriblSearchTemplateMode
     }
   | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
@@ -73,6 +87,7 @@ function parseKeyValueParams(paramLine: string):
   let earliest: string | undefined
   let latest: string | undefined
   let dataset: string | undefined
+  let template: CriblSearchTemplateMode = 'auto'
   const tokens = paramLine.trim().split(/\s+/).filter(Boolean)
   for (const t of tokens) {
     const eq = t.indexOf('=')
@@ -115,8 +130,23 @@ function parseKeyValueParams(paramLine: string):
       const n = parseInt(val.trim(), 10)
       limit = n
     }
+    if (key === 'template') {
+      const v = val.toLowerCase()
+      if (v === 'auto') {
+        template = 'auto'
+      } else if (v === 'on' || v === 'true') {
+        template = 'on'
+      } else if (v === 'off' || v === 'false') {
+        template = 'off'
+      } else {
+        return {
+          ok: false,
+          message: `template must be one of auto, on, off; got ${JSON.stringify(val)}`,
+        }
+      }
+    }
   }
-  return { ok: true, varName, preview, response, lang, limit, earliest, latest, dataset }
+  return { ok: true, varName, preview, response, lang, limit, earliest, latest, dataset, template }
 }
 
 /**
@@ -135,7 +165,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!parsed.ok) {
     return { kind: 'error', message: parsed.message }
   }
-  const { varName, preview, response, lang, limit, earliest, latest, dataset } = parsed
+  const { varName, preview, response, lang, limit, earliest, latest, dataset, template } = parsed
 
   if (!IDENT_RE.test(varName)) {
     return {
@@ -156,8 +186,24 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
 
   return {
     kind: 'cribl_search',
-    value: { varName, preview, response, lang, limit, query, earliest, latest, dataset },
+    value: { varName, preview, response, lang, limit, query, earliest, latest, dataset, template },
   }
+}
+
+/** Heuristic: query body plausibly contains a Jinja construct (not a lone `{`). */
+export function criblSearchQueryLooksLikeJinjaTemplate(query: string): boolean {
+  if (query.includes('{{') || query.includes('{%') || query.includes('{#')) return true
+  return false
+}
+
+/** Whether the kernel Jinja2 render pass should run (before Search / translate). */
+export function wantsCriblSearchJinjaTemplating(
+  query: string,
+  mode: CriblSearchTemplateMode,
+): boolean {
+  if (mode === 'off') return false
+  if (mode === 'on') return true
+  return criblSearchQueryLooksLikeJinjaTemplate(query)
 }
 
 /** UTF-8 safe JSON → base64 for embedding in generated Python. */
