@@ -48,6 +48,12 @@ describe('executor registry', () => {
     const source = '%%cribl_search var=kql_df\ndataset=cribl_search_sample | limit 1000'
     expect(selectExecutor(source, DEFAULT_CELL_EXECUTORS)?.name).toBe('cribl-search')
   })
+
+  it('routes a %%cribl_api cell to the criblApiExecutor before the search executor', async () => {
+    const { DEFAULT_CELL_EXECUTORS } = await import('./executorRegistry')
+    const source = '%%cribl_api GET /m/default_search/search/jobs var=jobs\n'
+    expect(selectExecutor(source, DEFAULT_CELL_EXECUTORS)?.name).toBe('cribl-api')
+  })
 })
 
 describe('selectExecutor', () => {

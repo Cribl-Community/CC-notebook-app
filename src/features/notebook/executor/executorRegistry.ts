@@ -1,3 +1,4 @@
+import { criblApiExecutor } from './criblApiExecutor'
 import { criblSearchExecutor } from './criblSearchExecutor'
 import { pythonExecutor } from './pythonExecutor'
 import type { CellExecutor } from './cellExecutor'
@@ -8,6 +9,7 @@ import type { CellExecutor } from './cellExecutor'
  * catch-all Python executor (which matches every source).
  */
 export const DEFAULT_CELL_EXECUTORS: readonly CellExecutor[] = [
+  criblApiExecutor,
   criblSearchExecutor,
   pythonExecutor,
 ]
