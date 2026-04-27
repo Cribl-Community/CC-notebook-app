@@ -13,6 +13,10 @@ import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } fr
 import { tags } from '@lezer/highlight'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import type { CompletionItem } from '@platform/pyodide/types'
+import {
+  criblApiCompletionSource,
+  createCriblApiFirstLineTooltipExtension,
+} from '@features/cribl-api/editor/criblApiCompletions'
 import { criblApiYamlHighlightPlugin } from '@features/cribl-api/editor/criblApiEditor'
 import { criblSearchCompletionSource } from '@features/cribl-search/editor/criblSearchEditor'
 import { criblSearchKqlHighlightPlugin } from '@features/cribl-search/editor/criblKqlHighlight'
@@ -188,6 +192,7 @@ export function createPythonCellExtensions(options: {
     maxRenderedOptions: 80,
     defaultKeymap: false,
     override: [
+      (context) => criblApiCompletionSource(context),
       (context) => criblSearchCompletionSource(context),
       async (context) => {
         const code = context.state.doc.toString()
@@ -212,6 +217,7 @@ export function createPythonCellExtensions(options: {
 
   return [
     cellTheme,
+    ...createCriblApiFirstLineTooltipExtension(),
     python(),
     syntaxHighlighting(jupyterPythonHighlight),
     Prec.high(criblApiYamlHighlightPlugin),
