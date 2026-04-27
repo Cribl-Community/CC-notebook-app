@@ -1,7 +1,7 @@
 {
   "name": "notebook-app",
   "private": true,
-  "version": "1.0.57",
+  "version": "1.0.58",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -28,7 +28,8 @@
     "react-router-dom": "^7.14.1",
     "vega": "^5.33.1",
     "vega-embed": "^6.29.0",
-    "vega-lite": "^5.23.0"
+    "vega-lite": "^5.23.0",
+    "yaml": "^2.8.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

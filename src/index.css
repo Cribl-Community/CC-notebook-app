@@ -920,6 +920,10 @@ body {
   font-style: italic;
 }
 
+.nb-cell-editor-cm .nb-cribl-api-yaml {
+  color: var(--nb-cm-kql-string);
+}
+
 /* Jupyter-style completion tooltip (CodeMirror) */
 .cm-tooltip.cm-tooltip-autocomplete {
   border: none;
