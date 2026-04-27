@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.57',
+    date: '2026-04-27',
+    highlights: [
+      'Cribl Search: `%%cribl_search` supports Jinja2 in the query body (optional `template=auto|on|off`); the kernel expands `{{ variables }}` from the notebook before Search or English→KQL translation. `Cribl_Search_Examples.ipynb` includes templated KQL and English cells.',
+    ],
+  },
+  {
     version: '1.0.56',
     date: '2026-04-23',
     highlights: [
