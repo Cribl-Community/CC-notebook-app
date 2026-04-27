@@ -3,6 +3,8 @@ import {
   parseCriblSearchMagic,
   encodeRowsJsonForPythonBase64,
   buildCriblSearchDataframeCode,
+  wantsCriblSearchJinjaTemplating,
+  criblSearchQueryLooksLikeJinjaTemplate,
 } from '@features/cribl-search/criblSearchMagic'
 
 describe('parseCriblSearchMagic', () => {
@@ -20,6 +22,7 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.lang).toBe('kql')
     expect(r.value.limit).toBe(0)
     expect(r.value.query).toBe('dataset=x | limit 1')
+    expect(r.value.template).toBe('auto')
   })
 
   it('parses var and preview', () => {
@@ -115,6 +118,37 @@ describe('parseCriblSearchMagic', () => {
     const r = parseCriblSearchMagic('%%cribl_search lang=spl\nq\n')
     expect(r.kind).toBe('error')
     if (r.kind === 'error') expect(r.message).toMatch(/lang must be one of kql, kusto, english/i)
+  })
+
+  it('parses template=on|off|auto and errors on bad value', () => {
+    const onR = parseCriblSearchMagic('%%cribl_search template=on\nq\n')
+    expect(onR.kind).toBe('cribl_search')
+    if (onR.kind === 'cribl_search') expect(onR.value.template).toBe('on')
+    const off = parseCriblSearchMagic('%%cribl_search template=off\ndataset=x | limit 1\n')
+    expect(off.kind).toBe('cribl_search')
+    if (off.kind === 'cribl_search') expect(off.value.template).toBe('off')
+    const t = parseCriblSearchMagic('%%cribl_search template=true\nq\n')
+    expect(t.kind).toBe('cribl_search')
+    if (t.kind === 'cribl_search') expect(t.value.template).toBe('on')
+    const bad = parseCriblSearchMagic('%%cribl_search template=maybe\nq\n')
+    expect(bad.kind).toBe('error')
+    if (bad.kind === 'error') expect(bad.message).toMatch(/template must be one of auto, on, off/i)
+  })
+})
+
+describe('wantsCriblSearchJinjaTemplating + criblSearchQueryLooksLikeJinjaTemplate', () => {
+  it('auto uses delimiters in the body', () => {
+    expect(criblSearchQueryLooksLikeJinjaTemplate('dataset=x | where a == {{ b }}')).toBe(true)
+    expect(criblSearchQueryLooksLikeJinjaTemplate('{% for x in y %}')).toBe(true)
+    expect(criblSearchQueryLooksLikeJinjaTemplate('{# c #}')).toBe(true)
+    expect(criblSearchQueryLooksLikeJinjaTemplate('dataset=x | limit 1')).toBe(false)
+  })
+
+  it('respects template mode', () => {
+    expect(wantsCriblSearchJinjaTemplating('foo', 'off')).toBe(false)
+    expect(wantsCriblSearchJinjaTemplating('foo', 'on')).toBe(true)
+    expect(wantsCriblSearchJinjaTemplating('{{x}}', 'auto')).toBe(true)
+    expect(wantsCriblSearchJinjaTemplating('x', 'auto')).toBe(false)
   })
 })
 

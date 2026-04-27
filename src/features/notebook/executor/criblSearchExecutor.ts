@@ -5,7 +5,9 @@ import {
   buildCriblSearchDataframeCode,
   encodeRowsJsonForPythonBase64,
   parseCriblSearchMagic,
+  wantsCriblSearchJinjaTemplating,
 } from '@features/cribl-search/criblSearchMagic'
+import { runCriblSearchJinjaInKernel } from '@features/cribl-search/criblSearchJinjaRender'
 import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
 import {
   criblSearchIOPub,
@@ -24,6 +26,8 @@ export interface CriblSearchExecutorDeps {
   translateEnglishToKql: typeof translateEnglishToKql
   getCriblApiBase: typeof getCriblApiBase
   criblSearchMaxRows: number
+  wantsCriblSearchJinjaTemplating: typeof wantsCriblSearchJinjaTemplating
+  runCriblSearchJinjaInKernel: typeof runCriblSearchJinjaInKernel
 }
 
 export const DEFAULT_CRIBL_SEARCH_EXECUTOR_DEPS: CriblSearchExecutorDeps = {
@@ -35,6 +39,8 @@ export const DEFAULT_CRIBL_SEARCH_EXECUTOR_DEPS: CriblSearchExecutorDeps = {
   translateEnglishToKql,
   getCriblApiBase,
   criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_MAX_ROWS,
+  wantsCriblSearchJinjaTemplating,
+  runCriblSearchJinjaInKernel,
 }
 
 /**
@@ -93,7 +99,7 @@ async function executeCriblSearchCell(
     return 'error'
   }
 
-  const { varName, query, preview, response, earliest, latest, limit, lang, dataset } = magic.value
+  const { varName, query, preview, response, earliest, latest, limit, lang, dataset, template } = magic.value
   const displayId = `cribl-search-${id}`
   let generatedKqlForReport: string | undefined
   try {
@@ -102,6 +108,29 @@ async function executeCriblSearchCell(
     )
 
     let searchQuery = query
+    if (deps.wantsCriblSearchJinjaTemplating(query, template)) {
+      emitIOPub(
+        criblSearchIOPub(
+          { kind: 'running', progress: 0.1, label: 'Rendering Jinja template…' },
+          displayId,
+          true,
+        ),
+      )
+      const jinja = await deps.runCriblSearchJinjaInKernel(kernel, query, {
+        executionCount: 0,
+        emitIOPub,
+        filterPyodidePackageChatter: deps.filterPyodidePackageChatter,
+      })
+      if (jinja.ok) {
+        searchQuery = jinja.text
+      } else {
+        emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${jinja.errorMessage}\n` })
+        dispatchNotebook({ type: 'ERROR_CELL', id })
+        return 'error'
+      }
+    }
+    if (isStale()) return 'stale'
+
     if (lang === 'english') {
       if (!deps.getCriblApiBase()) {
         emitIOPub(
@@ -123,7 +152,7 @@ async function executeCriblSearchCell(
             true,
           ),
         )
-        searchQuery = await deps.translateEnglishToKql(query, { datasetHint: dataset })
+        searchQuery = await deps.translateEnglishToKql(searchQuery, { datasetHint: dataset })
         generatedKqlForReport = searchQuery
         emitIOPub({
           msg_type: 'stream',
