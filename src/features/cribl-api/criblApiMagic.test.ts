@@ -18,6 +18,25 @@ describe('parseCriblApiMagic', () => {
     }
   })
 
+  it('skips leading # lines before the magic line', () => {
+    const p = parseCriblApiMagic('# note\n%%cribl_api GET /m/default_search/search/jobs var=jobs\n')
+    expect(p.kind).toBe('cribl_api')
+    if (p.kind === 'cribl_api') expect(p.value.yamlBlock).toBe('')
+  })
+
+  it('drops full-line # rows from the YAML body', () => {
+    const src = `%%cribl_api GET /a
+# ignore
+json:
+  x: 1
+`
+    const p = parseCriblApiMagic(src)
+    expect(p.kind).toBe('cribl_api')
+    if (p.kind === 'cribl_api') {
+      expect(p.value.yamlBlock).toBe('json:\n  x: 1')
+    }
+  })
+
   it('rejects method line without path', () => {
     const p = parseCriblApiMagic('%%cribl_api GET\n')
     expect(p.kind).toBe('error')

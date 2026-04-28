@@ -5,18 +5,28 @@
 import { RangeSetBuilder } from '@codemirror/state'
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view'
 
+import {
+  findFirstMagicHeaderLineIndex,
+  offsetAfterLineWithNewline,
+  offsetOfLineStart,
+} from '@features/notebook/magicCellLines'
+
 const MAGIC_FIRST_LINE = /^%%cribl_api(?:\s+(.*))?$/
 
-export type CriblApiCellInfo = { kind: 'none' } | { kind: 'cribl_api'; yamlFrom: number; yamlTo: number }
+export type CriblApiCellInfo =
+  | { kind: 'none' }
+  | { kind: 'cribl_api'; yamlFrom: number; yamlTo: number; magicHeaderLineFrom: number }
 
 export function analyzeCriblApiCell(code: string): CriblApiCellInfo {
   const text = code.replace(/^\uFEFF/, '')
   const lines = text.split(/\r?\n/)
-  const firstLine = (lines[0] ?? '').trimStart().trimEnd()
+  const headerIdx = findFirstMagicHeaderLineIndex(lines)
+  if (headerIdx < 0) return { kind: 'none' }
+  const firstLine = (lines[headerIdx] ?? '').trimStart().trimEnd()
   if (!MAGIC_FIRST_LINE.test(firstLine)) return { kind: 'none' }
-  const firstNl = text.indexOf('\n')
-  const yamlFrom = firstNl === -1 ? text.length : firstNl + 1
-  return { kind: 'cribl_api', yamlFrom, yamlTo: text.length }
+  const magicHeaderLineFrom = offsetOfLineStart(text, lines, headerIdx)
+  const yamlFrom = offsetAfterLineWithNewline(text, lines, headerIdx)
+  return { kind: 'cribl_api', yamlFrom, yamlTo: text.length, magicHeaderLineFrom }
 }
 
 function buildDecorations(view: EditorView): DecorationSet {

@@ -5,21 +5,29 @@
 
 import type { CompletionContext, CompletionResult } from '@codemirror/autocomplete'
 
+import {
+  findFirstMagicHeaderLineIndex,
+  offsetAfterLineWithNewline,
+  offsetOfLineStart,
+} from '@features/notebook/magicCellLines'
+
 export type CriblSearchCellInfo =
   | { kind: 'none' }
-  | { kind: 'cribl_search'; kqlFrom: number; kqlTo: number }
+  | { kind: 'cribl_search'; kqlFrom: number; kqlTo: number; magicHeaderLineFrom: number }
 
 const MAGIC_FIRST_LINE = /^%%cribl_search(?:\s+(.*))?$/
 
-/** Same first-line rule as `parseCriblSearchMagic` (trimmed line, BOM stripped). */
+/** Same magic-line rule as `parseCriblSearchMagic` (BOM stripped; leading `#` / blank lines skipped). */
 export function analyzeCriblSearchCell(code: string): CriblSearchCellInfo {
   const text = code.replace(/^\uFEFF/, '')
   const lines = text.split(/\r?\n/)
-  const firstLine = (lines[0] ?? '').trimStart().trimEnd()
+  const headerIdx = findFirstMagicHeaderLineIndex(lines)
+  if (headerIdx < 0) return { kind: 'none' }
+  const firstLine = (lines[headerIdx] ?? '').trimStart().trimEnd()
   if (!MAGIC_FIRST_LINE.test(firstLine)) return { kind: 'none' }
-  const firstNl = text.indexOf('\n')
-  const kqlFrom = firstNl === -1 ? text.length : firstNl + 1
-  return { kind: 'cribl_search', kqlFrom, kqlTo: text.length }
+  const magicHeaderLineFrom = offsetOfLineStart(text, lines, headerIdx)
+  const kqlFrom = offsetAfterLineWithNewline(text, lines, headerIdx)
+  return { kind: 'cribl_search', kqlFrom, kqlTo: text.length, magicHeaderLineFrom }
 }
 
 export type KqlTokenKind =
@@ -326,8 +334,9 @@ export function criblSearchCompletionSource(context: CompletionContext): Complet
   if (info.kind !== 'cribl_search') return null
 
   const line = context.state.doc.lineAt(pos)
+  const headerLine = context.state.doc.lineAt(info.magicHeaderLineFrom)
 
-  if (line.number === 1) {
+  if (line.from === headerLine.from) {
     return headerCompletions(code, pos)
   }
 

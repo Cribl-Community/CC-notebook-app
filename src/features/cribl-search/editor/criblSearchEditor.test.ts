@@ -20,6 +20,15 @@ describe('analyzeCriblSearchCell', () => {
     const code = '  %%cribl_search\nq\n'
     expect(analyzeCriblSearchCell(code).kind).toBe('cribl_search')
   })
+
+  it('finds magic after leading # comments', () => {
+    const code = '# note\n%%cribl_search\nq\n'
+    const r = analyzeCriblSearchCell(code)
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.magicHeaderLineFrom).toBe(code.indexOf('%%'))
+    expect(code.slice(r.kqlFrom, r.kqlTo)).toBe('q\n')
+  })
 })
 
 describe('criblSearchCompletionSource magic header', () => {

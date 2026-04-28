@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CellExecutor, CellExecutionContext } from './cellExecutor'
 import { selectExecutor } from './cellExecutor'
+import { looksLikeCriblApiMagic } from './criblApiExecutor'
 import { looksLikeCriblSearchMagic } from './criblSearchExecutor'
 import { pythonExecutor } from './pythonExecutor'
 import { runNotebookCellAfterReady } from './runNotebookCell'
@@ -26,16 +27,26 @@ const noopContext = (
 })
 
 describe('looksLikeCriblSearchMagic', () => {
-  it('matches only when first non-empty line starts with %%cribl_search', () => {
+  it('matches only when first non-comment non-empty line starts with %%cribl_search', () => {
     expect(looksLikeCriblSearchMagic('%%cribl_search foo')).toBe(true)
     expect(looksLikeCriblSearchMagic('%%cribl_search var=df\nfoo')).toBe(true)
     expect(looksLikeCriblSearchMagic('\n\n  %%cribl_search foo')).toBe(true)
+    expect(looksLikeCriblSearchMagic('# intro\n%%cribl_search foo')).toBe(true)
     // A single % is the IPython line-magic prefix; the cribl magic is a
     // cell magic (%%...) so a single percent must NOT match.
     expect(looksLikeCriblSearchMagic('%cribl_search foo')).toBe(false)
     expect(looksLikeCriblSearchMagic('print("hi")')).toBe(false)
     expect(looksLikeCriblSearchMagic('# %%cribl_search (in comment)')).toBe(false)
     expect(looksLikeCriblSearchMagic('')).toBe(false)
+  })
+})
+
+describe('looksLikeCriblApiMagic', () => {
+  it('matches when the first non-comment line starts with %%cribl_api', () => {
+    expect(looksLikeCriblApiMagic('%%cribl_api GET /system/info')).toBe(true)
+    expect(looksLikeCriblApiMagic('# h\n%%cribl_api GET /system/info')).toBe(true)
+    expect(looksLikeCriblApiMagic('# %%cribl_api')).toBe(false)
+    expect(looksLikeCriblApiMagic('print(1)')).toBe(false)
   })
 })
 

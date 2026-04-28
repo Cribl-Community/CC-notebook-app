@@ -1,5 +1,12 @@
+import {
+  findFirstMagicHeaderLineIndex,
+  lineExcludedFromMagicBody,
+} from '@features/notebook/magicCellLines'
+
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
+ * Leading empty lines and full-line `#` comments are skipped before the magic line.
+ * The query body omits full-line `#` lines; blank lines are kept.
  * First line:
  * %%cribl_search [var=name] [preview=true|false] [response=dataframe|json|raw] [limit=N] [earliest=…] [latest=…]
  * [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false]
@@ -156,7 +163,10 @@ function parseKeyValueParams(paramLine: string):
 export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   const text = source.replace(/^\uFEFF/, '')
   const lines = text.split(/\r?\n/)
-  const firstLine = (lines[0] ?? '').trimStart().trimEnd()
+  const headerIdx = findFirstMagicHeaderLineIndex(lines)
+  if (headerIdx < 0) return { kind: 'none' }
+
+  const firstLine = (lines[headerIdx] ?? '').trimStart().trimEnd()
   const mm = /^%%cribl_search(?:\s+(.*))?$/.exec(firstLine)
   if (!mm) return { kind: 'none' }
 
@@ -175,7 +185,8 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   }
 
   const query = lines
-    .slice(1)
+    .slice(headerIdx + 1)
+    .filter((l) => !lineExcludedFromMagicBody(l))
     .join('\n')
     .replace(/\s+$/, '')
     .trim()

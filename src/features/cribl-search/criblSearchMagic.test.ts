@@ -91,9 +91,34 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.query).toBe('q')
   })
 
+  it('skips leading # lines before the magic line', () => {
+    const r = parseCriblSearchMagic('# note\n\n%%cribl_search\nq\n')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.query).toBe('q')
+  })
+
+  it('drops full-line # rows from the query body', () => {
+    const r = parseCriblSearchMagic('%%cribl_search\nq\n# c\nr')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.query).toBe('q\nr')
+  })
+
+  it('keeps blank lines when removing # rows', () => {
+    const r = parseCriblSearchMagic('%%cribl_search\nq\n\n# c\nr')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.query).toBe('q\n\nr')
+  })
+
   it('errors on empty query', () => {
     const r = parseCriblSearchMagic('%%cribl_search\n')
     expect(r.kind).toBe('error')
+  })
+
+  it('errors when body is only full-line # comments', () => {
+    expect(parseCriblSearchMagic('%%cribl_search\n# only\n').kind).toBe('error')
   })
 
   it('errors on bad var name', () => {

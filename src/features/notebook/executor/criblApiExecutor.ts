@@ -1,3 +1,4 @@
+import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import { callCriblApi, type CriblApiHttpResult } from '@platform/cribl/criblApiFetch'
 import { getCriblApiBase } from '@platform/env/env'
 import {
@@ -14,10 +15,9 @@ import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchS
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 
 export function looksLikeCriblApiMagic(source: string): boolean {
-  for (const line of source.split('\n')) {
-    const trimmed = line.trim()
-    if (trimmed === '') continue
-    return trimmed.startsWith('%%cribl_api')
+  for (const line of source.split(/\r?\n/)) {
+    if (lineSkipsMagicScan(line)) continue
+    return line.trim().startsWith('%%cribl_api')
   }
   return false
 }

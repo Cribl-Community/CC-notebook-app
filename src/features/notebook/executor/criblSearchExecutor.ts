@@ -1,3 +1,4 @@
+import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import { translateEnglishToKql } from '@platform/cribl/aiTranslate'
 import { getCriblApiBase } from '@platform/cribl/kvstore'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '@platform/cribl/searchJobs'
@@ -44,9 +45,9 @@ export const DEFAULT_CRIBL_SEARCH_EXECUTOR_DEPS: CriblSearchExecutorDeps = {
 }
 
 /**
- * Returns true for any source whose first non-empty line starts with the
- * `%%cribl_search` cell magic. Cheap so it is safe to run on every cell
- * without invoking the full parser.
+ * Returns true when the first non-skipped line (non-empty, not a full-line `#` comment)
+ * starts with `%%cribl_search`. Cheap so it is safe to run on every cell without invoking
+ * the full parser.
  *
  * NOTE: two percent signs — this is a Jupyter-style cell magic, not an
  * IPython line magic. Using a single `%` here routes every search cell to
@@ -54,10 +55,9 @@ export const DEFAULT_CRIBL_SEARCH_EXECUTOR_DEPS: CriblSearchExecutorDeps = {
  * the very first line.
  */
 export function looksLikeCriblSearchMagic(source: string): boolean {
-  for (const line of source.split('\n')) {
-    const trimmed = line.trim()
-    if (trimmed === '') continue
-    return trimmed.startsWith('%%cribl_search')
+  for (const line of source.split(/\r?\n/)) {
+    if (lineSkipsMagicScan(line)) continue
+    return line.trim().startsWith('%%cribl_search')
   }
   return false
 }

@@ -1,5 +1,7 @@
 /**
  * Jupyter-style cell magic `%%cribl_api` (notebook-app convention; not IPython).
+ * Leading empty lines and full-line `#` comments are skipped before the magic line.
+ * The YAML body omits full-line `#` lines; blank lines are kept.
  * First line:
  * %%cribl_api <METHOD> <path> [var=name] [preview=true|false] [response=json|raw|text] [template=auto|on|off|true|false]
  * Following lines: YAML mapping for `headers`, `json` (object → JSON request body), and optional `body` (string,
@@ -14,6 +16,11 @@
  */
 
 import { parse as parseYaml } from 'yaml'
+
+import {
+  findFirstMagicHeaderLineIndex,
+  lineExcludedFromMagicBody,
+} from '@features/notebook/magicCellLines'
 
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
@@ -163,7 +170,10 @@ function parseKeyValueParams(
 export function parseCriblApiMagic(source: string): CriblApiMagicParse {
   const text = source.replace(/^\uFEFF/, '')
   const lines = text.split(/\r?\n/)
-  const firstLine = (lines[0] ?? '').trimStart().trimEnd()
+  const headerIdx = findFirstMagicHeaderLineIndex(lines)
+  if (headerIdx < 0) return { kind: 'none' }
+
+  const firstLine = (lines[headerIdx] ?? '').trimStart().trimEnd()
   const mm = RESULT_FIRST_LINE.exec(firstLine)
   if (!mm) return { kind: 'none' }
   const rest = mm[1]?.trim() ?? ''
@@ -194,7 +204,11 @@ export function parseCriblApiMagic(source: string): CriblApiMagicParse {
   if (!IDENT_RE.test(varName)) {
     return { kind: 'error', message: `Invalid Python identifier for var: ${JSON.stringify(varName)}` }
   }
-  const yamlBlock = lines.slice(1).join('\n').replace(/\s+$/, '')
+  const yamlBlock = lines
+    .slice(headerIdx + 1)
+    .filter((l) => !lineExcludedFromMagicBody(l))
+    .join('\n')
+    .replace(/\s+$/, '')
 
   return {
     kind: 'cribl_api',

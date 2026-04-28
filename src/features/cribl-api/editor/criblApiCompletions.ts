@@ -65,8 +65,12 @@ export function applyCriblApiPathCompletion(
 
 export function criblApiCompletionSource(ctx: CompletionContext): CompletionResult | null {
   const { state } = ctx
+  const full = state.doc.toString()
+  const cell = analyzeCriblApiCell(full)
+  if (cell.kind !== 'cribl_api') return null
   const line = state.doc.lineAt(ctx.pos)
-  if (line.number !== 1) return null
+  const magicLine = state.doc.lineAt(cell.magicHeaderLineFrom)
+  if (line.from !== magicLine.from) return null
   const ed = getCriblApiPathEditContext(line.text, line.from, ctx.pos)
   if (!ed) return null
   const cands = listCriblApiPathCompletions(ed.method, ed.pathPrefix)
@@ -106,8 +110,12 @@ export function createCriblApiFirstLineTooltipExtension(): readonly Extension[] 
     hoverTooltip(
       (view, pos) => {
         if (pos < 0) return null
+        const full = view.state.doc.toString()
+        const cell = analyzeCriblApiCell(full)
+        if (cell.kind !== 'cribl_api') return null
         const l = view.state.doc.lineAt(pos)
-        if (l.number !== 1) return null
+        const magicLine = view.state.doc.lineAt(cell.magicHeaderLineFrom)
+        if (l.from !== magicLine.from) return null
         if (!/^\s*%%cribl_api\b/.test(l.text)) return null
         const p = parseCriblApiMagic(`${l.text}\n`)
         if (p.kind !== 'cribl_api') return null
