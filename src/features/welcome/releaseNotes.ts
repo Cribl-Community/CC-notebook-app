@@ -11,6 +11,20 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.59',
+    date: '2026-04-27',
+    highlights: [
+      'Release build: package for Cribl App Platform distribution.',
+    ],
+  },
+  {
+    version: '1.0.58',
+    date: '2026-04-27',
+    highlights: [
+      'Cribl API cell: `%%cribl_api` authoring — Tab after the HTTP method suggests catalog paths, accepting fills a path (and, when the YAML block is empty, a sample `json` body for POST/PUT). Hover on the first line (method and path) shows a short description from the catalog.',
+    ],
+  },
+  {
     version: '1.0.57',
     date: '2026-04-27',
     highlights: [
