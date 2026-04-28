@@ -4,7 +4,6 @@ import {
   completionKeymap,
   completionStatus,
   startCompletion,
-  acceptCompletion,
   moveCompletionSelection,
 } from '@codemirror/autocomplete'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
@@ -18,6 +17,7 @@ import {
   createCriblApiFirstLineTooltipExtension,
 } from '@features/cribl-api/editor/criblApiCompletions'
 import { criblApiYamlHighlightPlugin } from '@features/cribl-api/editor/criblApiEditor'
+import { getCriblApiPathEditContext } from '@features/cribl-api/criblApiPathLine'
 import { criblSearchCompletionSource } from '@features/cribl-search/editor/criblSearchEditor'
 import { criblSearchKqlHighlightPlugin } from '@features/cribl-search/editor/criblKqlHighlight'
 
@@ -165,18 +165,6 @@ export function createPythonCellExtensions(options: {
     },
   ])
 
-  const completionEnter = keymap.of([
-    {
-      key: 'Enter',
-      run: (view) => {
-        if (completionStatus(view.state) === 'active') {
-          return acceptCompletion(view)
-        }
-        return false
-      },
-    },
-  ])
-
   const runCell = keymap.of([
     {
       key: 'Shift-Enter',
@@ -197,6 +185,10 @@ export function createPythonCellExtensions(options: {
       async (context) => {
         const code = context.state.doc.toString()
         const pos = context.pos
+        const line = context.state.doc.lineAt(pos)
+        if (line.number === 1 && getCriblApiPathEditContext(line.text, line.from, pos)) {
+          return null
+        }
         const getComplete = options.getComplete()
         if (!getComplete) return null
         const items = await getComplete(code, pos)
@@ -228,12 +220,12 @@ export function createPythonCellExtensions(options: {
     EditorState.tabSize.of(4),
     options.readOnlyCompartment.of(EditorState.readOnly.of(options.readOnly)),
     placeholder(options.placeholderText),
-    Prec.highest(completionEnter),
+    /** Arrow/PageUp/PageDown/Enter/Escape from completionKeymap must beat defaultKeymap for list navigation + accept. */
+    Prec.highest(keymap.of(completionKeymap)),
     Prec.highest(completionTabCycle),
     Prec.highest(runCell),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     completionOverride,
-    keymap.of(completionKeymap),
     EditorView.lineWrapping,
   ]
 }

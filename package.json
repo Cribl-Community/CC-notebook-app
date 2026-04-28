@@ -1,7 +1,7 @@
 {
   "name": "notebook-app",
   "private": true,
-  "version": "1.0.58",
+  "version": "1.0.59",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "preview": "vite preview",
-    "package": "npm run build && node scripts/package.mjs"
+    "package": "npm run build && node scripts/package.mjs",
+    "update:cribl-api": "node scripts/cribl-openapi-to-catalog.mjs",
+    "update:cribl-api:release": "CRIBL_OPENAPI_CHANNEL=release node scripts/cribl-openapi-to-catalog.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.0",

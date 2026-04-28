@@ -68,7 +68,7 @@ export function listCriblApiPathCompletions(
   for (const op of operations) {
     if (op.method !== m) continue
     if (opPathMatchesTypedPrefix(norm, op.path)) out.push(op)
-    if (out.length >= limit) break
   }
-  return out
+  out.sort((a, b) => a.path.localeCompare(b.path, undefined, { sensitivity: 'base' }))
+  return out.slice(0, limit)
 }

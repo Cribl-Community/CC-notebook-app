@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.59',
+    date: '2026-04-27',
+    highlights: [
+      'Release build: package for Cribl App Platform distribution.',
+    ],
+  },
+  {
     version: '1.0.58',
     date: '2026-04-27',
     highlights: [

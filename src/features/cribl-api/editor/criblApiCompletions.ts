@@ -15,18 +15,24 @@ function isEmptyCriblApiYaml(code: string): boolean {
   return code.slice(a.yamlFrom, a.yamlTo).trim() === ''
 }
 
-const BODY_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+/** YAML snippet for the cell body after picking a catalog URI (empty string = do not insert). */
+export function payloadYamlAfterUriSelect(op: CriblApiCatalogEntry): string {
+  const m = op.method
+  if (m === 'GET') return ''
+  if (m === 'DELETE') {
+    if (op.jsonBody === undefined) return ''
+    return formatJsonBodySampleYaml(op.jsonBody)
+  }
+  // POST, PUT, PATCH — always offer a `json:` block; default to {} when the spec has no sample/schema.
+  return formatJsonBodySampleYaml(op.jsonBody !== undefined ? op.jsonBody : {})
+}
 
-export function formatJsonBodySampleYaml(j: Record<string, unknown>): string {
+export function formatJsonBodySampleYaml(value: unknown): string {
+  const j = value === undefined ? {} : value
   return `json:\n${stringify(j, { lineWidth: 0 })
     .split('\n')
     .map((line) => (line ? `  ${line}` : '  '))
     .join('\n')}\n`
-}
-
-function sampleJsonYamlForOp(op: CriblApiCatalogEntry): string {
-  if (!op.jsonBody) return ''
-  return formatJsonBodySampleYaml(op.jsonBody)
 }
 
 export function applyCriblApiPathCompletion(
@@ -39,9 +45,7 @@ export function applyCriblApiPathCompletion(
   const before = view.state.doc.toString()
   const wasEmpty = isEmptyCriblApiYaml(before)
   view.dispatch({ changes: { from, to, insert: newPath } })
-  const want = wasEmpty && BODY_METHODS.has(op.method) && op.jsonBody
-  if (!want) return
-  const y = sampleJsonYamlForOp({ ...op, path: newPath })
+  const y = wasEmpty ? payloadYamlAfterUriSelect({ ...op, path: newPath }) : ''
   if (!y) return
   queueMicrotask(() => {
     const t = view.state.doc.toString()
@@ -73,8 +77,7 @@ export function criblApiCompletionSource(ctx: CompletionContext): CompletionResu
     filter: false,
     options: cands.map((op) => ({
       label: op.path,
-      type: 'property' as const,
-      detail: op.summary,
+      type: 'text' as const,
       apply: (v, _c, f, t) => applyCriblApiPathCompletion(v, f, t, op.path, op),
     })),
   }

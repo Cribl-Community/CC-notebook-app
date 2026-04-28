@@ -3,8 +3,8 @@ export type CriblApiCatalogEntry = {
   path: string
   summary: string
   description?: string
-  /** Suggested `json` body for POST/PUT/PATCH; serialized to YAML under the `json:` key. */
-  jsonBody?: Record<string, unknown>
+  /** Suggested `json` body (object or array root); serialized to YAML under the `json:` key. */
+  jsonBody?: unknown
 }
 
 export type CriblApiCatalogFile = {
