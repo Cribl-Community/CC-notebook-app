@@ -18,8 +18,9 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
         <p className="nb-welcome-kicker">Cribl · In-browser notebooks</p>
         <h1 className="nb-welcome-title">Notebook app</h1>
         <p className="nb-welcome-lead">
-          Run Python with Pyodide in your browser: pandas, Matplotlib, Cribl Search magic cells, and saved
-          notebooks backed by your pack&apos;s KV store—styled like Jupyter, tuned for observability workflows.
+          Run Python with Pyodide in your browser: pandas, Matplotlib, Cribl Search and Cribl REST API magic
+          cells, and saved notebooks backed by your pack&apos;s KV store—styled like Jupyter, tuned for
+          observability workflows.
         </p>
         <div className="nb-welcome-hero-actions">
           <button type="button" className="nb-btn nb-btn-primary" onClick={onNewNotebook}>
@@ -38,6 +39,12 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
           <li>
             <strong>%%cribl_search</strong> — Run KQL against Cribl Search; results become a pandas DataFrame
             with optional rich preview.
+          </li>
+          <li>
+            <strong>%%cribl_api</strong> — Call Cribl REST endpoints from a cell: set method and path on the
+            magic line, optional YAML for query params and JSON body. Tab completion suggests paths from the
+            API catalog; choosing one fills in a starter <code className="nb-welcome-code">json:</code> block
+            when appropriate.
           </li>
           <li>
             <strong>Save &amp; organize</strong> — Persist .ipynb to the scoped KV API, with folders in the

@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.60',
+    date: '2026-04-28',
+    highlights: [
+      'Cribl API cell (`%%cribl_api`): after you pick a REST path from completion, the YAML body is filled in with a `json:` payload. Samples come from the bundled catalog (generated from Cribl OpenAPI specs—examples and JSON request schemas); POST, PUT, and PATCH always get at least `json: {}` when the body was empty.',
+      'The OpenAPI catalog generator (`npm run update:cribl-api`) can target latest dev or stable release specs via `CRIBL_OPENAPI_CHANNEL`.',
+    ],
+  },
+  {
     version: '1.0.59',
     date: '2026-04-27',
     highlights: [
