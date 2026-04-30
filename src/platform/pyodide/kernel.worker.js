@@ -265,6 +265,7 @@ self.onmessage = async function (e) {
   if (msg.type === 'init') {
     _appOrigin = msg.appOrigin || ''
     _appPyodideBaseUrl = (msg.pyodideBaseUrl && String(msg.pyodideBaseUrl)) || ''
+    var criblApiUrl = (msg.criblApiUrl && String(msg.criblApiUrl).trim()) || ''
     try {
       importScripts(msg.pyodideBaseUrl + 'pyodide.js')
       pyodide = await loadPyodide({
@@ -273,6 +274,9 @@ self.onmessage = async function (e) {
         // Same-origin lock from the shipped `public/pyodide/` tree; avoids CSP blocks on jsDelivr in iframes.
         lockFileURL: msg.pyodideLockFileUrl,
       })
+      await pyodide.runPythonAsync(
+        'import os\nos.environ["CRIBL_API_URL"] = ' + JSON.stringify(criblApiUrl),
+      )
       await pyodide.runPythonAsync(COMPLETION_PY)
       await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY)
       await pyodide.runPythonAsync(IOPUB_BOOTSTRAP_PY)

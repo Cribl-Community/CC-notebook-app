@@ -109,12 +109,16 @@ export class PyodideKernel {
     const pyodideBaseUrl = getSameOriginPyodideBaseUrl()
     this.appPyodideBaseUrl = pyodideBaseUrl
     const pyodideLockFileUrl = getSameOriginPyodideLockFileUrl()
+    const criblApiUrl =
+      typeof window !== 'undefined' ? (window.CRIBL_API_URL?.trim() ?? '') : ''
+
     this.worker.postMessage({
       type: 'init',
       pyodideBaseUrl,
       pyodidePackageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
       pyodideLockFileUrl,
       appOrigin: window.location.origin,
+      criblApiUrl,
     } satisfies WorkerInbound)
   }
 
