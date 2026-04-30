@@ -2,6 +2,7 @@ import {
   findFirstMagicHeaderLineIndex,
   lineExcludedFromMagicBody,
 } from '@features/notebook/magicCellLines'
+import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristic'
 
 /**
  * Jupyter-style cell magic `%%cribl_search` (notebook-app convention; not IPython).
@@ -203,8 +204,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
 
 /** Heuristic: query body plausibly contains a Jinja construct (not a lone `{`). */
 export function criblSearchQueryLooksLikeJinjaTemplate(query: string): boolean {
-  if (query.includes('{{') || query.includes('{%') || query.includes('{#')) return true
-  return false
+  return looksLikeJinjaTemplate(query)
 }
 
 /** Whether the kernel Jinja2 render pass should run (before Search / translate). */
