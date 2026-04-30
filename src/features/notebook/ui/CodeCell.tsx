@@ -344,7 +344,11 @@ export function CodeCell({
                 Close
               </button>
             </div>
-            <p className="nb-cell-ai-hint">Shift+Enter runs Generate. Edit the prompt and generate again to iterate.</p>
+            <p className="nb-cell-ai-hint">
+              Shift+Enter runs Generate. Edit the prompt and generate again to iterate. Optional Jinja2 in the prompt:
+              use {'{{ name }}'} for notebook variables and {'{{ x | describe }}'} / {'{{ x | type_name }}'} for structured
+              values from the kernel.
+            </p>
           </div>
         )}
         <div

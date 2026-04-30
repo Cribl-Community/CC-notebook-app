@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.61',
+    date: '2026-04-30',
+    highlights: [
+      'Riptide (Generate Python): prompts may include Jinja2 before the model sees them—`{{ var }}` pulls notebook globals; filters `| describe` and `| type_name` summarize DataFrames, dicts, lists, and other objects for richer AI context. The saved cell still stores your template text.',
+    ],
+  },
+  {
     version: '1.0.60',
     date: '2026-04-28',
     highlights: [

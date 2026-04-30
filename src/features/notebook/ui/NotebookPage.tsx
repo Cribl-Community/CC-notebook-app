@@ -25,6 +25,9 @@ import {
   storeManifest,
 } from '@features/library/notebookLibrary'
 import { formatGeneratedPythonSource } from '@features/ai-riptide/riptideService'
+import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
+import { runRiptidePromptJinjaInKernel } from '@features/notebook/jinjaInKernel'
+import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristic'
 import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useCellRunner } from '@features/notebook/hooks/useCellRunner'
@@ -110,7 +113,49 @@ export function NotebookPage() {
       if (!trimmed) return
       setAiCodeBusyCellId(cellId)
       try {
-        const code = await aiCode.generatePythonFromPrompt(trimmed)
+        let promptForApi = trimmed
+        if (looksLikeJinjaTemplate(trimmed)) {
+          const tid = activeTabIdRef.current
+          const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
+          if (!tab || tab.kind === 'welcome') {
+            showAlert('Open a notebook tab to use Jinja in the Riptide prompt.')
+            return
+          }
+          const ks = tab.notebook.kernelStatus
+          if (ks === 'loading' || ks === 'error') {
+            showAlert(
+              ks === 'loading'
+                ? 'Wait for the Python kernel to finish loading before using Jinja in the prompt.'
+                : 'The Python kernel is in an error state; fix or restart the kernel to use Jinja in the prompt.',
+            )
+            return
+          }
+          const kernel = runtime.kernelFor(tid)
+          if (!kernel) {
+            showAlert('Python kernel is not available. Wait until the kernel is ready and try again.')
+            return
+          }
+          try {
+            await kernel.ready
+          } catch {
+            showAlert('Python kernel failed to initialize.')
+            return
+          }
+          const jinja = await runRiptidePromptJinjaInKernel(kernel, trimmed, {
+            executionCount: 0,
+            emitIOPub: () => {
+              /* no cell IOPub for inline Jinja helper */
+            },
+            filterPyodidePackageChatter,
+          })
+          if (!jinja.ok) {
+            showAlert(jinja.errorMessage)
+            return
+          }
+          promptForApi = jinja.text
+        }
+
+        const code = await aiCode.generatePythonFromPrompt(promptForApi)
         const source = formatGeneratedPythonSource(trimmed, code)
         dispatchNotebook({ type: 'UPDATE_SOURCE', id: cellId, source })
       } catch (e) {
@@ -119,7 +164,7 @@ export function NotebookPage() {
         setAiCodeBusyCellId(null)
       }
     },
-    [aiCode, showAlert, dispatchNotebook],
+    [aiCode, showAlert, dispatchNotebook, runtime, activeTabIdRef, workspaceRef],
   )
 
   const { runCellAndAdvance, runAll, restartKernel, stopExecution, canStopExecution } =
