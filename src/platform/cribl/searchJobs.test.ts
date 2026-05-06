@@ -201,4 +201,14 @@ describe('runCriblSearchJob queryMode', () => {
     const body = JSON.parse(String(init.body)) as { query: string }
     expect(body.query).toBe('cribl dataset=x | limit 1')
   })
+
+  it('surfaces create fetch failures immediately without retrying polls', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+
+    await expect(runCriblSearchJob({ query: 'dataset=x | limit 1' })).rejects.toThrow(
+      /not retried/i,
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })

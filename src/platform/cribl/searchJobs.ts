@@ -4,6 +4,7 @@
  */
 
 import { getCriblApiBase } from '@platform/cribl/kvstore'
+import { describeFetchError } from '@platform/cribl/fetchFailure'
 import { normalizeSearchQuery } from '@platform/cribl/searchQuery'
 import { deriveColumnNames } from '@platform/cribl/searchResultModel'
 import { runLocalSearchStub } from '@platform/cribl/searchStub'
@@ -13,6 +14,7 @@ export { normalizeSearchQuery } from '@platform/cribl/searchQuery'
 const SEARCH_GROUP = 'default_search'
 const POLL_MS = 450
 const MAX_POLLS = 200
+const SEARCH_FETCH_TIMEOUT_MS = 30_000
 
 /** Default time window when `%%cribl_search` omits `earliest=` / `latest=`. */
 export const DEFAULT_SEARCH_EARLIEST = '-1h'
@@ -437,6 +439,17 @@ function emitProgress(
   onProgress?.({ fraction: Math.min(1, Math.max(0, fraction)), label })
 }
 
+async function fetchSearch(url: string, init: RequestInit | undefined, operation: string): Promise<Response> {
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: AbortSignal.timeout(SEARCH_FETCH_TIMEOUT_MS),
+    })
+  } catch (e) {
+    throw new Error(describeFetchError(e, operation))
+  }
+}
+
 /**
  * Runs a search job and returns result rows as plain objects (DataFrame-ready).
  * When `maxRows` is `0`, fetches every page of `/results` until exhausted.
@@ -455,7 +468,9 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
   const root = searchBasePath(base)
   emitProgress(options.onProgress, 0.08, 'Submitting search job…')
 
-  const createRes = await fetch(`${root}/jobs`, {
+  const createRes = await fetchSearch(
+    `${root}/jobs`,
+    {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -464,7 +479,9 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
       latest: options.latest ?? DEFAULT_SEARCH_LATEST,
       sampleRate: 1,
     }),
-  })
+    },
+    'Search job create',
+  )
 
   if (!createRes.ok) {
     const t = await createRes.text().catch(() => '')
@@ -494,7 +511,11 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
     emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
   } else {
     for (let i = 0; i < MAX_POLLS; i++) {
-      const statusRes = await fetch(`${root}/jobs/${encodeURIComponent(jobId)}/status`)
+      const statusRes = await fetchSearch(
+        `${root}/jobs/${encodeURIComponent(jobId)}/status`,
+        undefined,
+        'Search job status',
+      )
       if (!statusRes.ok) {
         const t = await statusRes.text().catch(() => '')
         throw new Error(`Search job status failed (${statusRes.status}): ${t || statusRes.statusText}`)
@@ -547,8 +568,10 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
   while (rows.length < cap) {
     const remaining = cap - rows.length
     const pageLimit = Math.min(CRIBL_SEARCH_RESULTS_PAGE_SIZE, remaining)
-    const resultsRes = await fetch(
+    const resultsRes = await fetchSearch(
       `${root}/jobs/${encodeURIComponent(jobId)}/results?offset=${offset}&limit=${pageLimit}`,
+      undefined,
+      'Search results',
     )
     if (!resultsRes.ok) {
       const t = await resultsRes.text().catch(() => '')
