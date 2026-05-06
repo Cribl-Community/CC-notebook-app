@@ -111,4 +111,21 @@ describe('createCriblApiExecutor', () => {
     })
     expect(r).toBe('error')
   })
+
+  it('surfaces cors/network failures in stderr without retry', async () => {
+    const emitIOPub = vi.fn()
+    const ex = createCriblApiExecutor({
+      ...baseDeps,
+      callCriblApi: vi.fn<typeof callCriblApi>().mockRejectedValue(new TypeError('Failed to fetch')),
+    })
+    const r = await ex.execute({
+      ...ctx,
+      emitIOPub,
+      source: '%%cribl_api GET /x var=o\n',
+      kernel: makeKernel(vi.fn()),
+    })
+    expect(r).toBe('error')
+    const stderr = emitIOPub.mock.calls.find((call) => call[0]?.msg_type === 'stream' && call[0]?.name === 'stderr')?.[0]
+    expect(stderr?.text).toContain('not retried')
+  })
 })
