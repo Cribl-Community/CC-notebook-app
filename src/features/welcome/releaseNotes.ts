@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.63',
+    date: '2026-05-06',
+    highlights: [
+      'Riptide Jinja prompt rendering: fixed parsing of kernel `text/plain` render bundles when Python repr uses double-quoted strings (for values containing single quotes), so prompts like `visualise {{ health }} using matplotlib` no longer fail with “Could not read the Jinja render result from the kernel.”',
+      'Examples refreshed: `Cribl_Python_SDK.ipynb` and `AI_Magic.ipynb` now include clearer API-to-visualization walkthroughs, stronger AI prompt templates, and explicit guidance on when to use raw `{{ object }}` vs `{{ object | describe }}` in Jinja prompts.',
+    ],
+  },
+  {
     version: '1.0.62',
     date: '2026-05-06',
     highlights: [
