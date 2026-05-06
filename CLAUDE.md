@@ -111,7 +111,7 @@ api.example.com:
 
 Sensitive headers (`cookie`, `authorization`, `host`, etc.) are always stripped from the original request — use `headers.inject` for auth. Header values support string literals (`"'static'"`) and KV lookups (`kv.myKey`).
 
-**Pyodide packages:** The kernel loads the interpreter from the app origin, but extra packages (for example after `import matplotlib`) are fetched from `cdn.jsdelivr.net` using `packageBaseUrl` in `src/platform/pyodide/PyodideKernel.ts`. That domain must stay listed in `config/proxies.yml`. When upgrading the `pyodide` npm package, update `src/platform/pyodide/pyodideVersion.ts` and the allowlisted path in `proxies.yml` to the same release. The Web Worker source itself lives in `src/platform/pyodide/kernel.worker.js` and is loaded as a `?raw` import, so it is type-checked and lintable.
+**Pyodide packages:** The kernel loads the interpreter from the app origin, but extra packages (for example after `import matplotlib`) are fetched from `cdn.jsdelivr.net` using `packageBaseUrl` in `src/platform/pyodide/PyodideKernel.ts`. That domain must stay listed in `config/proxies.yml`. When upgrading the `pyodide` npm package, update `src/platform/pyodide/pyodideVersion.ts` and the allowlisted path in `proxies.yml` to the same release. The Web Worker source itself lives in `src/platform/pyodide/kernel.worker.js` and is loaded as a `?raw` import, so it is type-checked and lintable. Before and after any Pyodide upgrade, review `docs/PYODIDE_CUSTOMIZATIONS.md` and re-run its validation checklist.
 
 ### Local Testing (Pyodide Kernel)
 

@@ -65,6 +65,28 @@ function _isAppPyodideAssetUrl(absUrl, appPyodideBaseUrl) {
   }
 }
 
+/**
+ * True when this request targets the app API surface (`/api/v1/...`) on the
+ * same origin. These calls must go through the main-thread fetch bridge so the
+ * Cribl iframe fetch patch can inject auth and apply proxy rewriting.
+ *
+ * NOTE: Direct worker fetches for these URLs can fail in sandboxed contexts
+ * (`Origin: null`) and are not equivalent to the main-thread patched fetch.
+ *
+ * @param {string} absUrl
+ */
+function _isAppApiUrl(absUrl) {
+  try {
+    var u = new URL(absUrl)
+    if (_appOrigin && u.origin !== _appOrigin) {
+      return false
+    }
+    return u.pathname === '/api/v1' || u.pathname.startsWith('/api/v1/')
+  } catch (_) {
+    return false
+  }
+}
+
 // Pyodide's pyfetch (0.29.x) checks the Service Worker Cache API before making
 // real network requests.  In a sandboxed iframe without the allow-same-origin
 // flag, accessing `self.caches` throws a SecurityError which pyfetch wraps as
@@ -210,8 +232,14 @@ self.fetch = async function (input, init) {
     }
   })()
 
-  // Cross-origin, or app-hosted /pyodide/ lazy loads — use main `fetch` + `packageFetchCache`
-  if (sameOrigin && !_isAppPyodideAssetUrl(absUrl, _appPyodideBaseUrl)) {
+  // Cross-origin, app-hosted /pyodide/ lazy loads, and app API calls should
+  // use main-thread `fetch` + `packageFetchCache`. Keep native worker fetch
+  // only for other same-origin URLs.
+  if (
+    sameOrigin &&
+    !_isAppPyodideAssetUrl(absUrl, _appPyodideBaseUrl) &&
+    !_isAppApiUrl(absUrl)
+  ) {
     return _origFetch(input, init)
   }
 

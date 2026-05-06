@@ -138,6 +138,8 @@ touch the network, `window`, or browser workers directly.
     (registry hosts plus same-origin `pyodide/*` when bridged from the worker;
     see `PyodideKernel` / `kernel.worker.js`). `pyodideVersion.ts` — runtime
     URLs and release string.
+  - `docs/PYODIDE_CUSTOMIZATIONS.md` — upgrade checklist and all non-default
+    Pyodide/worker behavior that must be revalidated on version bumps.
 - `platform/cribl/` — Cribl network clients: `kvstore`, `searchJobs`,
   `aiTranslate`, …
 - `platform/env/env.ts` — environment detection

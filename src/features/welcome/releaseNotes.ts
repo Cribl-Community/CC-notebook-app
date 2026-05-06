@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.62',
+    date: '2026-05-06',
+    highlights: [
+      'API/network error handling: `%%cribl_search`, `%%cribl_api`, and AI translation now surface browser CORS/network fetch failures directly in cell output with clearer messaging, instead of leaving cells looking stuck.',
+      'Search execution reliability: immediate fetch failures fail fast (no retry/poll loop behavior for CORS-style failures), and failed search status is emitted to the output area right away.',
+    ],
+  },
+  {
     version: '1.0.61',
     date: '2026-04-30',
     highlights: [
