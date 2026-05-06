@@ -23,6 +23,10 @@ other's internals or into `platform/*` directly — depend on a port.
 
 Run tests with `npm test` (Vitest + JSDOM + React Testing Library).
 
+Pyodide in this repo has intentional non-default behavior for sandboxed Cribl
+deployments. Before touching worker/runtime upgrade paths, read
+[`docs/PYODIDE_CUSTOMIZATIONS.md`](./docs/PYODIDE_CUSTOMIZATIONS.md).
+
 ## Git workflow (agents & humans)
 
 - **Branch before implementing:** create a feature branch from the current `main` (or `origin/main`) before writing code or committing (`git checkout -b feature/...`). Do not stack feature work directly on `main`.

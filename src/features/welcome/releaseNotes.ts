@@ -11,6 +11,29 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.63',
+    date: '2026-05-06',
+    highlights: [
+      'Riptide Jinja prompt rendering: fixed parsing of kernel `text/plain` render bundles when Python repr uses double-quoted strings (for values containing single quotes), so prompts like `visualise {{ health }} using matplotlib` no longer fail with “Could not read the Jinja render result from the kernel.”',
+      'Examples refreshed: `Cribl_Python_SDK.ipynb` and `AI_Magic.ipynb` now include clearer API-to-visualization walkthroughs, stronger AI prompt templates, and explicit guidance on when to use raw `{{ object }}` vs `{{ object | describe }}` in Jinja prompts.',
+    ],
+  },
+  {
+    version: '1.0.62',
+    date: '2026-05-06',
+    highlights: [
+      'API/network error handling: `%%cribl_search`, `%%cribl_api`, and AI translation now surface browser CORS/network fetch failures directly in cell output with clearer messaging, instead of leaving cells looking stuck.',
+      'Search execution reliability: immediate fetch failures fail fast (no retry/poll loop behavior for CORS-style failures), and failed search status is emitted to the output area right away.',
+    ],
+  },
+  {
+    version: '1.0.61',
+    date: '2026-04-30',
+    highlights: [
+      'Riptide (Generate Python): prompts may include Jinja2 before the model sees them—`{{ var }}` pulls notebook globals; filters `| describe` and `| type_name` summarize DataFrames, dicts, lists, and other objects for richer AI context. The saved cell still stores your template text.',
+    ],
+  },
+  {
     version: '1.0.60',
     date: '2026-04-28',
     highlights: [

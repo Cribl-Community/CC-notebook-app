@@ -2,7 +2,11 @@
  * Pure, immutable application of Jupyter IOPub messages to an output area.
  *
  * Mirrors the semantics of `@jupyterlab/outputarea`'s `OutputAreaModel`:
- *   - Adjacent stream chunks (same name) are merged into a trailing record.
+ *   - Adjacent stream chunks (same name) are merged into a trailing record. When
+ *     neither the previous text nor the incoming text provides a line boundary
+ *     (trailing/leading `\\n`), a newline is inserted so multiple `print()` calls
+ *     still match line-oriented terminal behavior (Pyodide may split stdout
+ *     without per-print newlines in batch callbacks).
  *   - `display_id` enables `update_display_data` to replace `data`/`metadata`
  *     of every record sharing that id.
  *   - `clear_output { wait: false }` clears immediately.
@@ -37,6 +41,15 @@ function maybeFlushPendingClear(state: OutputAreaState): OutputAreaState {
   return { records: [], pendingClear: false }
 }
 
+/** Join two stream fragments; add `\\n` when the bridge omits a line break between writes. */
+function mergeStreamText(previous: string, incoming: string): string {
+  if (previous.length === 0) return incoming
+  if (incoming.length === 0) return previous
+  const hasBoundary = previous.endsWith('\n') || incoming.startsWith('\n')
+  if (hasBoundary) return previous + incoming
+  return `${previous}\n${incoming}`
+}
+
 function appendStream(
   records: OutputRecord[],
   name: 'stdout' | 'stderr',
@@ -46,7 +59,7 @@ function appendStream(
   const last = records[records.length - 1]
   if (last && last.output_type === 'stream' && last.name === name) {
     const next = records.slice(0, -1)
-    next.push({ output_type: 'stream', name, text: last.text + text })
+    next.push({ output_type: 'stream', name, text: mergeStreamText(last.text, text) })
     return next
   }
   return [...records, { output_type: 'stream', name, text }]

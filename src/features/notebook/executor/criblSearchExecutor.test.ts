@@ -84,4 +84,29 @@ describe('createCriblSearchExecutor', () => {
     expect(job).toHaveBeenCalledWith(expect.objectContaining({ query: 'rendered|q' }))
     expect(out).toBe('ok')
   })
+
+  it('emits failed output immediately for cors/network errors', async () => {
+    const ex = createCriblSearchExecutor({
+      ...baseDeps,
+      runCriblSearchJob: vi.fn<typeof runCriblSearchJob>().mockRejectedValue(new TypeError('Failed to fetch')),
+    })
+    const emitIOPub = vi.fn()
+    const dispatchNotebook = vi.fn()
+    const out = await ex.execute({
+      ...ctx,
+      source: '%%cribl_search\ndataset=x | limit 1\n',
+      kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
+      emitIOPub,
+      dispatchNotebook,
+      isStale: () => false,
+    })
+
+    expect(out).toBe('error')
+    expect(dispatchNotebook).toHaveBeenCalledWith({ type: 'ERROR_CELL', id: 'c1' })
+    const failed = emitIOPub.mock.calls.find(
+      (call) => call[0]?.msg_type === 'update_display_data' && String(call[0]?.data?.['text/plain']).includes('failed'),
+    )?.[0]
+    expect(failed).toBeTruthy()
+    expect(JSON.stringify(failed?.data)).toContain('not retried')
+  })
 })

@@ -1,0 +1,131 @@
+# Pyodide Customizations (Upgrade Notes)
+
+This app does not run a stock "out of the box" Pyodide setup. Keep this file
+updated whenever `src/platform/pyodide/*` behavior changes.
+
+Use this checklist before upgrading `pyodide` in `package.json`.
+
+## Why this exists
+
+The app runs inside a sandboxed Cribl iframe where:
+
+- Worker and main-thread fetch behavior differ.
+- Main-thread `fetch` is patched by the platform (auth/proxy rewrite).
+- Blob workers do not automatically inherit that behavior.
+
+Several shims are required for reliability in this environment.
+
+## Customizations by file
+
+## `src/platform/pyodide/pyodideVersion.ts`
+
+- Pins `PYODIDE_RELEASE` and keeps it aligned with the npm dependency.
+- Uses same-origin runtime URLs (`public/pyodide/`) via
+  `getSameOriginPyodideBaseUrl()`.
+- Resolves paths against `document.baseURI` (not only `origin`) so installs
+  under `/app-ui/<pack>/` load correct runtime assets.
+- Uses a same-origin lock file URL (`getSameOriginPyodideLockFileUrl()`).
+
+Upgrade check:
+- Update `PYODIDE_RELEASE`.
+- Ensure `public/pyodide/*` assets and lock file match release.
+
+## `src/platform/pyodide/PyodideKernel.ts`
+
+- Loads `kernel.worker.js` as raw source and injects two Python bootstraps:
+  - `notebook_complete.py`
+  - `notebook_iopub_bootstrap.py`
+- Sends worker init payload with:
+  - `pyodideBaseUrl`
+  - `pyodidePackageBaseUrl`
+  - `pyodideLockFileUrl`
+  - `appOrigin`
+  - `criblApiUrl` (mirrored into Python env var `CRIBL_API_URL`)
+- Handles worker `fetch_request` messages in `handleFetchRequest(...)`.
+- Deliberately does not forward custom headers to `window.fetch` so Cribl auth
+  injection is preserved.
+- Uses `fetchWithPackageSessionCache(...)` for dedupe/session/persistent cache.
+
+Upgrade check:
+- Verify worker message protocol still matches (`fetch_request`, `fetch_response`,
+  `exec`, `complete`, `ready`, `init_error`).
+- Reconfirm header-dropping rationale with current platform auth behavior.
+
+## `src/platform/pyodide/kernel.worker.js`
+
+- Overrides global `fetch` inside worker:
+  - Forwards cross-origin requests to main-thread fetch bridge.
+  - Forwards app-hosted `/pyodide/...` requests to main-thread (cache sharing).
+  - Forwards same-origin app API requests (`/api/v1/...`) to main-thread.
+  - Uses native worker fetch only for other same-origin URLs.
+- Adds `self.caches` no-op polyfill when Cache API throws in sandboxed workers.
+- Reconstructs `Response` objects from bridged payloads.
+- Initializes Pyodide via `importScripts(pyodide.js)` from same origin.
+- Injects `CRIBL_API_URL` into Python `os.environ`.
+- Installs completion + IOPub bootstrap Python code at worker init.
+- Wraps execution to emit IOPub-like events (`status`, `stream`, `error`).
+
+Upgrade check:
+- Revalidate fetch-routing conditions after any platform URL/path changes.
+- Re-test null-origin/sandbox behavior and CORS-sensitive SDK calls.
+
+## `src/platform/pyodide/packageFetchCache.ts`
+
+- Dedupe in-flight GETs across kernels/tabs.
+- Session memory cache.
+- Persistent Cache API store keyed by `PYODIDE_RELEASE`.
+- Caches:
+  - `cdn.jsdelivr.net`
+  - `pypi.org` / `www.pypi.org`
+  - `files.pythonhosted.org`
+  - same-origin app-hosted `pyodide/` URLs when bridged.
+
+Upgrade check:
+- Keep allowlist aligned with `config/proxies.yml`.
+- Confirm cache key/version strategy still appropriate.
+
+## `src/platform/pyodide/notebook_iopub_bootstrap.py`
+
+- Implements Jupyter-like output bridge used by UI/reducer:
+  - `display(...)`
+  - `clear_output(wait=...)`
+  - `_nb_run(...)` execution wrapper
+- Uses IPython formatter where possible; falls back to repr methods.
+- Includes MIME allowlist for rich outputs (Plotly, Vega/Vega-Lite, widgets,
+  Cribl Search MIME, etc.).
+- Patches Altair and Plotly display/show behavior to work in Pyodide notebook
+  context.
+- Converts Python exceptions to structured error payloads.
+
+Upgrade check:
+- Validate MIME bundle output for Plotly/Altair/widgets still works.
+- Confirm formatter hooks remain compatible with upgraded IPython/Pyodide.
+
+## `src/platform/pyodide/notebook_complete.py`
+
+- Custom completion pipeline:
+  - fast attribute completion from live globals
+  - fallback to Jedi-based completion
+
+Upgrade check:
+- Verify Jedi loading/import behavior after version bump.
+
+## Testing expectations after upgrade
+
+At minimum run:
+
+- `npm test`
+- `npm run build`
+- `npm run dev` and `PyodideSmokeTest` pass
+- `sandbox-test.html` pass (null-origin iframe)
+- Manual checks:
+  - `micropip.install(...)`
+  - Plotly/Altair output rendering
+  - `%%cribl_search` and `%%cribl_api`
+  - Python SDK call path that touches `/api/v1/*` (no stuck busy state)
+
+## Related files to keep in sync
+
+- `package.json` (`pyodide` version)
+- `config/proxies.yml` (allowed package hosts / paths)
+- `src/platform/pyodide/pyodideVersion.ts` (release + package base URL)

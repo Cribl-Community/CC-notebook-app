@@ -124,6 +124,8 @@ export type WorkerInbound =
       /** Full URL of bundled `pyodide-lock.json` on this app origin (CSP-safe vs jsDelivr fetch). */
       pyodideLockFileUrl: string
       appOrigin: string
+      /** Mirrors `window.CRIBL_API_URL` (empty when unset); copied into `os.environ["CRIBL_API_URL"]`. */
+      criblApiUrl: string
     }
   | { type: 'exec'; id: string; code: string; execution_count: number }
   | { type: 'complete'; id: string; code: string; cursor: number }

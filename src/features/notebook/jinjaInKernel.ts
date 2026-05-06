@@ -6,6 +6,10 @@ import type { IOPubMessage, OutputRecord } from '@platform/pyodide/types'
 
 export const JINJA_RESULT_KEY_CRIBL_SEARCH = '__cribl_search_rendered' as const
 export const JINJA_RESULT_KEY_CRIBL_API = '__cribl_api_rendered' as const
+export const JINJA_RESULT_KEY_RIPTIDE = '__riptide_prompt_rendered' as const
+
+/** Kernel Jinja snippet variant: `riptide_prompt` adds `describe` / `type_name` filters for AI prompts. */
+export type JinjaKernelVariant = 'plain' | 'riptide_prompt'
 
 /**
  * Hides `execute_result` / `display_data` for a Jinja pre-execution helper cell.
@@ -64,7 +68,8 @@ function tryParseJinjaTextPlain(plain: string, resultKey: string): string | null
   if (idx === -1) return null
   let p = idx + key.length
   while (p < plain.length && /\s/.test(plain[p]!)) p++
-  if (plain[p] !== "'") return null
+  const quote = plain[p]
+  if (quote !== "'" && quote !== '"') return null
   p += 1
   let out = ''
   while (p < plain.length) {
@@ -92,7 +97,7 @@ function tryParseJinjaTextPlain(plain: string, resultKey: string): string | null
         continue
       }
     }
-    if (c === "'") break
+    if (c === quote) break
     out += c
     p += 1
   }
@@ -104,8 +109,53 @@ function encodeQueryForPythonB64(text: string): string {
   return btoa(unescape(encodeURIComponent(text)))
 }
 
-export function buildNotebookJinjaRenderCode(text: string, resultKey: string): string {
+export function buildNotebookJinjaRenderCode(
+  text: string,
+  resultKey: string,
+  variant: JinjaKernelVariant = 'plain',
+): string {
   const b64 = encodeQueryForPythonB64(text)
+  const envBlock =
+    variant === 'riptide_prompt'
+      ? `    def _cribl_ai_type(o):
+        try:
+            return type(o).__name__
+        except Exception:
+            return "?"
+
+    def _cribl_ai_describe(o):
+        if o is None:
+            return "None"
+        try:
+            import pandas as _pd
+            if isinstance(o, _pd.DataFrame):
+                _dt = o.dtypes.astype(str)
+                return "DataFrame shape=%r columns=%d\\n%s" % (o.shape, len(o.columns), _dt.to_string())
+        except Exception:
+            pass
+        try:
+            if isinstance(o, dict):
+                _k = list(o.keys())
+                return "dict len=%d keys(sample)=%r" % (len(_k), _k[:30])
+        except Exception:
+            pass
+        try:
+            if isinstance(o, (list, tuple)):
+                return "%s len=%d" % (type(o).__name__, len(o))
+        except Exception:
+            pass
+        try:
+            _r = repr(o)
+            return _r if len(_r) <= 4000 else _r[:3997] + "..."
+        except Exception as ex:
+            return "<unprintable: %s>" % (ex,)
+
+    _env = SandboxedEnvironment()
+    _env.filters["describe"] = _cribl_ai_describe
+    _env.filters["type_name"] = _cribl_ai_type
+`
+      : `    _env = SandboxedEnvironment()
+`
   return `import base64 as __b64j
 
 async def __cribl_jinja():
@@ -120,8 +170,7 @@ async def __cribl_jinja():
 
     _b64s = ${JSON.stringify(b64)}
     _tpl = __b64j.b64decode(_b64s.encode("ascii")).decode("utf-8")
-    _env = SandboxedEnvironment()
-    _ast = _env.parse(_tpl)
+${envBlock}    _ast = _env.parse(_tpl)
     _und = jinja2_meta.find_undeclared_variables(_ast)
     _g = globals()
     _ctx = {}
@@ -143,6 +192,7 @@ export type NotebookJinjaInKernelResult =
 
 export type RunNotebookJinjaInKernelOptions = {
   resultKey: string
+  variant?: JinjaKernelVariant
   executionCount: number
   emitIOPub: (msg: IOPubMessage) => void
   filterPyodidePackageChatter: (text: string) => string
@@ -163,8 +213,14 @@ export async function runNotebookJinjaInKernel(
   template: string,
   options: RunNotebookJinjaInKernelOptions,
 ): Promise<NotebookJinjaInKernelResult> {
-  const { resultKey, executionCount, emitIOPub, filterPyodidePackageChatter: filter } = options
-  const code = buildNotebookJinjaRenderCode(template, resultKey)
+  const {
+    resultKey,
+    variant = 'plain',
+    executionCount,
+    emitIOPub,
+    filterPyodidePackageChatter: filter,
+  } = options
+  const code = buildNotebookJinjaRenderCode(template, resultKey, variant)
   const result = await kernel.execute(
     code,
     (msg) => {
@@ -195,4 +251,19 @@ export async function runNotebookJinjaInKernel(
     return { ok: false, errorMessage: 'Could not read the Jinja render result from the kernel.' }
   }
   return { ok: true, text }
+}
+
+/**
+ * Renders a Riptide AI prompt with Jinja2 + introspection filters (`| describe`, `| type_name`).
+ */
+export async function runRiptidePromptJinjaInKernel(
+  kernel: KernelPort,
+  template: string,
+  options: Omit<RunNotebookJinjaInKernelOptions, 'resultKey' | 'variant'>,
+): Promise<NotebookJinjaInKernelResult> {
+  return runNotebookJinjaInKernel(kernel, template, {
+    ...options,
+    resultKey: JINJA_RESULT_KEY_RIPTIDE,
+    variant: 'riptide_prompt',
+  })
 }

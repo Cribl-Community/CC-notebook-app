@@ -1,4 +1,5 @@
 import { getCriblApiBase } from '@platform/env/env'
+import { describeFetchError } from '@platform/cribl/fetchFailure'
 
 function mergeRequestHeaders(
   part: { headers: Record<string, string>; body: string | undefined; bodyIsJson: boolean },
@@ -39,11 +40,16 @@ export async function callCriblApi(
   }
   const url = base + path
   const headers = mergeRequestHeaders(part)
-  const res = await fetch(url, {
-    method,
-    headers,
-    body: part.body,
-  })
+  let res: Response
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: part.body,
+    })
+  } catch (e) {
+    throw new Error(describeFetchError(e, `Cribl API ${method} ${path}`))
+  }
   const text = await res.text()
   let jsonValue: unknown | null = null
   const ct = res.headers.get('content-type') ?? ''

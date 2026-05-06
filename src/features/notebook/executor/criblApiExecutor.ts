@@ -1,6 +1,7 @@
 import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import { callCriblApi, type CriblApiHttpResult } from '@platform/cribl/criblApiFetch'
 import { getCriblApiBase } from '@platform/env/env'
+import { describeFetchError } from '@platform/cribl/fetchFailure'
 import {
   buildCriblApiJsonValueAssignmentCode,
   buildCriblApiStringValueAssignmentCode,
@@ -172,7 +173,7 @@ async function executeCriblApiCell(
     const code = deps.buildCriblApiStringValueAssignmentCode(varName, b64s)
     return runKernelAssign(ctx, deps, count, code, isStale, emitIOPub, dispatchNotebook)
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
+    const msg = describeFetchError(e, `Cribl API ${method} ${path}`)
     emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${msg}\n` })
     dispatchNotebook({ type: 'ERROR_CELL', id })
     return 'error'

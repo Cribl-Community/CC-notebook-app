@@ -9,13 +9,21 @@ function feed(msgs: IOPubMessage[]) {
 }
 
 describe('applyIOPub – stream merging', () => {
-  it('merges consecutive same-name stream chunks', () => {
+  it('merges consecutive same-name stream chunks (inserts newline when chunks lack boundary)', () => {
     const s = feed([
       { msg_type: 'stream', name: 'stdout', text: 'a' },
       { msg_type: 'stream', name: 'stdout', text: 'b' },
       { msg_type: 'stream', name: 'stdout', text: 'c' },
     ])
-    expect(s.records).toEqual([{ output_type: 'stream', name: 'stdout', text: 'abc' }])
+    expect(s.records).toEqual([{ output_type: 'stream', name: 'stdout', text: 'a\nb\nc' }])
+  })
+
+  it('does not insert extra newline when chunks already have line boundaries', () => {
+    const s = feed([
+      { msg_type: 'stream', name: 'stdout', text: 'a\n' },
+      { msg_type: 'stream', name: 'stdout', text: 'b\n' },
+    ])
+    expect(s.records).toEqual([{ output_type: 'stream', name: 'stdout', text: 'a\nb\n' }])
   })
 
   it('does not merge stdout into stderr', () => {
@@ -37,7 +45,7 @@ describe('applyIOPub – stream merging', () => {
       { msg_type: 'stream', name: 'stdout', text: '' },
       { msg_type: 'stream', name: 'stdout', text: 'b' },
     ])
-    expect(s.records).toEqual([{ output_type: 'stream', name: 'stdout', text: 'ab' }])
+    expect(s.records).toEqual([{ output_type: 'stream', name: 'stdout', text: 'a\nb' }])
   })
 
   it('does not merge across an intervening display_data', () => {
