@@ -1,4 +1,5 @@
 import { getCriblApiBase } from '@platform/cribl/kvstore'
+import { describeFetchError } from '@platform/cribl/fetchFailure'
 
 export const AI_INTERNAL_TRANSLATE_PATH = '/ai/q/agents/kql' as const
 export const AI_TRANSLATE_TIMEOUT_MS = 20_000
@@ -199,7 +200,7 @@ export async function translateEnglishToKql(
     if (e instanceof Error && e.name === 'AbortError') {
       throw new Error(`AI translation timed out after ${Math.round(AI_TRANSLATE_TIMEOUT_MS / 1000)}s.`)
     }
-    throw e
+    throw new Error(describeFetchError(e, 'AI translation request'))
   } finally {
     globalThis.clearTimeout(timer)
   }

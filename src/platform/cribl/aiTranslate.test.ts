@@ -40,6 +40,12 @@ describe('translateEnglishToKql', () => {
     await expect(translateEnglishToKql('test')).rejects.toThrow(/AI translation failed \(502\)/)
   })
 
+  it('formats network/cors fetch failures as non-retry errors', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(translateEnglishToKql('test')).rejects.toThrow(/not retried/i)
+  })
+
   it('throws when response has no kql candidate', async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
