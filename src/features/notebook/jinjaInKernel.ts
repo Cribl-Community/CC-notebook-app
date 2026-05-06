@@ -68,7 +68,8 @@ function tryParseJinjaTextPlain(plain: string, resultKey: string): string | null
   if (idx === -1) return null
   let p = idx + key.length
   while (p < plain.length && /\s/.test(plain[p]!)) p++
-  if (plain[p] !== "'") return null
+  const quote = plain[p]
+  if (quote !== "'" && quote !== '"') return null
   p += 1
   let out = ''
   while (p < plain.length) {
@@ -96,7 +97,7 @@ function tryParseJinjaTextPlain(plain: string, resultKey: string): string | null
         continue
       }
     }
-    if (c === "'") break
+    if (c === quote) break
     out += c
     p += 1
   }
