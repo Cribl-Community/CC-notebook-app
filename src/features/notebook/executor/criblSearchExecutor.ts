@@ -2,6 +2,7 @@ import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import { translateEnglishToKql } from '@platform/cribl/aiTranslate'
 import { getCriblApiBase } from '@platform/cribl/kvstore'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '@platform/cribl/searchJobs'
+import { describeFetchError } from '@platform/cribl/fetchFailure'
 import {
   buildCriblSearchDataframeCode,
   encodeRowsJsonForPythonBase64,
@@ -229,11 +230,9 @@ async function executeCriblSearchCell(
     dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
     return 'ok'
   } catch (e) {
-    const errMsg = e instanceof Error ? e.message : String(e)
+    const errMsg = describeFetchError(e, 'Cribl Search request')
     const pretty = formatCriblSearchError(errMsg, lang === 'english' ? generatedKqlForReport : undefined)
-    if (!isStale()) {
-      emitIOPub(criblSearchIOPub({ kind: 'failed', message: pretty }, displayId, true))
-    }
+    emitIOPub(criblSearchIOPub({ kind: 'failed', message: pretty }, displayId, true))
     dispatchNotebook({ type: 'ERROR_CELL', id })
     return 'error'
   }
