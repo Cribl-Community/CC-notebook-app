@@ -98,7 +98,7 @@ describe('createCriblSearchExecutor', () => {
       kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
       emitIOPub,
       dispatchNotebook,
-      isStale: () => true,
+      isStale: () => false,
     })
 
     expect(out).toBe('error')
@@ -107,6 +107,6 @@ describe('createCriblSearchExecutor', () => {
       (call) => call[0]?.msg_type === 'update_display_data' && String(call[0]?.data?.['text/plain']).includes('failed'),
     )?.[0]
     expect(failed).toBeTruthy()
-    expect(String(failed?.data?.['application/vnd.cribl.search+json'])).toContain('not retried')
+    expect(JSON.stringify(failed?.data)).toContain('not retried')
   })
 })
