@@ -10,8 +10,11 @@ import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristi
  * The query body omits full-line `#` lines; blank lines are kept.
  * First line:
  * %%cribl_search [var=name] [preview=true|false] [response=dataframe|json|raw] [limit=N] [earliest=…] [latest=…]
- * [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false]
+ * [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false] [translate_only=true|false]
  * Following lines: query body (KQL when `lang=kql|kusto`, natural language when `lang=english`).
+ *
+ * `translate_only=true` (with `lang=english`): translate the body to KQL and print it; do not run Search.
+ * Omit or set `translate_only=false` to keep the default translate-and-run behavior for English.
  *
  * `earliest` / `latest` are passed to the Cribl Search job API (defaults in the client if omitted).
  *
@@ -66,6 +69,10 @@ export type CriblSearchMagicOk = {
    * `on`: always run Jinja. `off`: never (body is always literal for Search).
    */
   template: CriblSearchTemplateMode
+  /**
+   * When true with `lang=english`, only translate to KQL (stdout + summary UI); skip Search execution.
+   */
+  translateOnly: boolean
 }
 
 export type CriblSearchMagicParse =
@@ -85,6 +92,7 @@ function parseKeyValueParams(paramLine: string):
       latest?: string
       dataset?: string
       template: CriblSearchTemplateMode
+      translateOnly: boolean
     }
   | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
@@ -96,6 +104,7 @@ function parseKeyValueParams(paramLine: string):
   let latest: string | undefined
   let dataset: string | undefined
   let template: CriblSearchTemplateMode = 'auto'
+  let translateOnly = false
   const tokens = paramLine.trim().split(/\s+/).filter(Boolean)
   for (const t of tokens) {
     const eq = t.indexOf('=')
@@ -153,8 +162,33 @@ function parseKeyValueParams(paramLine: string):
         }
       }
     }
+    if (key === 'translate_only') {
+      const v = val.toLowerCase()
+      if (v === 'true' || v === '1' || v === 'yes') {
+        translateOnly = true
+      } else if (v === 'false' || v === '0' || v === 'no') {
+        translateOnly = false
+      } else {
+        return {
+          ok: false,
+          message: `translate_only must be true or false; got ${JSON.stringify(val)}`,
+        }
+      }
+    }
   }
-  return { ok: true, varName, preview, response, lang, limit, earliest, latest, dataset, template }
+  return {
+    ok: true,
+    varName,
+    preview,
+    response,
+    lang,
+    limit,
+    earliest,
+    latest,
+    dataset,
+    template,
+    translateOnly,
+  }
 }
 
 /**
@@ -176,7 +210,15 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!parsed.ok) {
     return { kind: 'error', message: parsed.message }
   }
-  const { varName, preview, response, lang, limit, earliest, latest, dataset, template } = parsed
+  const { varName, preview, response, lang, limit, earliest, latest, dataset, template, translateOnly } =
+    parsed
+
+  if (translateOnly && lang !== 'english') {
+    return {
+      kind: 'error',
+      message: 'translate_only=true requires lang=english.',
+    }
+  }
 
   if (!IDENT_RE.test(varName)) {
     return {
@@ -198,7 +240,19 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
 
   return {
     kind: 'cribl_search',
-    value: { varName, preview, response, lang, limit, query, earliest, latest, dataset, template },
+    value: {
+      varName,
+      preview,
+      response,
+      lang,
+      limit,
+      query,
+      earliest,
+      latest,
+      dataset,
+      template,
+      translateOnly,
+    },
   }
 }
 

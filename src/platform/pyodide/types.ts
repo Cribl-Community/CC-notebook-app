@@ -64,6 +64,10 @@ export type CriblSearchPayload =
       dataframeVar?: string
       /** When false, interactive table is hidden (`preview=false` on %%cribl_search). Omitted/undefined = show table. */
       showTable?: boolean
+      /** When true, English was translated to KQL but no search job ran (`translate_only=true`). */
+      translateOnly?: boolean
+      /** KQL shown in output when `translateOnly` is set (mirrors stdout `Generated KQL:`). */
+      generatedKql?: string
     }
   | { kind: 'failed'; message: string }
 

@@ -100,12 +100,22 @@ async function executeCriblSearchCell(
     return 'error'
   }
 
-  const { varName, query, preview, response, earliest, latest, limit, lang, dataset, template } = magic.value
+  const { varName, query, preview, response, earliest, latest, limit, lang, dataset, template, translateOnly } =
+    magic.value
   const displayId = `cribl-search-${id}`
   let generatedKqlForReport: string | undefined
   try {
     emitIOPub(
-      criblSearchIOPub({ kind: 'running', progress: 0.06, label: 'Starting search…' }, displayId, false),
+      criblSearchIOPub(
+        {
+          kind: 'running',
+          progress: 0.06,
+          label:
+            lang === 'english' && translateOnly ? 'Starting translation…' : 'Starting search…',
+        },
+        displayId,
+        false,
+      ),
     )
 
     let searchQuery = query
@@ -145,6 +155,12 @@ async function executeCriblSearchCell(
             true,
           ),
         )
+        generatedKqlForReport = searchQuery
+        emitIOPub({
+          msg_type: 'stream',
+          name: 'stdout',
+          text: `Generated KQL:\n${searchQuery}\n`,
+        })
       } else {
         emitIOPub(
           criblSearchIOPub(
@@ -160,6 +176,28 @@ async function executeCriblSearchCell(
           name: 'stdout',
           text: `Generated KQL:\n${searchQuery}\n`,
         })
+      }
+
+      if (translateOnly) {
+        emitIOPub(
+          criblSearchIOPub(
+            {
+              kind: 'completed',
+              columns: [],
+              rows: [],
+              recordsReturned: 0,
+              totalRecords: null,
+              dataframeVar: varName,
+              showTable: false,
+              translateOnly: true,
+              generatedKql: searchQuery,
+            },
+            displayId,
+            true,
+          ),
+        )
+        dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
+        return 'ok'
       }
     }
 
@@ -243,7 +281,10 @@ async function executeCriblSearchCell(
     return 'ok'
   } catch (e) {
     const errMsg = describeFetchError(e, 'Cribl Search request')
-    const pretty = formatCriblSearchError(errMsg, lang === 'english' ? generatedKqlForReport : undefined)
+    const pretty = formatCriblSearchError(
+      errMsg,
+      lang === 'english' || translateOnly ? generatedKqlForReport : undefined,
+    )
     emitIOPub(criblSearchIOPub({ kind: 'failed', message: pretty }, displayId, true))
     dispatchNotebook({ type: 'ERROR_CELL', id })
     return 'error'

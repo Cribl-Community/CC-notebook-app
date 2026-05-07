@@ -67,6 +67,29 @@ export function CriblSearchOutputView({ payload }: CriblSearchOutputProps) {
     )
   }
 
+  if (payload.kind === 'completed' && payload.translateOnly) {
+    const kql = payload.generatedKql ?? ''
+    return (
+      <div className="nb-cribl-root">
+        <div className="nb-cribl-status nb-cribl-status--ok" role="status">
+          <span className="nb-cribl-status-icon" aria-hidden>
+            ✓
+          </span>
+          <span className="nb-cribl-status-word">completed</span>
+        </div>
+        <div className="nb-cribl-meta">
+          <div className="nb-cribl-meta-line">
+            English translated to KQL; search was not run (`translate_only=true`).
+          </div>
+          <div className="nb-cribl-meta-line nb-cribl-meta-line--dim">
+            Copy the query into the body of a new `%%cribl_search` cell (default KQL or `lang=kql`) to run it.
+          </div>
+        </div>
+        {kql.length > 0 && <pre className="nb-output-pre nb-cribl-generated-kql">{kql}</pre>}
+      </div>
+    )
+  }
+
   const { columns, rows, recordsReturned, totalRecords, showTable } = payload
   const dataframeVar = payload.dataframeVar ?? 'results_df'
   const showTableUi = showTable !== false

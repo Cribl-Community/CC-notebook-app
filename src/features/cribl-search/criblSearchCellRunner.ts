@@ -7,6 +7,7 @@ import {
 export function criblSearchPlainSummary(p: CriblSearchPayload): string {
   if (p.kind === 'running') return `Cribl Search: ${p.label}`
   if (p.kind === 'failed') return `Cribl Search failed: ${p.message}`
+  if (p.translateOnly) return 'Cribl Search: KQL generated (search not run)'
   const total =
     p.totalRecords != null && p.totalRecords !== p.recordsReturned
       ? `${p.recordsReturned} records (${p.totalRecords} total)`

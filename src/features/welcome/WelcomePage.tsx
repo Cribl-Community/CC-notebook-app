@@ -38,7 +38,9 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
           </li>
           <li>
             <strong>%%cribl_search</strong> — Run KQL against Cribl Search; results become a pandas DataFrame
-            with optional rich preview.
+            with optional rich preview. English prompts can translate and run, or use{' '}
+            <code className="nb-welcome-code">translate_only=true</code> to preview generated KQL without
+            executing a search job.
           </li>
           <li>
             <strong>%%cribl_api</strong> — Call Cribl REST endpoints from a cell: set method and path on the

@@ -375,7 +375,9 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
     /^lang=.+/u.test(lastTok) ||
     /^dataset=.+/u.test(lastTok) ||
     /^earliest=.+/u.test(lastTok) ||
-    /^latest=.+/u.test(lastTok)
+    /^latest=.+/u.test(lastTok) ||
+    /^template=.+/u.test(lastTok) ||
+    /^translate_only=.+/u.test(lastTok)
   ) {
     return null
   }
@@ -415,12 +417,22 @@ function headerCompletions(code: string, pos: number): CompletionResult | null {
     partial === '' ||
     'dataset='.startsWith(partial) ||
     (partial.length > 0 && 'dataset'.startsWith(partial))
+  const wantTranslateOnly =
+    partial === '' ||
+    'translate_only='.startsWith(partial) ||
+    (partial.length > 0 && 'translate_only'.startsWith(partial))
+  const wantTemplate =
+    partial === '' ||
+    'template='.startsWith(partial) ||
+    (partial.length > 0 && 'template'.startsWith(partial))
 
   if (wantVar) paramCandidates.push({ label: 'var=', type: 'property' })
   if (wantPreview) paramCandidates.push({ label: 'preview=', type: 'property' })
   if (wantResponse) paramCandidates.push({ label: 'response=', type: 'property' })
   if (wantLimit) paramCandidates.push({ label: 'limit=', type: 'property' })
   if (wantLang) paramCandidates.push({ label: 'lang=', type: 'property' })
+  if (wantTranslateOnly) paramCandidates.push({ label: 'translate_only=', type: 'property' })
+  if (wantTemplate) paramCandidates.push({ label: 'template=', type: 'property' })
   if (wantDataset) paramCandidates.push({ label: 'dataset=', type: 'property' })
   if (wantEarliest) paramCandidates.push({ label: 'earliest=', type: 'property' })
   if (wantLatest) paramCandidates.push({ label: 'latest=', type: 'property' })

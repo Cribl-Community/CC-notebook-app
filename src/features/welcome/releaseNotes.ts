@@ -16,6 +16,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
     highlights: [
       'Execution: Stop interrupts the running cell and clears queued cells without reloading the Python kernel (uses Pyodide interrupt buffer when SharedArrayBuffer is available).',
       'Cell output: JSON payloads now render in a polished viewer with compact defaults for large payloads and one-click expand/collapse to avoid oversized cells.',
+      'Cribl Search: `%%cribl_search` adds `translate_only=true` for `lang=english` cells—translate to KQL and show output without running Search; default English cells still translate and execute as before.',
       'Packaging: incremented build version and produced a refreshed distribution package.',
     ],
   },
