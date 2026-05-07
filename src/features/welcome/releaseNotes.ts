@@ -11,11 +11,10 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
-    version: '1.0.65',
+    version: '1.0.66',
     date: '2026-05-07',
     highlights: [
-      'Examples: upgraded Welcome picker with curated metadata (summary, level, runtime hints, and tags), while preserving backward compatibility with legacy examples manifests.',
-      'Examples: refreshed all bundled notebooks with consistent guided walkthrough structure and added two new starters (`00_Getting_Started_Tour.ipynb` and `Incident_Triage_Playbook.ipynb`).',
+      'Packaging: incremented build version and produced a refreshed distribution package.',
     ],
   },
   {
