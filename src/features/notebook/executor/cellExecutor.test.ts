@@ -94,7 +94,7 @@ describe('runNotebookCellAfterReady', () => {
   it('falls through to the python executor for plain source', async () => {
     const kernel = {
       ready: Promise.resolve(),
-      execute: vi.fn().mockImplementation(async (_src: string, _onIo: unknown, _count: number) => {}),
+      execute: vi.fn().mockImplementation(async () => {}),
       complete: vi.fn(),
       dispose: vi.fn(),
     } satisfies KernelPort

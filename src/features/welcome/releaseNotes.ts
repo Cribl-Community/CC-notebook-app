@@ -11,7 +11,7 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
-    version: '1.0.63',
+    version: '1.0.64',
     date: '2026-05-06',
     highlights: [
       'Riptide Jinja prompt rendering: fixed parsing of kernel `text/plain` render bundles when Python repr uses double-quoted strings (for values containing single quotes), so prompts like `visualise {{ health }} using matplotlib` no longer fail with “Could not read the Jinja render result from the kernel.”',

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import type { MimeBundle, MimeMetadata } from '@platform/pyodide/types'
@@ -31,7 +31,8 @@ const SCRIPT_RE = /<script[\s>]/i
  * the kernel execution.
  */
 function ScriptedHtmlMime({ data }: { data: string }) {
-  const frameId = useRef(`nb_iframe_${Math.random().toString(36).slice(2)}`)
+  const localId = useId()
+  const frameId = `nb_iframe_${localId.replace(/:/g, '_')}`
   const frameRef = useRef<HTMLIFrameElement | null>(null)
   // Start at 0 so script-only frames (e.g. Plotly's init display_data, which
   // contains only <script> tags and no visible DOM) collapse automatically.
@@ -39,7 +40,7 @@ function ScriptedHtmlMime({ data }: { data: string }) {
   const [height, setHeight] = useState(0)
 
   const srcdoc = useMemo(() => {
-    const id = frameId.current
+    const id = frameId
 
     // Inherit any cross-cell globals (e.g. itables blob URLs) from the parent
     // window before the frame's own scripts run. This ensures that a `show(df)`
@@ -49,7 +50,7 @@ function ScriptedHtmlMime({ data }: { data: string }) {
       `<script>(function(){try{var p=window.parent;` +
       `Object.getOwnPropertyNames(p).forEach(function(k){` +
       `if(/^_itables_/.test(k))try{window[k]=p[k];}catch(e){}` +
-      `});}catch(e){}})();<\/script>`
+      `});}catch(e){}})();</script>`
 
     // After the frame finishes loading, export any globals that this frame set
     // (e.g. the DataTables blob URL created by `init_notebook_mode()`) back to
@@ -76,7 +77,7 @@ function ScriptedHtmlMime({ data }: { data: string }) {
   }, [data])
 
   useEffect(() => {
-    const id = frameId.current
+    const id = frameId
     function onMsg(e: MessageEvent) {
       const frameWindow = frameRef.current?.contentWindow
       if (!frameWindow || e.source !== frameWindow) return
@@ -91,15 +92,11 @@ function ScriptedHtmlMime({ data }: { data: string }) {
     }
     window.addEventListener('message', onMsg)
     return () => window.removeEventListener('message', onMsg)
-  }, [])
-
-  // Reset height when cell output is replaced (data changes).
-  useEffect(() => {
-    setHeight(0)
-  }, [data])
+  }, [frameId])
 
   return (
     <iframe
+      key={data}
       ref={frameRef}
       srcDoc={srcdoc}
       sandbox="allow-scripts allow-same-origin"
@@ -111,7 +108,6 @@ function ScriptedHtmlMime({ data }: { data: string }) {
 }
 
 function HtmlMime({ data }: { data: string }) {
-  if (SCRIPT_RE.test(data)) return <ScriptedHtmlMime data={data} />
   const safe = useMemo(
     () =>
       DOMPurify.sanitize(data, {
@@ -121,6 +117,7 @@ function HtmlMime({ data }: { data: string }) {
       }),
     [data],
   )
+  if (SCRIPT_RE.test(data)) return <ScriptedHtmlMime data={data} />
   return <div className="nb-mime-html" dangerouslySetInnerHTML={{ __html: safe }} />
 }
 

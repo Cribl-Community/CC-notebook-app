@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DialogService } from '@ports/DialogService'
 import { NotebookDialog } from '@features/notebook/ui/NotebookDialog'
