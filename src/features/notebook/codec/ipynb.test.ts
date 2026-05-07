@@ -65,6 +65,19 @@ describe('parseIpynbJson', () => {
     const r = parseIpynbJson(json, { filename: 'disk.ipynb' })
     expect(r.title).toBe('disk')
   })
+  it('normalizes double-escaped newlines in cell source strings', () => {
+    const json = JSON.stringify({
+      nbformat: 4,
+      nbformat_minor: 5,
+      metadata: { title: 'T' },
+      cells: [{ cell_type: 'markdown', source: 'Line one\\nLine two' }],
+    })
+    const r = parseIpynbJson(json)
+    const c = r.cells[0]
+    expect(c?.cell_type).toBe('markdown')
+    if (c?.cell_type !== 'markdown') return
+    expect(c.source).toBe('Line one\nLine two')
+  })
   it('parses stream text as string array', () => {
     const json = JSON.stringify({
       nbformat: 4,
