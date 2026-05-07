@@ -22,6 +22,14 @@ function welcomeNotebookState(): NotebookState {
     selectedId: null,
     executionCounter: 0,
     kernelStatus: 'ready',
+    kernelInit: {
+      phase: 'ready',
+      message: 'Welcome tab does not use a kernel',
+      progressPercent: 100,
+      startedAtMs: null,
+      errorSummary: null,
+      errorDetail: null,
+    },
   }
 }
 

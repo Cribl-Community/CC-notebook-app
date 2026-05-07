@@ -42,6 +42,14 @@ export const initialState: NotebookState = {
   selectedId: null,
   executionCounter: 0,
   kernelStatus: 'loading',
+  kernelInit: {
+    phase: 'boot',
+    message: 'Preparing kernel runtime',
+    progressPercent: 0,
+    startedAtMs: Date.now(),
+    errorSummary: null,
+    errorDetail: null,
+  },
 }
 
 /** Fresh code cell for a new in-memory notebook (new ids each call). */
@@ -241,7 +249,48 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
     }
 
     case 'SET_KERNEL_STATUS':
+      if (action.status === 'ready' || action.status === 'busy') {
+        return {
+          ...state,
+          kernelStatus: action.status,
+          kernelInit: {
+            ...state.kernelInit,
+            phase: 'ready',
+            message: 'Python kernel ready',
+            progressPercent: 100,
+            errorSummary: null,
+            errorDetail: null,
+          },
+        }
+      }
       return { ...state, kernelStatus: action.status }
+
+    case 'SET_KERNEL_INIT_PROGRESS':
+      return {
+        ...state,
+        kernelInit: {
+          ...state.kernelInit,
+          phase: action.phase,
+          message: action.message,
+          progressPercent: action.progressPercent,
+          startedAtMs: state.kernelInit.startedAtMs ?? Date.now(),
+          errorSummary: null,
+          errorDetail: null,
+        },
+      }
+
+    case 'SET_KERNEL_INIT_ERROR':
+      return {
+        ...state,
+        kernelInit: {
+          ...state.kernelInit,
+          phase: 'error',
+          message: 'Kernel startup failed',
+          progressPercent: null,
+          errorSummary: action.summary,
+          errorDetail: action.detail,
+        },
+      }
 
     case 'RESTART':
       return {
@@ -259,6 +308,14 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
         ),
         executionCounter: 0,
         kernelStatus: 'loading',
+        kernelInit: {
+          phase: 'boot',
+          message: 'Preparing kernel runtime',
+          progressPercent: 0,
+          startedAtMs: Date.now(),
+          errorSummary: null,
+          errorDetail: null,
+        },
       }
 
     case 'SET_NOTEBOOK_TITLE': {
