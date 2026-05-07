@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { pickRenderer } from '@features/notebook/ui/mimeRegistry'
+import { MimeBundleView } from '@features/notebook/ui/MimeBundleView'
 import '@features/notebook/ui/MimeBundleView'
 
 describe('MimeBundleView registrations', () => {
@@ -45,5 +47,29 @@ describe('MimeBundleView registrations', () => {
       'text/plain': 'Chart(...)',
     })
     expect(r?.mime).toBe('application/vnd.vega.v6.json')
+  })
+})
+
+describe('MimeBundleView JSON renderer', () => {
+  it('shows compact view by default for long JSON and toggles expand/collapse', () => {
+    const longArray = Array.from({ length: 120 }, (_, i) => ({ idx: i, msg: `row-${i}` }))
+    render(
+      MimeBundleView({
+        data: { 'application/json': JSON.stringify({ results: longArray }) },
+        metadata: {},
+      }),
+    )
+
+    expect(screen.getByRole('button', { name: 'Expand' })).toBeInTheDocument()
+    expect(screen.getByText(/more lines hidden/)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }))
+    expect(screen.getByRole('button', { name: 'Collapse' })).toBeInTheDocument()
+    expect(screen.queryByText(/more lines hidden/)).toBeNull()
+  })
+
+  it('shows invalid JSON note when payload is not parseable', () => {
+    render(MimeBundleView({ data: { 'application/json': '{oops' }, metadata: {} }))
+    expect(screen.getByText('Shown as plain text (invalid JSON payload).')).toBeInTheDocument()
   })
 })
