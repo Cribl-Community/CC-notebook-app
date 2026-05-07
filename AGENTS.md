@@ -9,6 +9,7 @@ TL;DR:
 ```
 src/
   app/          Composition root (App.tsx, providers/)
+  domain/       Port-level DTOs shared across layers
   features/     Vertical slices (notebook, library, cribl-search,
                 ai-riptide, examples, welcome)
   platform/    Real-world adapters (pyodide, cribl, env, staticAssets)
@@ -17,7 +18,7 @@ src/
   testing/     Vitest setup + smoke tests
 ```
 
-Use alias imports (`@app/*`, `@features/*`, `@platform/*`, `@ports/*`,
+Use alias imports (`@app/*`, `@domain/*`, `@features/*`, `@platform/*`, `@ports/*`,
 `@ui/*`) to keep layering obvious. Features must not cross into each
 other's internals or into `platform/*` directly — depend on a port.
 
