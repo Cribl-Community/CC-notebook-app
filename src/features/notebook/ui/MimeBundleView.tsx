@@ -74,7 +74,7 @@ function ScriptedHtmlMime({ data }: { data: string }) {
       `script>`
 
     return inheritScript + data + exportAndResizeScript
-  }, [data])
+  }, [data, frameId])
 
   useEffect(() => {
     const id = frameId

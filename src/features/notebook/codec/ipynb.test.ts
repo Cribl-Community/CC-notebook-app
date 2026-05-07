@@ -8,6 +8,15 @@ import {
 import type { NotebookState } from '@features/notebook/model/types'
 import { CRIBL_SEARCH_MIME } from '@platform/pyodide/types'
 
+const readyKernelInit: NotebookState['kernelInit'] = {
+  phase: 'ready',
+  message: 'Python kernel ready',
+  progressPercent: 100,
+  startedAtMs: null,
+  errorSummary: null,
+  errorDetail: null,
+}
+
 function minimalNotebook(metadata: Record<string, unknown>): string {
   return JSON.stringify({
     nbformat: 4,
@@ -181,6 +190,7 @@ describe('serializeNotebookToIpynbJson cribl_search', () => {
       selectedId: null,
       executionCounter: 0,
       kernelStatus: 'ready',
+      kernelInit: readyKernelInit,
     }
     const json = serializeNotebookToIpynbJson(state)
     const { cells } = parseIpynbJson(json)
@@ -197,7 +207,7 @@ describe('serializeNotebookToIpynbJson cribl_search', () => {
 
 describe('serializeNotebookToIpynbJson round-trip', () => {
   function minimalState(overrides: Partial<NotebookState> = {}): NotebookState {
-    return {
+    const base: NotebookState = {
       title: 'RT',
       cells: [
         {
@@ -220,7 +230,12 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
       selectedId: null,
       executionCounter: 0,
       kernelStatus: 'ready',
+      kernelInit: readyKernelInit,
+    }
+    return {
+      ...base,
       ...overrides,
+      kernelInit: overrides.kernelInit ?? base.kernelInit,
     }
   }
 
@@ -265,6 +280,7 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
       selectedId: null,
       executionCounter: 0,
       kernelStatus: 'ready',
+      kernelInit: readyKernelInit,
     }
     const json = serializeNotebookToIpynbJson(state)
     const { cells } = parseIpynbJson(json)

@@ -75,6 +75,14 @@ function makeNotebookState(): NotebookState {
     selectedId: 'c1',
     executionCounter: 0,
     kernelStatus: 'ready',
+    kernelInit: {
+      phase: 'ready',
+      message: 'Python kernel ready',
+      progressPercent: 100,
+      startedAtMs: null,
+      errorSummary: null,
+      errorDetail: null,
+    },
     cells: [
       { id: 'c1', cell_type: 'code', source: 'print(1)', execution_state: 'idle', outputs: [], execution_count: null },
       { id: 'c2', cell_type: 'code', source: 'print(2)', execution_state: 'idle', outputs: [], execution_count: null },

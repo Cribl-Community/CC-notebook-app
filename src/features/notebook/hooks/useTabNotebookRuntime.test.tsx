@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useRef } from 'react'
-import type { KernelPort } from '@ports/KernelPort'
+import type { KernelInitProgress, KernelPort } from '@ports/KernelPort'
 import { useTabNotebookRuntime } from './useTabNotebookRuntime'
 import type { NotebookTab, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 import type { CellId, NotebookState } from '@features/notebook/model/types'
@@ -13,6 +13,14 @@ function emptyNotebookState(): NotebookState {
     selectedId: null,
     executionCounter: 0,
     kernelStatus: 'ready',
+    kernelInit: {
+      phase: 'ready',
+      message: 'Python kernel ready',
+      progressPercent: 100,
+      startedAtMs: null,
+      errorSummary: null,
+      errorDetail: null,
+    },
   }
 }
 
@@ -118,14 +126,14 @@ describe('useTabNotebookRuntime', () => {
       tabs: [makeTab('x')],
       activeTabId: 'x',
     }
-    let progressListener: ((progress: { phase: 'runtime'; message: string; progressPercent: number }) => void) | null = null
+    let progressListener: ((progress: KernelInitProgress) => void) | undefined
     const kernel: KernelPort = {
       ready: Promise.resolve(),
       execute: vi.fn().mockResolvedValue({ outputs: [] }),
       complete: vi.fn().mockResolvedValue([]),
       dispose: vi.fn(),
       setInitProgressListener: (listener) => {
-        progressListener = listener as typeof progressListener
+        progressListener = listener ?? undefined
       },
       getLastInitError: () => null,
     }
@@ -136,8 +144,8 @@ describe('useTabNotebookRuntime', () => {
       return useTabNotebookRuntime(dispatch, ref, 'x', factory)
     })
 
-    expect(progressListener).not.toBeNull()
-    progressListener?.({ phase: 'runtime', message: 'Loading Python runtime', progressPercent: 45 })
+    if (typeof progressListener !== 'function') throw new Error('expected init progress listener')
+    progressListener({ phase: 'runtime', message: 'Loading Python runtime', progressPercent: 45 })
     expect(dispatch).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'TAB_NOTEBOOK',
