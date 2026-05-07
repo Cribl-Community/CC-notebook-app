@@ -1,4 +1,6 @@
 /** KV key prefix for this app’s notebook library. */
+import type { Manifest, ManifestItem } from '@/domain/library'
+
 export const NB_KV_PREFIX = 'nb/v1'
 
 export const MANIFEST_KEY = `${NB_KV_PREFIX}/manifest`
@@ -7,26 +9,7 @@ export function notebookPayloadKey(notebookId: string): string {
   return `${NB_KV_PREFIX}/notebooks/${notebookId}`
 }
 
-export type ManifestItem =
-  | {
-      id: string
-      type: 'folder'
-      parentId: string | null
-      name: string
-      updatedAt: string
-    }
-  | {
-      id: string
-      type: 'notebook'
-      parentId: string | null
-      name: string
-      updatedAt: string
-    }
-
-export interface Manifest {
-  version: 1
-  items: ManifestItem[]
-}
+export type { Manifest, ManifestItem }
 
 export function emptyManifest(): Manifest {
   return { version: 1, items: [] }

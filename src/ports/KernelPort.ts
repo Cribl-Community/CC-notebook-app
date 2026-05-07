@@ -3,16 +3,16 @@
  * knowledge of Pyodide, Web Workers, or any specific runtime. Adapters live
  * under `src/platform/pyodide`.
  */
-import type { CompletionItem, IOPubMessage, KernelResult } from '@platform/pyodide/types'
+import type { CompletionItem, KernelIOPubMessage, KernelResult } from '@/domain/kernel'
 
-export type { CompletionItem, IOPubMessage, KernelResult }
+export type { CompletionItem, KernelIOPubMessage as IOPubMessage, KernelResult }
 
 export interface KernelPort {
   /** Resolves when the kernel is ready to accept `execute` / `complete` calls. */
   readonly ready: Promise<void>
   execute(
     code: string,
-    onIOPub?: (msg: IOPubMessage) => void,
+    onIOPub?: (msg: KernelIOPubMessage) => void,
     executionCount?: number,
   ): Promise<KernelResult>
   complete(code: string, cursor: number): Promise<CompletionItem[]>

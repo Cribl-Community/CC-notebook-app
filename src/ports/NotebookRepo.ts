@@ -2,7 +2,7 @@
  * Persistence port for the saved-notebook library. The default adapter backs it
  * with the pack-scoped Cribl KV store; tests substitute an in-memory adapter.
  */
-import type { Manifest } from '../features/library/manifest'
+import type { Manifest } from '@/domain/library'
 
 export interface NotebookRepo {
   readManifest(): Promise<Manifest>
