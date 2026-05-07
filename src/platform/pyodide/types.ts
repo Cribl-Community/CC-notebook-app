@@ -143,7 +143,18 @@ export type WorkerInbound =
 
 export type WorkerOutbound =
   | { type: 'ready' }
-  | { type: 'init_error'; message: string }
+  | {
+      type: 'init_progress'
+      phase: 'boot' | 'worker' | 'runtime' | 'env' | 'bootstrap'
+      message: string
+      progressPercent: number | null
+    }
+  | {
+      type: 'init_error'
+      message: string
+      detail?: string
+      phase?: 'boot' | 'worker' | 'runtime' | 'env' | 'bootstrap'
+    }
   | { type: 'iopub'; id: string; msg: IOPubMessage }
   | { type: 'complete_result'; id: string; options: CompletionItem[] }
   | {
