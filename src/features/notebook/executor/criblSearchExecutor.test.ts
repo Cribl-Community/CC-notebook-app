@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { createCriblSearchExecutor } from './criblSearchExecutor'
 import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
+import { CRIBL_SEARCH_MIME } from '@platform/pyodide/types'
 import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '@platform/cribl/searchJobs'
 import { translateEnglishToKql } from '@platform/cribl/aiTranslate'
 import { getCriblApiBase } from '@platform/cribl/kvstore'
@@ -132,5 +133,69 @@ describe('createCriblSearchExecutor', () => {
     )?.[0]
     expect(jsonDisplay).toBeTruthy()
     expect(String(jsonDisplay?.data?.['application/json'])).toContain('"name": "alpha"')
+  })
+
+  it('lang=english translate_only=true does not run search and emits translate-only completion', async () => {
+    const translate = vi.fn<typeof translateEnglishToKql>().mockResolvedValue('dataset=x | limit 99')
+    const job = vi.fn<typeof runCriblSearchJob>()
+    const emitIOPub = vi.fn()
+    const dispatchNotebook = vi.fn()
+    const ex = createCriblSearchExecutor({
+      ...baseDeps,
+      translateEnglishToKql: translate,
+      getCriblApiBase: vi.fn().mockReturnValue('https://api.example/v1'),
+      runCriblSearchJob: job,
+    })
+    const source =
+      '%%cribl_search lang=english translate_only=true dataset=cribl_search_sample\nshow me stuff\n'
+    const out = await ex.execute({
+      ...ctx,
+      source,
+      kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
+      emitIOPub,
+      dispatchNotebook,
+    })
+
+    expect(out).toBe('ok')
+    expect(translate).toHaveBeenCalledWith('show me stuff', { datasetHint: 'cribl_search_sample' })
+    expect(job).not.toHaveBeenCalled()
+    expect(dispatchNotebook).toHaveBeenCalledWith({ type: 'FINISH_CELL', id: 'c1', execution_count: 3 })
+    const completed = emitIOPub.mock.calls.find((call) => {
+      const d = call[0]?.data?.[CRIBL_SEARCH_MIME]
+      if (typeof d !== 'string') return false
+      try {
+        const p = JSON.parse(d) as { kind?: string; translateOnly?: boolean }
+        return p.kind === 'completed' && p.translateOnly === true
+      } catch {
+        return false
+      }
+    })?.[0]
+    expect(completed).toBeTruthy()
+    const stdout = emitIOPub.mock.calls.find(
+      (call) => call[0]?.msg_type === 'stream' && call[0]?.name === 'stdout',
+    )?.[0]
+    expect(String(stdout?.text)).toContain('dataset=x | limit 99')
+  })
+
+  it('lang=english without translate_only still runs search after translation', async () => {
+    const translate = vi.fn<typeof translateEnglishToKql>().mockResolvedValue('dataset=x | limit 2')
+    const job = vi
+      .fn<typeof runCriblSearchJob>()
+      .mockResolvedValue({ rows: [{ a: 1 }], columns: ['a'], totalRecords: 1 })
+    const ex = createCriblSearchExecutor({
+      ...baseDeps,
+      translateEnglishToKql: translate,
+      getCriblApiBase: vi.fn().mockReturnValue('https://api.example/v1'),
+      runCriblSearchJob: job,
+    })
+    const source = '%%cribl_search lang=english\nnatural language prompt\n'
+    await ex.execute({
+      ...ctx,
+      source,
+      kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
+    })
+
+    expect(translate).toHaveBeenCalled()
+    expect(job).toHaveBeenCalledWith(expect.objectContaining({ query: 'dataset=x | limit 2' }))
   })
 })

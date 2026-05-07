@@ -23,6 +23,7 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.limit).toBe(0)
     expect(r.value.query).toBe('dataset=x | limit 1')
     expect(r.value.template).toBe('auto')
+    expect(r.value.translateOnly).toBe(false)
   })
 
   it('parses var and preview', () => {
@@ -55,6 +56,29 @@ describe('parseCriblSearchMagic', () => {
     expect(r.kind).toBe('cribl_search')
     if (r.kind !== 'cribl_search') return
     expect(r.value.lang).toBe('english')
+    expect(r.value.translateOnly).toBe(false)
+  })
+
+  it('parses translate_only=true with lang=english', () => {
+    const r = parseCriblSearchMagic(
+      '%%cribl_search lang=english translate_only=true dataset=cribl_search_sample\nshow recent errors\n',
+    )
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind !== 'cribl_search') return
+    expect(r.value.translateOnly).toBe(true)
+    expect(r.value.lang).toBe('english')
+  })
+
+  it('errors when translate_only=true without lang=english', () => {
+    const r = parseCriblSearchMagic('%%cribl_search translate_only=true\ndataset=x | limit 1\n')
+    expect(r.kind).toBe('error')
+    if (r.kind === 'error') expect(r.message).toMatch(/translate_only=true requires lang=english/i)
+  })
+
+  it('errors on invalid translate_only value', () => {
+    const r = parseCriblSearchMagic('%%cribl_search lang=english translate_only=maybe\nq\n')
+    expect(r.kind).toBe('error')
+    if (r.kind === 'error') expect(r.message).toMatch(/translate_only must be true or false/i)
   })
 
   it('parses dataset hint from magic header', () => {

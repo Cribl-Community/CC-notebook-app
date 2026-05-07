@@ -11,12 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
-    version: '1.0.67',
+    version: '1.0.68',
     date: '2026-05-07',
     highlights: [
       'Execution: Stop interrupts the running cell and clears queued cells without reloading the Python kernel (uses Pyodide interrupt buffer when SharedArrayBuffer is available).',
       'Cell output: JSON payloads now render in a polished viewer with compact defaults for large payloads and one-click expand/collapse to avoid oversized cells.',
-      'Packaging: incremented build version and produced a refreshed distribution package.',
+      'Cribl Search: `%%cribl_search` adds `translate_only=true` for `lang=english` cells—translate to KQL and show output without running Search; default English cells still translate and execute as before.',
+      'Packaging: build 1.0.68 and refreshed distribution package.',
     ],
   },
   {
