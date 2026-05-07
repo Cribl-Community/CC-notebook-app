@@ -16,6 +16,7 @@ function makeKernel(): KernelPort {
     ready: Promise.resolve(),
     execute: vi.fn().mockResolvedValue({ outputs: [] }),
     complete: vi.fn().mockResolvedValue([]),
+    interrupt: vi.fn().mockResolvedValue(undefined),
     dispose: vi.fn(),
   }
 }
@@ -32,6 +33,7 @@ function makeRuntimeController(): {
   runtime: TabRuntimeController
   state: RuntimeState
   initKernelForTab: ReturnType<typeof vi.fn>
+  interruptKernelForTab: ReturnType<typeof vi.fn>
 } {
   const state: RuntimeState = {
     kernel: makeKernel(),
@@ -41,6 +43,7 @@ function makeRuntimeController(): {
     executionCount: 0,
   }
   const initKernelForTab = vi.fn()
+  const interruptKernelForTab = vi.fn()
   const runtime: TabRuntimeController = {
     get: () => ({
       kernel: state.kernel,
@@ -63,10 +66,11 @@ function makeRuntimeController(): {
     scheduledSetOf: () => state.scheduled,
     initKernelForTab,
     restartKernelForTab: vi.fn(),
+    interruptKernelForTab,
     resetQueueState: vi.fn(),
     disposeTab: vi.fn(),
   }
-  return { runtime, state, initKernelForTab }
+  return { runtime, state, initKernelForTab, interruptKernelForTab }
 }
 
 function makeNotebookState(): NotebookState {
@@ -173,7 +177,7 @@ describe('useCellRunner', () => {
     expect(runNotebookCellAfterReady).toHaveBeenCalledTimes(2)
   })
 
-  it('stopExecution clears queue and re-initializes kernel', () => {
+  it('stopExecution clears queue and interrupts kernel without re-init', () => {
     const notebook = makeNotebookState()
     notebook.cells = notebook.cells.map((cell, idx) =>
       idx === 0 && cell.cell_type === 'code'
@@ -184,7 +188,7 @@ describe('useCellRunner', () => {
     const workspaceRef = { current: workspace }
     const activeTabIdRef = { current: 't1' }
     const dispatch = vi.fn<(action: WorkspaceAction) => void>()
-    const { runtime, state, initKernelForTab } = makeRuntimeController()
+    const { runtime, state, initKernelForTab, interruptKernelForTab } = makeRuntimeController()
 
     const { result } = renderHook(() =>
       useCellRunner({
@@ -202,6 +206,13 @@ describe('useCellRunner', () => {
     })
 
     expect(state.runQueue.p).toBeInstanceOf(Promise)
-    expect(initKernelForTab).toHaveBeenCalledWith('t1')
+    expect(interruptKernelForTab).toHaveBeenCalledWith('t1')
+    expect(initKernelForTab).not.toHaveBeenCalled()
+    expect(state.kernel.dispose).not.toHaveBeenCalled()
+    expect(dispatch).toHaveBeenCalledWith({
+      type: 'TAB_NOTEBOOK',
+      tabId: 't1',
+      action: { type: 'SET_KERNEL_STATUS', status: 'ready' },
+    })
   })
 })

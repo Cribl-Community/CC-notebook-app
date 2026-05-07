@@ -30,6 +30,7 @@ function makeKernel(execute: KernelPort['execute']): KernelPort {
     ready: Promise.resolve(),
     execute,
     complete: vi.fn(),
+    interrupt: vi.fn().mockResolvedValue(undefined),
     dispose: vi.fn(),
   } satisfies KernelPort
 }

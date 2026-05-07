@@ -23,6 +23,7 @@ vi.mock('@platform/pyodide/PyodideKernelAdapter', () => ({
     ready: new Promise<void>(() => {}),
     execute: vi.fn(),
     complete: vi.fn(),
+    interrupt: vi.fn().mockResolvedValue(undefined),
     dispose: vi.fn(),
   }),
 }))

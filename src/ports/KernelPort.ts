@@ -34,6 +34,11 @@ export interface KernelPort {
     executionCount?: number,
   ): Promise<KernelResult>
   complete(code: string, cursor: number): Promise<CompletionItem[]>
+  /**
+   * Request interruption of the current Python execution (KeyboardInterrupt).
+   * Best-effort when the runtime supports it (Pyodide interrupt buffer); resolves when the signal is sent.
+   */
+  interrupt(): Promise<void>
   dispose(): void
 }
 

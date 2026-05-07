@@ -21,8 +21,8 @@ export interface CellRunnerController {
   restartKernel: () => void
   /**
    * Stop the current run on the active tab: bump generation, drop the queue,
-   * dispose the kernel, mark any running cell as errored, then spin up a fresh
-   * kernel. Intentionally does not bump generation a second time after dispose.
+   * interrupt the kernel (KeyboardInterrupt when supported), clear pending cells,
+   * and mark any running cell as stopped — without disposing or re-initializing the kernel.
    */
   stopExecution: () => void
   /**
@@ -204,14 +204,8 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
       (c) => c.cell_type === 'code' && c.execution_state === 'running',
     )?.id
 
-    /**
-     * Dispose the old kernel and clear the queue Promise, but DO NOT bump
-     * generation again — initKernelForTab bumps it itself, and double-bumping
-     * can race with queued `.then` callbacks checking for staleness.
-     */
     const r = runtime.get(tid)
-    r.kernel?.dispose()
-    r.kernel = null
+    runtime.interruptKernelForTab(tid)
     r.runQueue.p = Promise.resolve()
 
     if (runningId) {
@@ -228,7 +222,11 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
       dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id: runningId } })
     }
 
-    runtime.initKernelForTab(tid)
+    dispatch({
+      type: 'TAB_NOTEBOOK',
+      tabId: tid,
+      action: { type: 'SET_KERNEL_STATUS', status: 'ready' },
+    })
   }, [runtime, workspaceRef, activeTabIdRef, dispatch])
 
   const canStopExecution = useMemo(() => {
