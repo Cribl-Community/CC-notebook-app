@@ -32,6 +32,8 @@ function createFakeKernel(): KernelPort {
     execute: vi.fn().mockResolvedValue({ outputs: [] }),
     complete: vi.fn().mockResolvedValue([]),
     dispose: vi.fn(),
+    setInitProgressListener: vi.fn(),
+    getLastInitError: vi.fn().mockReturnValue(null),
   }
 }
 
@@ -108,5 +110,91 @@ describe('useTabNotebookRuntime', () => {
     const cellId = 'cell-1' as CellId
     scheduled.add(cellId)
     expect(result.current.scheduledSetOf('x').has(cellId)).toBe(true)
+  })
+
+  it('dispatches kernel init progress updates from kernel events', () => {
+    const dispatch = vi.fn()
+    const workspace: WorkspaceState = {
+      tabs: [makeTab('x')],
+      activeTabId: 'x',
+    }
+    let progressListener: ((progress: { phase: 'runtime'; message: string; progressPercent: number }) => void) | null = null
+    const kernel: KernelPort = {
+      ready: Promise.resolve(),
+      execute: vi.fn().mockResolvedValue({ outputs: [] }),
+      complete: vi.fn().mockResolvedValue([]),
+      dispose: vi.fn(),
+      setInitProgressListener: (listener) => {
+        progressListener = listener as typeof progressListener
+      },
+      getLastInitError: () => null,
+    }
+    const factory = vi.fn(() => kernel)
+
+    renderHook(() => {
+      const ref = useRef(workspace)
+      return useTabNotebookRuntime(dispatch, ref, 'x', factory)
+    })
+
+    expect(progressListener).not.toBeNull()
+    progressListener?.({ phase: 'runtime', message: 'Loading Python runtime', progressPercent: 45 })
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'TAB_NOTEBOOK',
+        tabId: 'x',
+        action: {
+          type: 'SET_KERNEL_INIT_PROGRESS',
+          phase: 'runtime',
+          message: 'Loading Python runtime',
+          progressPercent: 45,
+        },
+      }),
+    )
+  })
+
+  it('dispatches detailed init error when kernel startup fails', async () => {
+    const dispatch = vi.fn()
+    const workspace: WorkspaceState = {
+      tabs: [makeTab('x')],
+      activeTabId: 'x',
+    }
+    const kernel: KernelPort = {
+      ready: Promise.reject(new Error('init failed')),
+      execute: vi.fn().mockResolvedValue({ outputs: [] }),
+      complete: vi.fn().mockResolvedValue([]),
+      dispose: vi.fn(),
+      setInitProgressListener: vi.fn(),
+      getLastInitError: () => ({ summary: 'Worker import failed', detail: 'stack details' }),
+    }
+    const factory = vi.fn(() => kernel)
+
+    renderHook(() => {
+      const ref = useRef(workspace)
+      return useTabNotebookRuntime(dispatch, ref, 'x', factory)
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'TAB_NOTEBOOK',
+        tabId: 'x',
+        action: {
+          type: 'SET_KERNEL_INIT_ERROR',
+          summary: 'Worker import failed',
+          detail: 'stack details',
+        },
+      }),
+    )
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'TAB_NOTEBOOK',
+        tabId: 'x',
+        action: { type: 'SET_KERNEL_STATUS', status: 'error' },
+      }),
+    )
   })
 })
