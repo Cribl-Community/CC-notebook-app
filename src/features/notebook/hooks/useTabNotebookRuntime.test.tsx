@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useRef } from 'react'
-import type { KernelPort } from '@ports/KernelPort'
+import type { KernelInitProgress, KernelPort } from '@ports/KernelPort'
 import { useTabNotebookRuntime } from './useTabNotebookRuntime'
 import type { NotebookTab, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 import type { CellId, NotebookState } from '@features/notebook/model/types'
@@ -13,6 +13,14 @@ function emptyNotebookState(): NotebookState {
     selectedId: null,
     executionCounter: 0,
     kernelStatus: 'ready',
+    kernelInit: {
+      phase: 'ready',
+      message: 'Python kernel ready',
+      progressPercent: 100,
+      startedAtMs: null,
+      errorSummary: null,
+      errorDetail: null,
+    },
   }
 }
 
@@ -32,6 +40,8 @@ function createFakeKernel(): KernelPort {
     execute: vi.fn().mockResolvedValue({ outputs: [] }),
     complete: vi.fn().mockResolvedValue([]),
     dispose: vi.fn(),
+    setInitProgressListener: vi.fn(),
+    getLastInitError: vi.fn().mockReturnValue(null),
   }
 }
 
@@ -108,5 +118,91 @@ describe('useTabNotebookRuntime', () => {
     const cellId = 'cell-1' as CellId
     scheduled.add(cellId)
     expect(result.current.scheduledSetOf('x').has(cellId)).toBe(true)
+  })
+
+  it('dispatches kernel init progress updates from kernel events', () => {
+    const dispatch = vi.fn()
+    const workspace: WorkspaceState = {
+      tabs: [makeTab('x')],
+      activeTabId: 'x',
+    }
+    let progressListener: ((progress: KernelInitProgress) => void) | undefined
+    const kernel: KernelPort = {
+      ready: Promise.resolve(),
+      execute: vi.fn().mockResolvedValue({ outputs: [] }),
+      complete: vi.fn().mockResolvedValue([]),
+      dispose: vi.fn(),
+      setInitProgressListener: (listener) => {
+        progressListener = listener ?? undefined
+      },
+      getLastInitError: () => null,
+    }
+    const factory = vi.fn(() => kernel)
+
+    renderHook(() => {
+      const ref = useRef(workspace)
+      return useTabNotebookRuntime(dispatch, ref, 'x', factory)
+    })
+
+    if (typeof progressListener !== 'function') throw new Error('expected init progress listener')
+    progressListener({ phase: 'runtime', message: 'Loading Python runtime', progressPercent: 45 })
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'TAB_NOTEBOOK',
+        tabId: 'x',
+        action: {
+          type: 'SET_KERNEL_INIT_PROGRESS',
+          phase: 'runtime',
+          message: 'Loading Python runtime',
+          progressPercent: 45,
+        },
+      }),
+    )
+  })
+
+  it('dispatches detailed init error when kernel startup fails', async () => {
+    const dispatch = vi.fn()
+    const workspace: WorkspaceState = {
+      tabs: [makeTab('x')],
+      activeTabId: 'x',
+    }
+    const kernel: KernelPort = {
+      ready: Promise.reject(new Error('init failed')),
+      execute: vi.fn().mockResolvedValue({ outputs: [] }),
+      complete: vi.fn().mockResolvedValue([]),
+      dispose: vi.fn(),
+      setInitProgressListener: vi.fn(),
+      getLastInitError: () => ({ summary: 'Worker import failed', detail: 'stack details' }),
+    }
+    const factory = vi.fn(() => kernel)
+
+    renderHook(() => {
+      const ref = useRef(workspace)
+      return useTabNotebookRuntime(dispatch, ref, 'x', factory)
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'TAB_NOTEBOOK',
+        tabId: 'x',
+        action: {
+          type: 'SET_KERNEL_INIT_ERROR',
+          summary: 'Worker import failed',
+          detail: 'stack details',
+        },
+      }),
+    )
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'TAB_NOTEBOOK',
+        tabId: 'x',
+        action: { type: 'SET_KERNEL_STATUS', status: 'error' },
+      }),
+    )
   })
 })

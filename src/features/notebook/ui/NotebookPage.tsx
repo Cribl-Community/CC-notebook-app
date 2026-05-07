@@ -234,6 +234,7 @@ export function NotebookPage() {
 
   const ready = Boolean(state && activeTab)
   const isWelcome = activeTab?.kind === 'welcome'
+  const kernelInit = state?.kernelInit
 
   return (
     <>
@@ -303,11 +304,56 @@ export function NotebookPage() {
                 ) : (
                   <>
                     {state.kernelStatus === 'loading' && (
-                      <div className="nb-loading">Loading Python kernel…</div>
+                      <div className="nb-loading nb-kernel-banner" role="status" aria-live="polite">
+                        <div className="nb-kernel-banner-header">
+                          <strong>Loading Python kernel</strong>
+                          {kernelInit?.phase && (
+                            <span className="nb-kernel-banner-phase">{kernelInit.phase}</span>
+                          )}
+                        </div>
+                        <div className="nb-kernel-banner-message">
+                          {kernelInit?.message || 'Preparing Python runtime'}
+                        </div>
+                        {kernelInit?.progressPercent != null && (
+                          <>
+                            <div
+                              className="nb-kernel-banner-progress"
+                              role="progressbar"
+                              aria-valuemin={0}
+                              aria-valuemax={100}
+                              aria-valuenow={Math.max(0, Math.min(100, kernelInit.progressPercent))}
+                            >
+                              <div
+                                className="nb-kernel-banner-progress-fill"
+                                style={{
+                                  width: `${Math.max(0, Math.min(100, kernelInit.progressPercent))}%`,
+                                }}
+                              />
+                            </div>
+                            <div className="nb-kernel-banner-meta">
+                              {Math.round(kernelInit.progressPercent)}% complete
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                     {state.kernelStatus === 'error' && (
-                      <div className="nb-loading nb-loading--error">
-                        Kernel failed to load. Check console for details.
+                      <div className="nb-loading nb-loading--error nb-kernel-banner" role="alert">
+                        <div className="nb-kernel-banner-header">
+                          <strong>Kernel failed to load</strong>
+                          <button className="nb-btn nb-btn-stop" type="button" onClick={restartKernel}>
+                            Retry startup
+                          </button>
+                        </div>
+                        <div className="nb-kernel-banner-message">
+                          {kernelInit?.errorSummary || 'Check console for additional details.'}
+                        </div>
+                        {kernelInit?.errorDetail && (
+                          <details className="nb-kernel-banner-details">
+                            <summary>Show technical details</summary>
+                            <pre className="nb-output-pre">{kernelInit.errorDetail}</pre>
+                          </details>
+                        )}
                       </div>
                     )}
                     <div className="nb-main">

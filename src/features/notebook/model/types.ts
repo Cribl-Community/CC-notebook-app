@@ -32,6 +32,24 @@ export type Cell = CodeCell | MarkdownCell
 
 export type KernelStatus = 'loading' | 'ready' | 'busy' | 'error'
 
+export type KernelInitPhase =
+  | 'boot'
+  | 'worker'
+  | 'runtime'
+  | 'env'
+  | 'bootstrap'
+  | 'ready'
+  | 'error'
+
+export interface KernelInitState {
+  phase: KernelInitPhase
+  message: string
+  progressPercent: number | null
+  startedAtMs: number | null
+  errorSummary: string | null
+  errorDetail: string | null
+}
+
 export interface NotebookState {
   /** Display name without extension; used for download filename. */
   title: string
@@ -39,6 +57,7 @@ export interface NotebookState {
   selectedId: CellId | null
   executionCounter: number
   kernelStatus: KernelStatus
+  kernelInit: KernelInitState
 }
 
 /**
@@ -81,6 +100,13 @@ export type CellOutputAction =
 /** Notebook-wide lifecycle actions: kernel status, restart, title, load. */
 export type NotebookLifecycleAction =
   | { type: 'SET_KERNEL_STATUS'; status: KernelStatus }
+  | {
+      type: 'SET_KERNEL_INIT_PROGRESS'
+      phase: KernelInitPhase
+      message: string
+      progressPercent: number | null
+    }
+  | { type: 'SET_KERNEL_INIT_ERROR'; summary: string; detail: string | null }
   | { type: 'RESTART' }
   | { type: 'SET_NOTEBOOK_TITLE'; title: string }
   | { type: 'LOAD_NOTEBOOK'; title: string; cells: Cell[] }

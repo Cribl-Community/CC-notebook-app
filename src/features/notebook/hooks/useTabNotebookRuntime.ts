@@ -87,8 +87,31 @@ export function useTabNotebookRuntime(
       const gen = r.generation + 1
       r.generation = gen
       dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'SET_KERNEL_STATUS', status: 'loading' } })
+      dispatch({
+        type: 'TAB_NOTEBOOK',
+        tabId,
+        action: {
+          type: 'SET_KERNEL_INIT_PROGRESS',
+          phase: 'boot',
+          message: 'Preparing kernel runtime',
+          progressPercent: 0,
+        },
+      })
       const kernel = kernelFactory()
       r.kernel = kernel
+      kernel.setInitProgressListener?.((progress) => {
+        if (r.generation !== gen) return
+        dispatch({
+          type: 'TAB_NOTEBOOK',
+          tabId,
+          action: {
+            type: 'SET_KERNEL_INIT_PROGRESS',
+            phase: progress.phase,
+            message: progress.message,
+            progressPercent: progress.progressPercent,
+          },
+        })
+      })
       kernel.ready
         .then(() => {
           if (r.generation === gen) {
@@ -99,8 +122,21 @@ export function useTabNotebookRuntime(
             })
           }
         })
-        .catch(() => {
+        .catch((err: unknown) => {
           if (r.generation === gen) {
+            const initErr = kernel.getLastInitError?.()
+            const fallbackSummary = err instanceof Error ? err.message : 'Kernel startup failed'
+            const fallbackDetail =
+              err instanceof Error && err.stack ? err.stack : err != null ? String(err) : null
+            dispatch({
+              type: 'TAB_NOTEBOOK',
+              tabId,
+              action: {
+                type: 'SET_KERNEL_INIT_ERROR',
+                summary: initErr?.summary ?? fallbackSummary,
+                detail: initErr?.detail ?? fallbackDetail,
+              },
+            })
             dispatch({
               type: 'TAB_NOTEBOOK',
               tabId,

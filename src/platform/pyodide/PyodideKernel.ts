@@ -6,6 +6,7 @@ import type {
   WorkerInbound,
   WorkerOutbound,
 } from '@platform/pyodide/types'
+import type { KernelInitError, KernelInitProgress } from '@ports/KernelPort'
 import { fetchWithPackageSessionCache } from '@platform/pyodide/packageFetchCache'
 import {
   getSameOriginPyodideBaseUrl,
@@ -47,6 +48,8 @@ export class PyodideKernel {
   private worker: Worker
   private pending = new Map<string, Pending>()
   private pendingComplete = new Map<string, (opts: CompletionItem[]) => void>()
+  private initProgressListener: ((progress: KernelInitProgress) => void) | null = null
+  private lastInitError: KernelInitError | null = null
 
   constructor() {
     const blob = new Blob([WORKER_SOURCE], { type: 'application/javascript' })
@@ -62,10 +65,27 @@ export class PyodideKernel {
     this.worker.onmessage = (e: MessageEvent<WorkerOutbound>) => {
       const msg = e.data
       if (msg.type === 'ready') {
+        this.lastInitError = null
         onReady()
         return
       }
+      if (msg.type === 'init_progress') {
+        try {
+          this.initProgressListener?.({
+            phase: msg.phase,
+            message: msg.message,
+            progressPercent: msg.progressPercent,
+          })
+        } catch {
+          // best-effort
+        }
+        return
+      }
       if (msg.type === 'init_error') {
+        this.lastInitError = {
+          summary: msg.message,
+          detail: msg.detail ?? null,
+        }
         onFail(msg.message)
         return
       }
@@ -120,6 +140,16 @@ export class PyodideKernel {
       appOrigin: window.location.origin,
       criblApiUrl,
     } satisfies WorkerInbound)
+  }
+
+  setInitProgressListener(
+    listener: ((progress: KernelInitProgress) => void) | null,
+  ): void {
+    this.initProgressListener = listener
+  }
+
+  getLastInitError(): KernelInitError | null {
+    return this.lastInitError
   }
 
   execute(
@@ -217,6 +247,7 @@ export class PyodideKernel {
   }
 
   dispose(): void {
+    this.initProgressListener = null
     this.worker.terminate()
     for (const p of this.pending.values()) {
       p.resolve({ outputs: [] })

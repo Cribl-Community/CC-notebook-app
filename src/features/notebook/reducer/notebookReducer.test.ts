@@ -9,6 +9,14 @@ function readyStateFromCells(cells: NotebookState['cells']): NotebookState {
     selectedId: cells[0]?.id ?? null,
     executionCounter: 0,
     kernelStatus: 'ready',
+    kernelInit: {
+      phase: 'ready',
+      message: 'Python kernel ready',
+      progressPercent: 100,
+      startedAtMs: null,
+      errorSummary: null,
+      errorDetail: null,
+    },
   }
 }
 
@@ -150,5 +158,31 @@ describe('notebookReducer ADD_CELL', () => {
     const added = state.cells[1]
     expect(added?.cell_type).toBe('code')
     expect(state.selectedId).toBe(added?.id)
+  })
+})
+
+describe('notebookReducer kernel init lifecycle', () => {
+  it('updates kernel init progress from lifecycle actions', () => {
+    const state = notebookReducer(readyStateFromCells(createEmptyNotebookCells()), {
+      type: 'SET_KERNEL_INIT_PROGRESS',
+      phase: 'runtime',
+      message: 'Loading Python runtime',
+      progressPercent: 45,
+    })
+    expect(state.kernelInit.phase).toBe('runtime')
+    expect(state.kernelInit.message).toBe('Loading Python runtime')
+    expect(state.kernelInit.progressPercent).toBe(45)
+    expect(state.kernelInit.errorSummary).toBeNull()
+  })
+
+  it('stores startup error details for banner display', () => {
+    const state = notebookReducer(readyStateFromCells(createEmptyNotebookCells()), {
+      type: 'SET_KERNEL_INIT_ERROR',
+      summary: 'Import failed',
+      detail: 'stack trace',
+    })
+    expect(state.kernelInit.phase).toBe('error')
+    expect(state.kernelInit.errorSummary).toBe('Import failed')
+    expect(state.kernelInit.errorDetail).toBe('stack trace')
   })
 })

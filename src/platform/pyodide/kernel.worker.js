@@ -20,6 +20,10 @@ function postIOPub(execId, msg) {
   self.postMessage({ type: 'iopub', id: execId, msg: msg })
 }
 
+function postInitProgress(phase, message, progressPercent) {
+  self.postMessage({ type: 'init_progress', phase: phase, message: message, progressPercent: progressPercent })
+}
+
 // === Fetch bridge ===========================================================
 // Pyodide / micropip use the global `fetch` to talk to PyPI (metadata) and
 // files.pythonhosted.org (wheels). When the kernel runs inside Cribl's
@@ -294,23 +298,39 @@ self.onmessage = async function (e) {
     _appOrigin = msg.appOrigin || ''
     _appPyodideBaseUrl = (msg.pyodideBaseUrl && String(msg.pyodideBaseUrl)) || ''
     var criblApiUrl = (msg.criblApiUrl && String(msg.criblApiUrl).trim()) || ''
+    var initPhase = 'boot'
     try {
+      postInitProgress('boot', 'Starting kernel worker', 5)
+      initPhase = 'worker'
+      postInitProgress('worker', 'Loading worker runtime', 20)
       importScripts(msg.pyodideBaseUrl + 'pyodide.js')
+      initPhase = 'runtime'
+      postInitProgress('runtime', 'Loading Python runtime', 45)
       pyodide = await loadPyodide({
         indexURL: msg.pyodideBaseUrl,
         packageBaseUrl: msg.pyodidePackageBaseUrl,
         // Same-origin lock from the shipped `public/pyodide/` tree; avoids CSP blocks on jsDelivr in iframes.
         lockFileURL: msg.pyodideLockFileUrl,
       })
+      initPhase = 'env'
+      postInitProgress('env', 'Configuring environment', 65)
       await pyodide.runPythonAsync(
         'import os\nos.environ["CRIBL_API_URL"] = ' + JSON.stringify(criblApiUrl),
       )
+      initPhase = 'bootstrap'
+      postInitProgress('bootstrap', 'Loading notebook bootstrap scripts', 85)
       await pyodide.runPythonAsync(COMPLETION_PY)
       await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY)
       await pyodide.runPythonAsync(IOPUB_BOOTSTRAP_PY)
+      postInitProgress('bootstrap', 'Finalizing kernel startup', 98)
       self.postMessage({ type: 'ready' })
     } catch (err) {
-      self.postMessage({ type: 'init_error', message: err.message })
+      self.postMessage({
+        type: 'init_error',
+        message: err && err.message ? err.message : String(err),
+        detail: err && err.stack ? String(err.stack) : null,
+        phase: initPhase,
+      })
     }
     return
   }

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { EnvService } from '@ports/EnvService'
 import { readEnv } from '@platform/env/env'
