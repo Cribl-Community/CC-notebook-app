@@ -225,8 +225,20 @@ async function executeCriblSearchCell(
       dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
       return 'ok'
     }
-    const text = response === 'json' ? formatCriblSearchJsonRows(rows) : formatCriblSearchRawRows(rows)
-    emitIOPub({ msg_type: 'stream', name: 'stdout', text })
+    if (response === 'json') {
+      const pretty = formatCriblSearchJsonRows(rows)
+      emitIOPub({
+        msg_type: 'display_data',
+        data: {
+          'application/json': pretty,
+          'text/plain': pretty,
+        },
+        metadata: {},
+      })
+    } else {
+      const text = formatCriblSearchRawRows(rows)
+      emitIOPub({ msg_type: 'stream', name: 'stdout', text })
+    }
     dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
     return 'ok'
   } catch (e) {

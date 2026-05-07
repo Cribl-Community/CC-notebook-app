@@ -78,6 +78,7 @@ describe('createCriblApiExecutor', () => {
   })
 
   it('calls the API and assigns JSON into the kernel', async () => {
+    const emitIOPub = vi.fn()
     const api = vi.fn<typeof callCriblApi>().mockImplementation(async (method, path) => {
       expect(method).toBe('GET')
       expect(path).toBe('/m/jobs')
@@ -87,6 +88,7 @@ describe('createCriblApiExecutor', () => {
     const execute = vi.fn().mockResolvedValue({ outputs: [] })
     const r = await ex.execute({
       ...ctx,
+      emitIOPub,
       source: '%%cribl_api GET /m/jobs var=z\n',
       kernel: makeKernel(execute),
     })
@@ -94,6 +96,9 @@ describe('createCriblApiExecutor', () => {
     expect(api).toHaveBeenCalled()
     const firstCode = execute.mock.calls[0]![0] as string
     expect(firstCode).toContain('json.loads')
+    const previewDisplay = emitIOPub.mock.calls.find((call) => call[0]?.msg_type === 'display_data')?.[0]
+    expect(previewDisplay).toBeTruthy()
+    expect(previewDisplay?.data?.['application/json']).toContain('"items": 1')
   })
 
   it('treats HTTP 4xx as error and does not finish the cell as ok', async () => {

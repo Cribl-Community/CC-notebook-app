@@ -11,9 +11,10 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
-    version: '1.0.66',
+    version: '1.0.67',
     date: '2026-05-07',
     highlights: [
+      'Cell output: JSON payloads now render in a polished viewer with compact defaults for large payloads and one-click expand/collapse to avoid oversized cells.',
       'Packaging: incremented build version and produced a refreshed distribution package.',
     ],
   },
