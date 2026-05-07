@@ -197,10 +197,6 @@ function JsonMime({ data }: { data: string }) {
     depth > LONG_JSON_DEPTH_THRESHOLD
   const [expanded, setExpanded] = useState(!isLong)
 
-  useEffect(() => {
-    setExpanded(!isLong)
-  }, [isLong, data])
-
   const preview = useMemo(() => {
     if (!isLong || expanded) return pretty
     const shown = lines.slice(0, JSON_PREVIEW_LINES).join('\n')
@@ -337,7 +333,7 @@ function ensureRegistered() {
   registerMimeRenderer({
     mime: 'application/json',
     rank: 50,
-    render: (data) => <JsonMime data={data} />,
+    render: (data) => <JsonMime key={data} data={data} />,
   })
   registerMimeRenderer({
     mime: 'text/plain',
