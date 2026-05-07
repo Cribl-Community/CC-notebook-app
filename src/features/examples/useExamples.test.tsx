@@ -13,7 +13,13 @@ function fakeResponse(status: number, body: unknown): Response {
 describe('useExamples', () => {
   it('loads the manifest and exposes its notebooks', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(
-      fakeResponse(200, { version: 1, notebooks: ['a.ipynb', 'b.ipynb'] }),
+      fakeResponse(200, {
+        version: 2,
+        notebooks: [
+          { filename: 'b.ipynb', title: 'B', recommendedOrder: 3 },
+          { filename: 'a.ipynb', title: 'A', recommendedOrder: 2 },
+        ],
+      }),
     )
 
     const { result } = renderHook(() =>
@@ -23,7 +29,7 @@ describe('useExamples', () => {
     expect(result.current.state.kind).toBe('loading')
     await waitFor(() => expect(result.current.state.kind).toBe('ready'))
     if (result.current.state.kind !== 'ready') throw new Error('expected ready')
-    expect(result.current.state.notebooks).toEqual(['a.ipynb', 'b.ipynb'])
+    expect(result.current.state.notebooks.map((x) => x.filename)).toEqual(['a.ipynb', 'b.ipynb'])
     expect(result.current.state.selectedFilename).toBe('a.ipynb')
     expect(fetchImpl).toHaveBeenCalledWith('/x/Examples/manifest.json')
   })
