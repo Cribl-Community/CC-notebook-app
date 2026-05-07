@@ -9,6 +9,10 @@ import { VegaMimeView } from '@features/notebook/ui/VegaMimeView'
 import { pickRenderer, registerMimeRenderer } from '@features/notebook/ui/mimeRegistry'
 
 const SCRIPT_RE = /<script[\s>]/i
+const LONG_JSON_LINE_THRESHOLD = 24
+const LONG_JSON_CHAR_THRESHOLD = 2400
+const LONG_JSON_DEPTH_THRESHOLD = 4
+const JSON_PREVIEW_LINES = 14
 
 /**
  * Renders HTML that contains <script> tags inside a sandboxed srcdoc iframe.
@@ -150,15 +154,79 @@ function MarkdownMime({ data }: { data: string }) {
   return <div className="nb-mime-markdown" dangerouslySetInnerHTML={{ __html: html }} />
 }
 
+function maxJsonDepth(value: unknown): number {
+  if (value === null || typeof value !== 'object') return 0
+  if (Array.isArray(value)) {
+    if (value.length === 0) return 1
+    return 1 + Math.max(...value.map((item) => maxJsonDepth(item)))
+  }
+  const entries = Object.values(value as Record<string, unknown>)
+  if (entries.length === 0) return 1
+  return 1 + Math.max(...entries.map((item) => maxJsonDepth(item)))
+}
+
 function JsonMime({ data }: { data: string }) {
-  const pretty = useMemo(() => {
+  const { pretty, parseOk, depth, topLevelSummary } = useMemo(() => {
     try {
-      return JSON.stringify(JSON.parse(data), null, 2)
+      const parsed = JSON.parse(data) as unknown
+      let summary = 'value'
+      if (Array.isArray(parsed)) summary = `${parsed.length} item${parsed.length === 1 ? '' : 's'}`
+      else if (parsed && typeof parsed === 'object') {
+        const keyCount = Object.keys(parsed as Record<string, unknown>).length
+        summary = `${keyCount} key${keyCount === 1 ? '' : 's'}`
+      }
+      return {
+        pretty: JSON.stringify(parsed, null, 2),
+        parseOk: true,
+        depth: maxJsonDepth(parsed),
+        topLevelSummary: summary,
+      }
     } catch {
-      return data
+      return {
+        pretty: data,
+        parseOk: false,
+        depth: 0,
+        topLevelSummary: 'raw text',
+      }
     }
   }, [data])
-  return <pre className="nb-output-pre nb-mime-json">{pretty}</pre>
+  const lines = useMemo(() => pretty.split('\n'), [pretty])
+  const isLong =
+    lines.length > LONG_JSON_LINE_THRESHOLD ||
+    pretty.length > LONG_JSON_CHAR_THRESHOLD ||
+    depth > LONG_JSON_DEPTH_THRESHOLD
+  const [expanded, setExpanded] = useState(!isLong)
+
+  const preview = useMemo(() => {
+    if (!isLong || expanded) return pretty
+    const shown = lines.slice(0, JSON_PREVIEW_LINES).join('\n')
+    const remaining = Math.max(lines.length - JSON_PREVIEW_LINES, 0)
+    return `${shown}\n… (${remaining} more lines hidden)`
+  }, [expanded, isLong, lines, pretty])
+
+  const metaText = `${lines.length} lines • ${pretty.length} chars • ${topLevelSummary}`
+
+  return (
+    <div className="nb-mime-json-shell">
+      <div className="nb-mime-json-toolbar">
+        <span className="nb-mime-json-meta">{metaText}</span>
+        {isLong && (
+          <button
+            type="button"
+            className="nb-btn nb-mime-json-toggle"
+            onClick={() => setExpanded((prev) => !prev)}
+            aria-expanded={expanded}
+          >
+            {expanded ? 'Collapse' : 'Expand'}
+          </button>
+        )}
+      </div>
+      <div className={`nb-mime-json-frame${!expanded && isLong ? ' nb-mime-json-frame--compact' : ''}`}>
+        <pre className="nb-output-pre nb-mime-json">{preview}</pre>
+      </div>
+      {!parseOk && <div className="nb-mime-json-note">Shown as plain text (invalid JSON payload).</div>}
+    </div>
+  )
 }
 
 function PlainMime({ data }: { data: string }) {
@@ -265,7 +333,7 @@ function ensureRegistered() {
   registerMimeRenderer({
     mime: 'application/json',
     rank: 50,
-    render: (data) => <JsonMime data={data} />,
+    render: (data) => <JsonMime key={data} data={data} />,
   })
   registerMimeRenderer({
     mime: 'text/plain',

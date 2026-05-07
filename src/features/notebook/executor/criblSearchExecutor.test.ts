@@ -109,4 +109,27 @@ describe('createCriblSearchExecutor', () => {
     expect(failed).toBeTruthy()
     expect(JSON.stringify(failed?.data)).toContain('not retried')
   })
+
+  it('emits JSON response preview as application/json display_data', async () => {
+    const ex = createCriblSearchExecutor({
+      ...baseDeps,
+      runCriblSearchJob: vi
+        .fn<typeof runCriblSearchJob>()
+        .mockResolvedValue({ rows: [{ id: 1, name: 'alpha' }], columns: ['id', 'name'], totalRecords: 1 }),
+    })
+    const emitIOPub = vi.fn()
+    const out = await ex.execute({
+      ...ctx,
+      source: '%%cribl_search response=json\nid=1\n',
+      kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
+      emitIOPub,
+    })
+
+    expect(out).toBe('ok')
+    const jsonDisplay = emitIOPub.mock.calls.find(
+      (call) => call[0]?.msg_type === 'display_data' && typeof call[0]?.data?.['application/json'] === 'string',
+    )?.[0]
+    expect(jsonDisplay).toBeTruthy()
+    expect(String(jsonDisplay?.data?.['application/json'])).toContain('"name": "alpha"')
+  })
 })

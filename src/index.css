@@ -1233,6 +1233,56 @@ body {
   background: var(--nb-bg-cell-alt);
   padding: 6px 8px;
   border-radius: 3px;
+  white-space: pre;
+  word-break: normal;
+  overflow-x: auto;
+}
+
+.nb-mime-json-shell {
+  border: 1px solid var(--nb-border-cell);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--nb-bg-cell-alt) 80%, var(--nb-bg-cell));
+}
+
+.nb-mime-json-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--nb-border-cell) 80%, transparent);
+}
+
+.nb-mime-json-meta {
+  color: var(--nb-text-muted);
+  font-size: 11px;
+  font-family: var(--mono);
+}
+
+.nb-mime-json-toggle {
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.nb-mime-json-frame {
+  position: relative;
+}
+
+.nb-mime-json-frame--compact::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0), var(--nb-bg-cell-alt));
+}
+
+.nb-mime-json-note {
+  padding: 0 8px 8px;
+  color: var(--nb-text-dim);
+  font-size: 11px;
 }
 
 .nb-mime-widget-fallback {

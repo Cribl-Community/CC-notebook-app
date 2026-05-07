@@ -159,7 +159,16 @@ async function executeCriblApiCell(
         return 'error'
       }
       if (preview) {
-        emitIOPub({ msg_type: 'stream', name: 'stdout', text: `HTTP ${res.status}\n${formatPreviewJson(rj.value)}\n` })
+        const pretty = formatPreviewJson(rj.value)
+        emitIOPub({ msg_type: 'stream', name: 'stdout', text: `HTTP ${res.status}\n` })
+        emitIOPub({
+          msg_type: 'display_data',
+          data: {
+            'application/json': pretty,
+            'text/plain': pretty,
+          },
+          metadata: {},
+        })
       }
       const b64 = deps.encodeValueJsonForPythonBase64(rj.value)
       const code = deps.buildCriblApiJsonValueAssignmentCode(varName, b64)
