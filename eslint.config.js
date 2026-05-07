@@ -20,4 +20,36 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['src/ports/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@platform/*', '@features/*'],
+              message: 'Ports must stay adapter-agnostic. Import from domain/ports types instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/features/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'warn',
+        {
+          patterns: [
+            {
+              group: ['@app/*'],
+              message: 'Feature code should not import from app composition root.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])
