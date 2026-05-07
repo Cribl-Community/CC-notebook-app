@@ -2210,6 +2210,39 @@ body {
   align-self: flex-start;
 }
 
+.nb-welcome-example-meta {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--nb-border-cell);
+  border-radius: var(--space-2);
+  background: color-mix(in srgb, var(--nb-bg-cell) 82%, var(--nb-bg-input) 18%);
+}
+
+.nb-welcome-example-summary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--nb-text);
+}
+
+.nb-welcome-example-badges {
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.nb-welcome-example-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nb-text-muted);
+  background: color-mix(in srgb, var(--nb-bg-input) 68%, transparent 32%);
+}
+
 .nb-welcome-examples-hint {
   margin: 4px 0 0;
   max-width: 420px;

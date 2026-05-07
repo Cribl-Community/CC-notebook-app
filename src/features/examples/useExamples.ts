@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { parseExamplesManifest } from '@features/examples/examplesManifest'
+import { parseExamplesManifest, type ExampleNotebook } from '@features/examples/examplesManifest'
 import { notebookStaticPrefix } from '@platform/staticAssets'
 
 /**
@@ -10,7 +10,7 @@ import { notebookStaticPrefix } from '@platform/staticAssets'
 export type ExamplesLoadState =
   | { kind: 'loading' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; notebooks: string[]; selectedFilename: string }
+  | { kind: 'ready'; notebooks: ExampleNotebook[]; selectedFilename: string }
 
 export interface UseExamplesOptions {
   /** Override for tests. Defaults to the browser `fetch`. */
@@ -44,8 +44,13 @@ export function useExamples(options: UseExamplesOptions = {}): {
         const json: unknown = await res.json()
         const notebooks = parseExamplesManifest(json)
         if (!notebooks) throw new Error('Invalid examples manifest')
+        notebooks.sort((a, b) =>
+          a.recommendedOrder === b.recommendedOrder
+            ? a.title.localeCompare(b.title)
+            : a.recommendedOrder - b.recommendedOrder,
+        )
         if (cancelled) return
-        const selectedFilename = notebooks[0] ?? ''
+        const selectedFilename = notebooks[0]?.filename ?? ''
         setState({ kind: 'ready', notebooks, selectedFilename })
       } catch (e) {
         if (cancelled) return

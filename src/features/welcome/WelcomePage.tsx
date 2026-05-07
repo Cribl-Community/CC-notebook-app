@@ -90,12 +90,28 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
                 if (v) onOpenExample(v)
               }}
             >
-              {examplesLoad.notebooks.map((filename) => (
-                <option key={filename} value={filename}>
-                  {exampleNotebookDisplayLabel(filename)}
+              {examplesLoad.notebooks.map((example) => (
+                <option key={example.filename} value={example.filename}>
+                  {example.title || exampleNotebookDisplayLabel(example.filename)}
                 </option>
               ))}
             </select>
+            {examplesLoad.notebooks
+              .filter((x) => x.filename === examplesLoad.selectedFilename)
+              .map((selected) => (
+                <div key={selected.filename} className="nb-welcome-example-meta">
+                  <p className="nb-welcome-example-summary">{selected.summary}</p>
+                  <p className="nb-welcome-example-badges">
+                    <span className="nb-welcome-example-pill">{selected.level}</span>
+                    <span className="nb-welcome-example-pill">{selected.estimatedRuntime}</span>
+                    {selected.tags.map((tag) => (
+                      <span key={tag} className="nb-welcome-example-pill">
+                        {tag}
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              ))}
             <button
               type="button"
               className="nb-btn nb-btn-primary nb-welcome-examples-open"

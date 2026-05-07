@@ -5,8 +5,14 @@ const NBFORMAT = 4
 const NBFORMAT_MINOR = 5
 
 function normalizeSource(source: unknown): string {
-  if (typeof source === 'string') return source
-  if (Array.isArray(source)) return source.join('')
+  const normalizeEscapedNewlines = (text: string): string => {
+    // Some imported notebooks may accidentally double-escape newlines ("\\n").
+    // If there are no real newlines, normalize to rendered line breaks.
+    if (text.includes('\\n') && !text.includes('\n')) return text.replace(/\\n/g, '\n')
+    return text
+  }
+  if (typeof source === 'string') return normalizeEscapedNewlines(source)
+  if (Array.isArray(source)) return normalizeEscapedNewlines(source.join(''))
   return ''
 }
 
