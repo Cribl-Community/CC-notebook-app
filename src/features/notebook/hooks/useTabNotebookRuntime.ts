@@ -42,6 +42,8 @@ export interface TabRuntimeController {
   initKernelForTab(tabId: string): void
   /** Dispose the current kernel, clear per-tab state, then start a fresh kernel. */
   restartKernelForTab(tabId: string): void
+  /** Signal interrupt on the active kernel without disposing it (KeyboardInterrupt when supported). */
+  interruptKernelForTab(tabId: string): void
   /** Drop the run queue, reset execution count and scheduled set. Does NOT bump gen. */
   resetQueueState(tabId: string): void
   /** Dispose the kernel if present and forget the tab entirely. */
@@ -172,6 +174,14 @@ export function useTabNotebookRuntime(
     [dispatch, initKernelForTab, get],
   )
 
+  const interruptKernelForTab = useCallback(
+    (tabId: string) => {
+      const k = get(tabId).kernel
+      void k?.interrupt()
+    },
+    [get],
+  )
+
   const disposeTab = useCallback((tabId: string) => {
     const m = runtimesRef.current
     const r = m.get(tabId)
@@ -212,10 +222,11 @@ export function useTabNotebookRuntime(
       scheduledSetOf: (tabId) => get(tabId).scheduledIds,
       initKernelForTab,
       restartKernelForTab,
+      interruptKernelForTab,
       resetQueueState,
       disposeTab,
     }),
-    [get, initKernelForTab, restartKernelForTab, resetQueueState, disposeTab],
+    [get, initKernelForTab, restartKernelForTab, interruptKernelForTab, resetQueueState, disposeTab],
   )
 
   return controller

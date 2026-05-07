@@ -139,7 +139,7 @@ export function Toolbar({
               type="button"
               onClick={onStop}
               disabled={!stopEnabled}
-              title="Stop the running cell and interrupt the kernel"
+              title="Stop running execution (pending cells cleared; Python interrupted when supported)"
             >
               ⏹ Stop
             </button>

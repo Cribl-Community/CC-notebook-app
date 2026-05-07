@@ -45,6 +45,11 @@ type Pending = {
 export class PyodideKernel {
   readonly ready: Promise<void>
   private readonly appPyodideBaseUrl: string
+  /**
+   * Shared 1-byte buffer for Pyodide SIGINT (value 2). Unavailable when
+   * SharedArrayBuffer is missing or blocked by the embedding context.
+   */
+  private readonly interruptSignal: Uint8Array | null
   private worker: Worker
   private pending = new Map<string, Pending>()
   private pendingComplete = new Map<string, (opts: CompletionItem[]) => void>()
@@ -52,6 +57,16 @@ export class PyodideKernel {
   private lastInitError: KernelInitError | null = null
 
   constructor() {
+    let interruptSignal: Uint8Array | null = null
+    try {
+      if (typeof SharedArrayBuffer !== 'undefined') {
+        interruptSignal = new Uint8Array(new SharedArrayBuffer(1))
+      }
+    } catch {
+      interruptSignal = null
+    }
+    this.interruptSignal = interruptSignal
+
     const blob = new Blob([WORKER_SOURCE], { type: 'application/javascript' })
     this.worker = new Worker(URL.createObjectURL(blob))
 
@@ -132,14 +147,18 @@ export class PyodideKernel {
     const criblApiUrl =
       typeof window !== 'undefined' ? (window.CRIBL_API_URL?.trim() ?? '') : ''
 
-    this.worker.postMessage({
+    const initMsg: WorkerInbound = {
       type: 'init',
       pyodideBaseUrl,
       pyodidePackageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
       pyodideLockFileUrl,
       appOrigin: window.location.origin,
       criblApiUrl,
-    } satisfies WorkerInbound)
+      ...(this.interruptSignal
+        ? { interruptSharedArrayBuffer: this.interruptSignal.buffer as SharedArrayBuffer }
+        : {}),
+    }
+    this.worker.postMessage(initMsg)
   }
 
   setInitProgressListener(
@@ -177,6 +196,13 @@ export class PyodideKernel {
       this.pendingComplete.set(id, resolve)
       this.worker.postMessage({ type: 'complete', id, code, cursor } satisfies WorkerInbound)
     })
+  }
+
+  /** Raises KeyboardInterrupt in Python when an interrupt buffer is configured (Pyodide docs: write 2). */
+  interrupt(): Promise<void> {
+    if (!this.interruptSignal) return Promise.resolve()
+    this.interruptSignal[0] = 2
+    return Promise.resolve()
   }
 
   /**

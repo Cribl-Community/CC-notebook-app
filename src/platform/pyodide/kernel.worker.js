@@ -13,6 +13,8 @@
 /* eslint-disable no-var */
 
 let pyodide = null
+/** @type {Uint8Array | null} Shared with main thread for Pyodide keyboard interrupts */
+let _nbInterruptBuf = null
 const COMPLETION_PY = '__NB_COMPLETION_PY__'
 const IOPUB_BOOTSTRAP_PY = '__NB_IOPUB_BOOTSTRAP_PY__'
 
@@ -312,6 +314,16 @@ self.onmessage = async function (e) {
         // Same-origin lock from the shipped `public/pyodide/` tree; avoids CSP blocks on jsDelivr in iframes.
         lockFileURL: msg.pyodideLockFileUrl,
       })
+      if (msg.interruptSharedArrayBuffer) {
+        try {
+          _nbInterruptBuf = new Uint8Array(msg.interruptSharedArrayBuffer)
+          if (typeof pyodide.setInterruptBuffer === 'function') {
+            pyodide.setInterruptBuffer(_nbInterruptBuf)
+          }
+        } catch (_) {
+          _nbInterruptBuf = null
+        }
+      }
       initPhase = 'env'
       postInitProgress('env', 'Configuring environment', 65)
       await pyodide.runPythonAsync(
@@ -355,6 +367,9 @@ self.onmessage = async function (e) {
     if (!pyodide) return
     const execId = msg.id
     const execCount = msg.execution_count | 0
+    if (_nbInterruptBuf) {
+      _nbInterruptBuf[0] = 0
+    }
 
     // Install the IOPub bridge for this execution. Python calls _NB_IOPUB(dict)
     // which lands here as a PyProxy → plain JS object.

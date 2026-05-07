@@ -15,6 +15,7 @@ const noopContext = (
     ready: Promise.resolve(),
     execute: vi.fn().mockResolvedValue({ outputs: [] }),
     complete: vi.fn(),
+    interrupt: vi.fn().mockResolvedValue(undefined),
     dispose: vi.fn(),
   } satisfies KernelPort,
   cellId: 'cell-a' as CellId,
@@ -96,6 +97,7 @@ describe('runNotebookCellAfterReady', () => {
       ready: Promise.resolve(),
       execute: vi.fn().mockImplementation(async () => {}),
       complete: vi.fn(),
+      interrupt: vi.fn().mockResolvedValue(undefined),
       dispose: vi.fn(),
     } satisfies KernelPort
     const dispatch = vi.fn()

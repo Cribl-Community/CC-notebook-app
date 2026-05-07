@@ -39,6 +39,7 @@ function createFakeKernel(): KernelPort {
     ready: Promise.resolve(),
     execute: vi.fn().mockResolvedValue({ outputs: [] }),
     complete: vi.fn().mockResolvedValue([]),
+    interrupt: vi.fn().mockResolvedValue(undefined),
     dispose: vi.fn(),
     setInitProgressListener: vi.fn(),
     getLastInitError: vi.fn().mockReturnValue(null),
@@ -98,6 +99,28 @@ describe('useTabNotebookRuntime', () => {
     expect(factory).toHaveBeenCalledTimes(2)
   })
 
+  it('interruptKernelForTab calls interrupt on the active kernel without disposing', () => {
+    const dispatch = vi.fn()
+    const kernel = createFakeKernel()
+    const factory = vi.fn(() => kernel)
+    const workspace: WorkspaceState = {
+      tabs: [makeTab('a')],
+      activeTabId: 'a',
+    }
+
+    const { result } = renderHook(() => {
+      const ref = useRef(workspace)
+      return useTabNotebookRuntime(dispatch, ref, 'a', factory)
+    })
+
+    act(() => {
+      result.current.interruptKernelForTab('a')
+    })
+
+    expect(kernel.interrupt).toHaveBeenCalledTimes(1)
+    expect(kernel.dispose).not.toHaveBeenCalled()
+  })
+
   it('tracks execution count and scheduled ids per tab', () => {
     const dispatch = vi.fn()
     const workspace: WorkspaceState = {
@@ -131,6 +154,7 @@ describe('useTabNotebookRuntime', () => {
       ready: Promise.resolve(),
       execute: vi.fn().mockResolvedValue({ outputs: [] }),
       complete: vi.fn().mockResolvedValue([]),
+      interrupt: vi.fn().mockResolvedValue(undefined),
       dispose: vi.fn(),
       setInitProgressListener: (listener) => {
         progressListener = listener ?? undefined
@@ -170,6 +194,7 @@ describe('useTabNotebookRuntime', () => {
       ready: Promise.reject(new Error('init failed')),
       execute: vi.fn().mockResolvedValue({ outputs: [] }),
       complete: vi.fn().mockResolvedValue([]),
+      interrupt: vi.fn().mockResolvedValue(undefined),
       dispose: vi.fn(),
       setInitProgressListener: vi.fn(),
       getLastInitError: () => ({ summary: 'Worker import failed', detail: 'stack details' }),

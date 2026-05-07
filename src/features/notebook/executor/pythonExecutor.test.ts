@@ -14,6 +14,7 @@ function makeKernel(emitFromExecute?: (onMsg: IOPubHandler) => void): KernelPort
       return { outputs: [] }
     }),
     complete: vi.fn(async () => []),
+    interrupt: vi.fn(async () => {}),
     dispose: vi.fn(),
   }
 }
