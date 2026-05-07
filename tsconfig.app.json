@@ -26,6 +26,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@app/*": ["./src/app/*"],
+      "@domain/*": ["./src/domain/*"],
       "@features/*": ["./src/features/*"],
       "@platform/*": ["./src/platform/*"],
       "@ports/*": ["./src/ports/*"],

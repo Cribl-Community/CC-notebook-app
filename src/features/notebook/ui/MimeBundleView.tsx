@@ -32,6 +32,7 @@ const SCRIPT_RE = /<script[\s>]/i
  */
 function ScriptedHtmlMime({ data }: { data: string }) {
   const frameId = useRef(`nb_iframe_${Math.random().toString(36).slice(2)}`)
+  const frameRef = useRef<HTMLIFrameElement | null>(null)
   // Start at 0 so script-only frames (e.g. Plotly's init display_data, which
   // contains only <script> tags and no visible DOM) collapse automatically.
   // The resize postMessage will expand this to the real content height.
@@ -77,13 +78,16 @@ function ScriptedHtmlMime({ data }: { data: string }) {
   useEffect(() => {
     const id = frameId.current
     function onMsg(e: MessageEvent) {
-      if (e.data?.type === 'nb-iframe-resize' && e.data?.id === id) {
-        const h = e.data.h as number
-        // If the content height is negligible the frame contains only scripts
-        // with no visible DOM (e.g. Plotly's init display_data). Collapse it
-        // to zero so it doesn't appear as a blank gap in the output.
-        setHeight(h > 10 ? h + 24 : 0)
-      }
+      const frameWindow = frameRef.current?.contentWindow
+      if (!frameWindow || e.source !== frameWindow) return
+      const payload = e.data as { type?: unknown; id?: unknown; h?: unknown } | null
+      if (!payload || payload.type !== 'nb-iframe-resize' || payload.id !== id) return
+      if (typeof payload.h !== 'number' || !Number.isFinite(payload.h) || payload.h < 0) return
+      const h = payload.h
+      // If the content height is negligible the frame contains only scripts
+      // with no visible DOM (e.g. Plotly's init display_data). Collapse it
+      // to zero so it doesn't appear as a blank gap in the output.
+      setHeight(h > 10 ? h + 24 : 0)
     }
     window.addEventListener('message', onMsg)
     return () => window.removeEventListener('message', onMsg)
@@ -96,6 +100,7 @@ function ScriptedHtmlMime({ data }: { data: string }) {
 
   return (
     <iframe
+      ref={frameRef}
       srcDoc={srcdoc}
       sandbox="allow-scripts allow-same-origin"
       className="nb-mime-html-iframe"

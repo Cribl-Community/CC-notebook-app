@@ -19,16 +19,22 @@ change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
        │  features/*      │           │  ports/*         │
        │  (vertical       │  depends  │  interfaces      │
        │   slices)        │─────────▶│  KernelPort, …    │
-       └──────────┬───────┘           └──────────────────┘
-                  │                            ▲
-                  │                            │ implemented by
-                  ▼                            │
-       ┌──────────────────┐                    │
-       │  platform/*      │────────────────────┘
-       │  (adapters)      │
-       │  Pyodide, Cribl, │
-       │  env, static…    │
-       └──────────────────┘
+       └──────────┬───────┘           └─────────┬────────┘
+                  │                              │
+                  │ shared models                │
+                  ▼                              ▼
+       ┌──────────────────┐           ┌──────────────────┐
+       │  domain/*        │           │ platform/adapters│
+       │  transport-level │◀─────────▶│ map concrete I/O │
+       │  DTOs            │           │ to port contracts│
+       └──────────┬───────┘           └─────────┬────────┘
+                  │                              │
+                  ▼                              ▼
+       ┌──────────────────┐           ┌──────────────────┐
+       │  platform/*      │           │ app/providers/*  │
+       │  concrete I/O    │           │ composition/wire │
+       │  Pyodide, Cribl  │           │ default adapters │
+       └──────────────────┘           └──────────────────┘
 ```
 
 ### Why this shape?
@@ -146,6 +152,13 @@ touch the network, `window`, or browser workers directly.
   (`getCriblApiBase`, `isKvMockMode`, `readEnv`).
 - `platform/staticAssets.ts` — resolving static asset URLs under
   `CRIBL_BASE_PATH` vs. local dev.
+- `platform/adapters/` — anti-corruption adapters that map concrete
+  `platform/*` payloads into `ports/*` contract DTOs.
+
+### `src/domain/`
+
+Pure transport/domain DTOs shared across `ports/*`, features, and adapters.
+This avoids `ports/*` importing from `platform/*` or feature internals.
 
 ### `src/ports/`
 
@@ -177,7 +190,7 @@ could be reused outside this feature pie should land here.
 
 ## Import rules
 
-- `tsconfig.app.json > paths` maps `@/*`, `@app/*`, `@features/*`,
+- `tsconfig.app.json > paths` maps `@/*`, `@app/*`, `@domain/*`, `@features/*`,
   `@platform/*`, `@ports/*`, `@ui/*`, `@testing/*` — prefer these
   aliases whenever an import would otherwise reach across a layer.
 - Layering contract:

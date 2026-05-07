@@ -29,6 +29,7 @@ src/
   app/           Composition root + cross-cutting React providers
     App.tsx
     providers/   AiCodeProvider, DialogProvider, EnvProvider, ThemeProvider
+  domain/        Shared DTOs for port contracts
   features/      Product features — one folder per vertical
     notebook/      model, reducer, codec, executor, hooks, ui (NotebookPage lives here)
     library/       manifest + NotebookSidebar + useNotebookLibrary
@@ -47,7 +48,7 @@ src/
 ```
 
 Import aliases (`tsconfig.app.json > paths`):
-`@/*`, `@app/*`, `@features/*`, `@platform/*`, `@ports/*`, `@ui/*`,
+`@/*`, `@app/*`, `@domain/*`, `@features/*`, `@platform/*`, `@ports/*`, `@ui/*`,
 `@testing/*`. Prefer aliases over relative paths that cross layer
 boundaries so the layering is obvious in every import.
 
