@@ -32,9 +32,32 @@ CI should use the same JSON produced locally, stored as a **base64-encoded secre
 npm run e2e
 ```
 
-- **Smoke / regression:** `e2e/specs/smoke.spec.ts` (tags `@smoke`, `@regression`).
-- **Performance budget:** `e2e/specs/performance.spec.ts` — wall-clock to visible shell; override with `CRIBL_E2E_PERF_SHELL_MS`.
-- **New features:** copy `e2e/specs/feature-placeholder.spec.ts` or add specs and filter with `npx playwright test --grep @your-tag`.
+Skip the slow Pyodide kernel assertion (~3 min cap):
+
+```bash
+npm run e2e:quick
+```
+
+### What the specs cover
+
+| Area | File | Tags |
+|------|------|------|
+| Shell mount / chrome | `e2e/specs/smoke.spec.ts` | `@smoke`, `@regression` |
+| Time-to-visible shell | `e2e/specs/performance.spec.ts` | `@performance` |
+| Welcome, examples, new tab, toolbar, editor, kernel ready | `e2e/specs/workflows.spec.ts` | `@regression`, `@slow` on kernel test |
+
+Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide).
+
+### Keeping E2E current (features & refactors)
+
+When you change **user-visible behavior** (welcome copy, tab rules, toolbar labels, example flow, kernel lifecycle, saved-notebook UX), treat Playwright like unit tests:
+
+1. Update or add specs under `e2e/specs/` in the same PR when behavior changes (or file a follow-up issue if staging-only verification must wait).
+2. Prefer **stable selectors**: roles and labels (`getByRole`, `aria-label`), existing classes (`.nb-toolbar`), or `data-testid` on stable shells — avoid brittle CSS chains.
+3. Tag focused suites with `@smoke` (minimal CI subset), `@regression` (full staging suite), or `@slow` (Pyodide-heavy); filter with `--grep` / `--grep-invert`.
+4. Run `npm run e2e:quick` before merge when full kernel coverage is unnecessary; run full `npm run e2e` for release or risky kernel/editor changes.
+
+See also [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) (Testing + feature recipe).
 
 Reports and traces land under `playwright-report/` and `test-results/` (gitignored).
 

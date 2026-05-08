@@ -33,6 +33,12 @@ export async function waitForAppShell(page: Page, timeoutMs = 120_000): Promise<
   return shell
 }
 
+/** Frame containing the notebook DOM (same-origin widget iframe or top-level in dev). */
+export async function getNotebookFrame(page: Page, timeoutMs = 120_000): Promise<Frame> {
+  const { frame } = await findVisibleShell(page, timeoutMs)
+  return frame
+}
+
 export function stagingStartUrl(): string {
   const base = process.env.CRIBL_E2E_BASE_URL?.replace(/\/$/, '')
   if (!base) {

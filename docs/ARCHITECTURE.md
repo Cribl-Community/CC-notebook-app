@@ -247,8 +247,9 @@ User clicks Run
 - Integration smoke: `src/testing/appSmoke.test.tsx` renders the whole
   App shell with stubbed KV and a fake `KernelFactory`.
 - **Staging E2E:** Playwright specs under `e2e/specs/` exercise a live Cribl
-  tenant (iframe + real shell). Auth is gitignored; flow and CI wiring are
-  documented in [`docs/E2E_STAGING.md`](./E2E_STAGING.md).
+  tenant (iframe + real shell): shell mount, welcome/examples, new notebook tab,
+  toolbar, CodeMirror, Pyodide readiness, and a timing budget. Auth is gitignored;
+  flow and **when to update specs** are documented in [`docs/E2E_STAGING.md`](./E2E_STAGING.md).
 - Unit tests you can copy from as templates:
   - `src/features/notebook/hooks/useTabNotebookRuntime.test.tsx`
   - `src/features/notebook/hooks/useNotebookWorkspace.test.tsx`
@@ -272,6 +273,9 @@ User clicks Run
 4. Import using `@features/your-feature/...` aliases; don't reach into
    another feature's internals.
 5. Add a test next to each hook/executor/reducer you add.
+6. If the change affects **primary UX** (welcome, tabs, sidebar, toolbar,
+   examples, kernel banner, or load performance), extend or adjust Playwright
+   specs under `e2e/specs/` per [`docs/E2E_STAGING.md`](./E2E_STAGING.md).
 
 ## Adding a new cell execution mode (recipe)
 
