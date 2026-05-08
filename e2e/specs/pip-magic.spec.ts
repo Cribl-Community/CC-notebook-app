@@ -20,17 +20,15 @@ test.describe('@regression pip magic', () => {
     await nb.locator('.nb-tab-title').filter({ hasText: 'Untitled' }).waitFor({ state: 'visible', timeout: 60_000 })
     await waitForKernelReady(nb)
 
+    const stderr = nb.locator('.nb-cell').first().locator('.nb-output-pre.nb-output-stream--stderr')
+
     await fillFirstCodeCell(page, nb, '%pip freeze')
     await clickRunFirstCodeCell(nb)
-    await expect(
-      nb.locator('.nb-output-pre.nb-output-stream--stderr').filter({ hasText: /pip install/i }),
-    ).toBeVisible({ timeout: 60_000 })
+    await expect(stderr.filter({ hasText: /got freeze/ })).toBeVisible({ timeout: 60_000 })
 
     await fillFirstCodeCell(page, nb, '!pip list')
     await clickRunFirstCodeCell(nb)
-    await expect(nb.locator('.nb-output-pre.nb-output-stream--stderr').filter({ hasText: /pip install/i })).toHaveCount(
-      2,
-      { timeout: 60_000 },
-    )
+    // Re-running the cell replaces prior outputs; only the latest stderr remains.
+    await expect(stderr.filter({ hasText: /got list/ })).toBeVisible({ timeout: 60_000 })
   })
 })

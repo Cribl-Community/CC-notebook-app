@@ -101,9 +101,9 @@ export async function waitForKernelReady(nb: Frame, timeoutMs = 180_000): Promis
   })
 }
 
-/** Replace source of the first CodeMirror cell (new notebooks start with one empty code cell). */
+/** Replace source of the first code cell’s editor (scoped so extra cells do not steal focus). */
 export async function fillFirstCodeCell(page: Page, nb: Frame, source: string): Promise<void> {
-  const editor = nb.locator('.cm-content').first()
+  const editor = nb.locator('.nb-cell').first().locator('.cm-content').first()
   await editor.waitFor({ state: 'visible', timeout: 90_000 })
   await editor.click()
   const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
@@ -113,7 +113,7 @@ export async function fillFirstCodeCell(page: Page, nb: Frame, source: string): 
 }
 
 export async function clickRunFirstCodeCell(nb: Frame): Promise<void> {
-  const run = nb.getByTitle('Run cell (Shift+Enter)')
+  const run = nb.locator('.nb-cell').first().getByTitle('Run cell (Shift+Enter)')
   await expect(run).toBeEnabled({ timeout: 30_000 })
   await run.click()
 }
