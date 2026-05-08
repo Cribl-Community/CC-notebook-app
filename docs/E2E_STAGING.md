@@ -33,11 +33,29 @@ CI should use the same JSON produced locally, stored as a **base64-encoded secre
 npm run e2e
 ```
 
-Skip the slow Pyodide kernel assertion (~3 min cap):
+Full regression runs in **two phases**: `e2e:quick` (everything except `@slow`, **parallel** with multiple workers) then `e2e:slow` (**one worker**) so two Pyodide-heavy tests never compete on the same machine.
+
+Skip the slow Pyodide-heavy specs entirely (~multi-minute):
 
 ```bash
 npm run e2e:quick
 ```
+
+Run only `@slow` specs (single worker):
+
+```bash
+npm run e2e:slow
+```
+
+### Parallelism and host load
+
+| Variable | Purpose |
+|----------|---------|
+| `CRIBL_E2E_WORKERS` | Worker count for `e2e:quick` (and any direct `playwright test` without `--workers`). Integer ≥ 1, or a Playwright percentage such as `50%`. **Default: 2** if unset. |
+
+The `@slow` phase always uses **`--workers=1`** via `npm run e2e:slow`. GitHub Actions sets **`CRIBL_E2E_WORKERS=4`** only for the quick phase so the runner stays within typical `ubuntu-latest` capacity while shortening wall-clock time.
+
+If the machine struggles (memory, CPU fans), set `CRIBL_E2E_WORKERS=1` in `e2e/.env` or the environment before `e2e:quick`.
 
 ### What the specs cover
 
@@ -107,4 +125,6 @@ Workflow: **Staging E2E** (`workflow_dispatch`). Required secrets:
 - `CRIBL_E2E_BASE_URL`
 - `CRIBL_E2E_STORAGE_STATE_B64` — `base64 -i e2e/.auth/storageState.json | pbcopy` (macOS) or equivalent
 
-Optional repository variables: `CRIBL_E2E_START_PATH`, `CRIBL_E2E_START_URL`, `CRIBL_E2E_PERF_SHELL_MS`, `CRIBL_E2E_POST_LOGIN_SELECTOR`.
+Optional repository variables: `CRIBL_E2E_START_PATH`, `CRIBL_E2E_START_URL`, `CRIBL_E2E_PERF_SHELL_MS`, `CRIBL_E2E_POST_LOGIN_SELECTOR`, `CRIBL_E2E_WORKERS` (quick phase only; defaults to **`4`** in the workflow if unset).
+
+The workflow runs **`npm run e2e:quick`** (parallel, respects `CRIBL_E2E_WORKERS`) then **`npm run e2e:slow`** (single worker). See [Running tests](#running-tests).

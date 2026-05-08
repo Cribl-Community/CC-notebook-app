@@ -42,7 +42,7 @@ jobs:
       - name: Run staging E2E (parallel, no @slow)
         env:
           CI: 'true'
-          CRIBL_E2E_WORKERS: '4'
+          CRIBL_E2E_WORKERS: ${{ vars.CRIBL_E2E_WORKERS || '4' }}
           CRIBL_E2E_BASE_URL: ${{ secrets.CRIBL_E2E_BASE_URL }}
           CRIBL_E2E_START_PATH: ${{ vars.CRIBL_E2E_START_PATH }}
           CRIBL_E2E_START_URL: ${{ vars.CRIBL_E2E_START_URL }}
