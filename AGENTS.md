@@ -24,6 +24,12 @@ other's internals or into `platform/*` directly — depend on a port.
 
 Run tests with `npm test` (Vitest + JSDOM + React Testing Library).
 
+**Staging E2E:** Playwright drives a real tenant (Apps iframe + notebook shell).
+Use `npm run e2e:auth` once to save session state (gitignored), then `npm run e2e`
+(or `npm run e2e:quick` to skip the slow Pyodide-ready assertion).
+Deploy artifacts with `npm run deploy:staging` using env/CI secrets only.
+Coverage and maintenance rules (when to update specs for new features): [`docs/E2E_STAGING.md`](./docs/E2E_STAGING.md).
+
 Pyodide in this repo has intentional non-default behavior for sandboxed Cribl
 deployments. Before touching worker/runtime upgrade paths, read
 [`docs/PYODIDE_CUSTOMIZATIONS.md`](./docs/PYODIDE_CUSTOMIZATIONS.md).

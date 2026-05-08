@@ -13,6 +13,15 @@ dist-ssr
 public/pyodide
 public/Examples/manifest.json
 *.local
+.env.e2e
+e2e/.env
+
+# Playwright / staging E2E (never commit auth or local secrets)
+e2e/.auth/
+e2e/.auth/login-complete
+playwright-report/
+test-results/
+blob-report/
 
 # Editor directories and files
 .vscode/*

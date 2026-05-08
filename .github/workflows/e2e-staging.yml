@@ -1,0 +1,61 @@
+# Manual staging regression against a live Cribl tenant (Playwright).
+# Configure repository secrets first — never commit credentials or storageState JSON.
+
+name: Staging E2E
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Restore Playwright storage state
+        env:
+          CRIBL_E2E_STORAGE_STATE_B64: ${{ secrets.CRIBL_E2E_STORAGE_STATE_B64 }}
+        run: |
+          mkdir -p e2e/.auth
+          if [ -z "$CRIBL_E2E_STORAGE_STATE_B64" ]; then
+            echo "::error::Set GitHub Actions secret CRIBL_E2E_STORAGE_STATE_B64 (base64 of storageState.json from npm run e2e:auth)."
+            exit 1
+          fi
+          echo "$CRIBL_E2E_STORAGE_STATE_B64" | base64 -d > e2e/.auth/storageState.json
+
+      - name: Run staging E2E
+        env:
+          CI: 'true'
+          CRIBL_E2E_BASE_URL: ${{ secrets.CRIBL_E2E_BASE_URL }}
+          CRIBL_E2E_START_PATH: ${{ vars.CRIBL_E2E_START_PATH }}
+          CRIBL_E2E_START_URL: ${{ vars.CRIBL_E2E_START_URL }}
+          CRIBL_E2E_POST_LOGIN_SELECTOR: ${{ vars.CRIBL_E2E_POST_LOGIN_SELECTOR }}
+          CRIBL_E2E_PERF_SHELL_MS: ${{ vars.CRIBL_E2E_PERF_SHELL_MS }}
+        run: |
+          if [ -z "$CRIBL_E2E_BASE_URL" ]; then
+            echo "::error::Set GitHub Actions secret CRIBL_E2E_BASE_URL (staging origin, no trailing slash)."
+            exit 1
+          fi
+          npm run e2e
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/

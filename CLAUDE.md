@@ -12,11 +12,21 @@ npm run preview    # Preview production build locally
 npm run package    # Build + create .tgz in build/ for Cribl deployment
 npm test           # Vitest (JSDOM + React Testing Library) — UI hooks,
                    # providers, reducer, executors, and an App smoke test
+npm run e2e:install  # Playwright browsers (once per machine)
+npm run e2e:auth     # Save staging login session to e2e/.auth/ (headed)
+npm run e2e          # Playwright vs staging (needs e2e/.env + saved session)
+npm run e2e:quick    # Same, minus @slow Pyodide kernel assertion
+npm run e2e:report # Open last Playwright HTML report
+npm run deploy:staging   # Upload build/*.tgz using CRIBL_DEPLOY_URL + CRIBL_API_TOKEN
 ```
 
 Tests live next to the code they cover (`*.test.ts` / `*.test.tsx`) and
 run against a JSDOM environment. Setup lives in `src/testing/setup.ts`
 and wires up `@testing-library/jest-dom` matchers + automatic cleanup.
+
+Staging regression and performance budgets use Playwright (`e2e/`); see
+[`docs/E2E_STAGING.md`](./docs/E2E_STAGING.md). Never commit `e2e/.env`,
+`e2e/.auth/`, or API tokens.
 
 ## Architecture
 
