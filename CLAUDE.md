@@ -15,6 +15,7 @@ npm test           # Vitest (JSDOM + React Testing Library) — UI hooks,
 npm run e2e:install  # Playwright browsers (once per machine)
 npm run e2e:auth     # Save staging login session to e2e/.auth/ (headed)
 npm run e2e          # Playwright vs staging (needs e2e/.env + saved session)
+npm run e2e:report # Open last Playwright HTML report
 npm run deploy:staging   # Upload build/*.tgz using CRIBL_DEPLOY_URL + CRIBL_API_TOKEN
 ```
 

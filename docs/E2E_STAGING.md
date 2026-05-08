@@ -8,7 +8,8 @@ This app ships as a Cribl App Platform `.tgz` and runs inside a **parent** UI wi
 2. One-time browser install: `npm run e2e:install`.
 3. Copy `e2e/.env.example` → `e2e/.env` (the file is gitignored). Set at least:
    - `CRIBL_E2E_BASE_URL` — staging origin, e.g. `https://your-org.cribl-staging.cloud`
-   - `CRIBL_E2E_START_PATH` — usually `/apps`, or a deep link that opens the notebook widget after login
+   - `CRIBL_E2E_START_PATH` — `/apps` is fine: after login the harness clicks the installed **Jupyter notebook app** row (link href contains `notebook-app` by default).
+   - Optional `CRIBL_E2E_APP_PACK_PATH` — e.g. `/apps/a/notebook-app-1-0-68-tgz` to skip the catalog when you want a fixed URL after version bumps.
 
 Never commit `e2e/.env`, tokens, or `e2e/.auth/storageState.json`.
 
@@ -36,6 +37,12 @@ npm run e2e
 - **New features:** copy `e2e/specs/feature-placeholder.spec.ts` or add specs and filter with `npx playwright test --grep @your-tag`.
 
 Reports and traces land under `playwright-report/` and `test-results/` (gitignored).
+
+Open the last HTML report: `npm run e2e:report` (or `npx playwright show-report`).
+
+Selectors resolve the notebook shell by scanning **all frames** for `.nb-app-frame` or
+`data-testid="notebook-app-root"` so tenants whose iframe `src` does not contain `app-ui`,
+or builds without the test id, still work.
 
 ## Packaging and deploy
 

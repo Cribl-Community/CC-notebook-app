@@ -15,6 +15,7 @@
     "e2e": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging",
     "e2e:auth": "playwright test --config=e2e/playwright.setup.config.ts --project=setup",
     "e2e:install": "playwright install chromium",
+    "e2e:report": "playwright show-report",
     "update:cribl-api": "node scripts/cribl-openapi-to-catalog.mjs",
     "update:cribl-api:release": "CRIBL_OPENAPI_CHANNEL=release node scripts/cribl-openapi-to-catalog.mjs"
   },
