@@ -1,11 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
+import type { SearchService } from '@ports/SearchService'
+import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import { createCriblSearchExecutor } from './criblSearchExecutor'
 import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
 import { CRIBL_SEARCH_MIME } from '@platform/pyodide/types'
-import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '@platform/cribl/searchJobs'
-import { translateEnglishToKql } from '@platform/cribl/aiTranslate'
-import { getCriblApiBase } from '@platform/cribl/kvstore'
 import {
   buildCriblSearchDataframeCode,
   encodeRowsJsonForPythonBase64,
@@ -34,17 +33,22 @@ function makeKernel(execute: KernelPort['execute']): KernelPort {
   } satisfies KernelPort
 }
 
+function makeSearchService(partial: Partial<SearchService> = {}): SearchService {
+  return {
+    runSearch: vi.fn().mockResolvedValue({ rows: [], columns: ['a'], totalRecords: 0 }),
+    translateEnglishToKql: vi.fn(),
+    ...partial,
+  }
+}
+
 const baseDeps = {
   parseCriblSearchMagic,
   buildCriblSearchDataframeCode,
   encodeRowsJsonForPythonBase64,
   filterPyodidePackageChatter,
-  runCriblSearchJob: vi
-    .fn<typeof runCriblSearchJob>()
-    .mockResolvedValue({ rows: [], columns: ['a'], totalRecords: 0 }),
-  translateEnglishToKql: vi.fn<typeof translateEnglishToKql>(),
-  getCriblApiBase: vi.fn<typeof getCriblApiBase>().mockReturnValue(''),
-  criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_MAX_ROWS,
+  searchService: makeSearchService(),
+  criblApiBase: '',
+  criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS,
   wantsCriblSearchJinjaTemplating,
   runCriblSearchJinjaInKernel: vi.fn<typeof runCriblSearchJinjaInKernel>(),
 } satisfies Parameters<typeof createCriblSearchExecutor>[0]
@@ -69,11 +73,15 @@ describe('createCriblSearchExecutor', () => {
     const jinja = vi
       .fn<typeof runCriblSearchJinjaInKernel>()
       .mockResolvedValue({ ok: true, text: 'rendered|q' } as Awaited<ReturnType<typeof runCriblSearchJinjaInKernel>>)
-    const job = vi.fn<typeof runCriblSearchJob>().mockResolvedValue({ rows: [], columns: ['a'], totalRecords: 0 })
+    const runSearch = vi.fn<SearchService['runSearch']>().mockResolvedValue({
+      rows: [],
+      columns: ['a'],
+      totalRecords: 0,
+    })
     const ex = createCriblSearchExecutor({
       ...baseDeps,
       runCriblSearchJinjaInKernel: jinja,
-      runCriblSearchJob: job,
+      searchService: makeSearchService({ runSearch }),
     })
     const source = '%%cribl_search\nwhere a == {{ v }}\n'
     const kernel = makeKernel(vi.fn().mockImplementation(async () => ({ outputs: [] })))
@@ -83,14 +91,16 @@ describe('createCriblSearchExecutor', () => {
       'where a == {{ v }}',
       expect.objectContaining({ executionCount: 0, emitIOPub: ctx.emitIOPub }),
     )
-    expect(job).toHaveBeenCalledWith(expect.objectContaining({ query: 'rendered|q' }))
+    expect(runSearch).toHaveBeenCalledWith(expect.objectContaining({ query: 'rendered|q' }))
     expect(out).toBe('ok')
   })
 
   it('emits failed output immediately for cors/network errors', async () => {
     const ex = createCriblSearchExecutor({
       ...baseDeps,
-      runCriblSearchJob: vi.fn<typeof runCriblSearchJob>().mockRejectedValue(new TypeError('Failed to fetch')),
+      searchService: makeSearchService({
+        runSearch: vi.fn().mockRejectedValue(new TypeError('Failed to fetch')),
+      }),
     })
     const emitIOPub = vi.fn()
     const dispatchNotebook = vi.fn()
@@ -113,11 +123,14 @@ describe('createCriblSearchExecutor', () => {
   })
 
   it('emits JSON response preview as application/json display_data', async () => {
+    const runSearch = vi.fn<SearchService['runSearch']>().mockResolvedValue({
+      rows: [{ id: 1, name: 'alpha' }],
+      columns: ['id', 'name'],
+      totalRecords: 1,
+    })
     const ex = createCriblSearchExecutor({
       ...baseDeps,
-      runCriblSearchJob: vi
-        .fn<typeof runCriblSearchJob>()
-        .mockResolvedValue({ rows: [{ id: 1, name: 'alpha' }], columns: ['id', 'name'], totalRecords: 1 }),
+      searchService: makeSearchService({ runSearch }),
     })
     const emitIOPub = vi.fn()
     const out = await ex.execute({
@@ -136,15 +149,14 @@ describe('createCriblSearchExecutor', () => {
   })
 
   it('lang=english translate_only=true does not run search and emits translate-only completion', async () => {
-    const translate = vi.fn<typeof translateEnglishToKql>().mockResolvedValue('dataset=x | limit 99')
-    const job = vi.fn<typeof runCriblSearchJob>()
+    const translate = vi.fn<SearchService['translateEnglishToKql']>().mockResolvedValue('dataset=x | limit 99')
+    const runSearch = vi.fn<SearchService['runSearch']>()
     const emitIOPub = vi.fn()
     const dispatchNotebook = vi.fn()
     const ex = createCriblSearchExecutor({
       ...baseDeps,
-      translateEnglishToKql: translate,
-      getCriblApiBase: vi.fn().mockReturnValue('https://api.example/v1'),
-      runCriblSearchJob: job,
+      searchService: makeSearchService({ translateEnglishToKql: translate, runSearch }),
+      criblApiBase: 'https://api.example/v1',
     })
     const source =
       '%%cribl_search lang=english translate_only=true dataset=cribl_search_sample\nshow me stuff\n'
@@ -158,7 +170,7 @@ describe('createCriblSearchExecutor', () => {
 
     expect(out).toBe('ok')
     expect(translate).toHaveBeenCalledWith('show me stuff', { datasetHint: 'cribl_search_sample' })
-    expect(job).not.toHaveBeenCalled()
+    expect(runSearch).not.toHaveBeenCalled()
     expect(dispatchNotebook).toHaveBeenCalledWith({ type: 'FINISH_CELL', id: 'c1', execution_count: 3 })
     const completed = emitIOPub.mock.calls.find((call) => {
       const d = call[0]?.data?.[CRIBL_SEARCH_MIME]
@@ -178,15 +190,16 @@ describe('createCriblSearchExecutor', () => {
   })
 
   it('lang=english without translate_only still runs search after translation', async () => {
-    const translate = vi.fn<typeof translateEnglishToKql>().mockResolvedValue('dataset=x | limit 2')
-    const job = vi
-      .fn<typeof runCriblSearchJob>()
-      .mockResolvedValue({ rows: [{ a: 1 }], columns: ['a'], totalRecords: 1 })
+    const translate = vi.fn<SearchService['translateEnglishToKql']>().mockResolvedValue('dataset=x | limit 2')
+    const runSearch = vi.fn<SearchService['runSearch']>().mockResolvedValue({
+      rows: [{ a: 1 }],
+      columns: ['a'],
+      totalRecords: 1,
+    })
     const ex = createCriblSearchExecutor({
       ...baseDeps,
-      translateEnglishToKql: translate,
-      getCriblApiBase: vi.fn().mockReturnValue('https://api.example/v1'),
-      runCriblSearchJob: job,
+      searchService: makeSearchService({ translateEnglishToKql: translate, runSearch }),
+      criblApiBase: 'https://api.example/v1',
     })
     const source = '%%cribl_search lang=english\nnatural language prompt\n'
     await ex.execute({
@@ -196,6 +209,6 @@ describe('createCriblSearchExecutor', () => {
     })
 
     expect(translate).toHaveBeenCalled()
-    expect(job).toHaveBeenCalledWith(expect.objectContaining({ query: 'dataset=x | limit 2' }))
+    expect(runSearch).toHaveBeenCalledWith(expect.objectContaining({ query: 'dataset=x | limit 2' }))
   })
 })

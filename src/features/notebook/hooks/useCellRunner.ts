@@ -3,9 +3,12 @@ import type { Dispatch, MutableRefObject } from 'react'
 import type { IOPubMessage } from '@platform/pyodide/types'
 import type { CellId, NotebookAction, NotebookState } from '@features/notebook/model/types'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
+import { createDefaultCellExecutors } from '@features/notebook/executor/executorRegistry'
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
 import type { WorkspaceAction, WorkspaceState, NotebookTab } from '@features/notebook/reducer/tabWorkspace'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
+// eslint-disable-next-line no-restricted-imports -- notebook runtime reads ports from composition root
+import { useEnv, useSearchService } from '@app/providers'
 
 export interface CellRunnerController {
   /** Enqueue one cell for execution on its tab's kernel. */
@@ -49,6 +52,12 @@ export interface UseCellRunnerArgs {
  */
 export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
   const { runtime, workspaceRef, activeTabIdRef, dispatch, activeTab, state } = args
+  const { apiBase } = useEnv()
+  const searchService = useSearchService()
+  const cellExecutors = useMemo(
+    () => createDefaultCellExecutors(searchService, apiBase),
+    [searchService, apiBase],
+  )
 
   const runCell = useCallback(
     (id: CellId) => {
@@ -112,6 +121,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
               emitIOPub,
               isStale: () => runtime.generationOf(tid) !== myGen,
               dispatchNotebook: dispatchTabNotebook,
+              executors: cellExecutors,
             })
             if (outcome === 'error') {
               runtime.scheduledSetOf(tid).clear()
@@ -150,7 +160,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
           console.error(e)
         })
     },
-    [runtime, workspaceRef, activeTabIdRef, dispatch],
+    [runtime, workspaceRef, activeTabIdRef, dispatch, cellExecutors],
   )
 
   const runCellAndAdvance = useCallback(

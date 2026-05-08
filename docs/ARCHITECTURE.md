@@ -70,6 +70,12 @@ change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
   - `AiCodeProvider` / `useAiCodeService` — injects an `AiCodeService`
     implementation. Production: `riptideAiCodeService`. Tests pass a
     stub via the `value` prop.
+  - `SearchProvider` / `useSearchService` — injects `SearchService` for
+    `%%cribl_search`. Production: `criblSearchService` in
+    `platform/adapters/searchServiceAdapter.ts`.
+  - `KernelProvider` / `useKernelFactory` / `useOptionalKernelFactory` —
+    injects `KernelFactory` (Pyodide). Notebook hooks fall back to an
+    explicit factory argument in unit tests.
 
 ### `src/features/`
 
@@ -90,9 +96,9 @@ change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
     - `cellExecutor.ts` — `CellExecutor` / `CellRunOutcome` interfaces.
     - `pythonExecutor.ts` — default kernel.execute() path.
     - `criblSearchExecutor.ts` — `%cribl_search` magic.
-    - `executorRegistry.ts` — priority-ordered list; specialized
-      executors come first, the Python executor matches everything as
-      a fallthrough.
+    - `executorRegistry.ts` — `createDefaultCellExecutors(searchService,
+      criblApiBase)` builds the ordered list (cribl-api → cribl-search →
+      Python). Specialized matchers come before the catch-all Python executor.
     - `runNotebookCell.ts` — thin dispatcher that picks an executor
       and delegates.
   - `hooks/` — React hooks orchestrating the page.
@@ -100,9 +106,12 @@ change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
       (`workspaceRef`, `activeTabIdRef`) + dispatch helpers.
     - `useTabNotebookRuntime` — per-tab Pyodide lifecycle
       (`TabRuntimeController`: kernel, generation, queue, execution
-      count, scheduled set). Accepts a `KernelFactory` for tests.
+      count, scheduled set). Uses `KernelProvider` in production; accepts an
+      optional `KernelFactory` as the fourth argument for tests.
     - `useCellRunner` — `runCell` / `runCellAndAdvance` / `runAll` /
-      `restartKernel` / `stopExecution` / `canStopExecution`.
+      `restartKernel` / `stopExecution` / `canStopExecution`. Builds the
+      executor list from `useSearchService` + `useEnv().apiBase` so
+      `criblSearchExecutor` calls the port, not `platform/cribl/*` directly.
   - `ui/` — the React components that paint the page.
     `NotebookPage.tsx` is the page composition; `Toolbar`, `CellList`,
     `CellView`, `NotebookTabs`, `NotebookDialog`, …
@@ -115,6 +124,8 @@ change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
 - `cribl-search/` — parser/editor/renderer for the `%cribl_search`
   magic. Used by the executor and by the CodeMirror KQL highlighter
   in `ui/editor/`.
+- `cribl-api/` — `%%cribl_api` cell magic: OpenAPI-backed path completion,
+  HTTP execution, and integration with notebook Jinja helpers.
 - `ai-riptide/` — Cribl Riptide integration.
   - `riptideService.ts` — raw request/response helpers.
   - `aiCodeAdapter.ts` — `riptideAiCodeService` implementing the
@@ -170,7 +181,7 @@ no coupling to a specific adapter.
 | `KernelPort` | Python kernel lifecycle + execute/complete | `PyodideKernelAdapter` |
 | `NotebookRepo` | Save/load notebooks (+ manifest) | `notebookLibrary.ts` (Cribl KV) |
 | `AiCodeService` | Natural-language → Python, error-fix suggestions | `riptideAiCodeService` |
-| `SearchService` | Cribl Search job orchestration | `platform/cribl/searchJobs` |
+| `SearchService` | Cribl Search job orchestration | `criblSearchService` (`platform/adapters/searchServiceAdapter.ts`) |
 | `DialogService` | alert / confirm / prompt | `DialogProvider` |
 | `EnvService` | Env snapshot (API base, KV mock, hosted flag) | `readEnv()` |
 
@@ -208,6 +219,24 @@ could be reused outside this feature pie should land here.
   `@features/cribl-search/*`, etc.). Cross-slice reaches into private
   internals are a smell — extract a helper into the consumer's own
   slice or into `ui/` first.
+
+### Known layering drift (intentional / in progress)
+
+- Many feature modules still import `@platform/*` (especially Pyodide MIME
+  types and KV helpers). Prefer `ports/` + `domain/` + providers when
+  touching those call sites.
+- `platform/pyodide/PyodideKernel.ts` imports `outputArea` from the notebook
+  feature so IOPub folding stays single-sourced (see notebook reducer above).
+- `platform/adapters/notebookRepoAdapter.ts` currently delegates to
+  `@features/library/notebookLibrary` helpers — consolidation toward a
+  thinner adapter is future work.
+
+### Notebook hooks and `app/providers`
+
+`NotebookPage`, `useCellRunner`, and `useTabNotebookRuntime` import
+`@app/providers` to read port implementations from React context. ESLint may
+warn on these imports; they are an explicit exception so features stay free of
+direct `platform/*` wiring for search and kernel defaults.
 
 ## Execution pipeline (mental model)
 

@@ -14,6 +14,7 @@ import { formatGeneratedPythonSource } from '@features/ai-riptide/riptideService
 import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
 import { runRiptidePromptJinjaInKernel } from '@features/notebook/jinjaInKernel'
 import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristic'
+// eslint-disable-next-line no-restricted-imports -- shell reads ports from composition root
 import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useCellRunner } from '@features/notebook/hooks/useCellRunner'

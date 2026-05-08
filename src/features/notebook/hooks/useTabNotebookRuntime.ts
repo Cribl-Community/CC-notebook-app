@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { Dispatch, MutableRefObject } from 'react'
 import type { KernelFactory, KernelPort } from '@ports/KernelPort'
-import { pyodideKernelFactory } from '@platform/pyodide/PyodideKernelAdapter'
+// eslint-disable-next-line no-restricted-imports -- optional KernelFactory from composition root
+import { useOptionalKernelFactory } from '@app/providers'
 import type { CellId } from '@features/notebook/model/types'
 import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 
@@ -69,8 +70,16 @@ export function useTabNotebookRuntime(
   dispatch: Dispatch<WorkspaceAction>,
   workspaceRef: MutableRefObject<WorkspaceState>,
   tabIdsKey: string,
-  kernelFactory: KernelFactory = pyodideKernelFactory,
+  kernelFactoryArg?: KernelFactory,
 ): TabRuntimeController {
+  const kernelFactoryFromContext = useOptionalKernelFactory()
+  const kernelFactory = kernelFactoryArg ?? kernelFactoryFromContext
+  if (!kernelFactory) {
+    throw new Error(
+      'Notebook kernel factory missing: wrap the tree with <KernelProvider> or pass a KernelFactory as the fourth argument (tests).',
+    )
+  }
+
   const runtimesRef = useRef<Map<string, TabRuntime>>(new Map())
 
   const get = useCallback((tabId: string): TabRuntime => {
