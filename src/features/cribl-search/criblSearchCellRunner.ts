@@ -1,8 +1,5 @@
-import {
-  CRIBL_SEARCH_MIME,
-  type CriblSearchPayload,
-  type IOPubMessage,
-} from '@platform/pyodide/types'
+import { CRIBL_SEARCH_MIME, type CriblSearchPayload } from '@/domain/criblSearchMime'
+import type { IOPubMessage } from '@ports/KernelPort'
 
 export function criblSearchPlainSummary(p: CriblSearchPayload): string {
   if (p.kind === 'running') return `Cribl Search: ${p.label}`

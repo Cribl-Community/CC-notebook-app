@@ -1,7 +1,7 @@
 import type { Cell, CellId, NotebookAction } from '@features/notebook/model/types'
 import { CodeCell } from '@features/notebook/ui/CodeCell'
 import { MarkdownCell } from '@features/notebook/ui/MarkdownCell'
-import type { CompletionItem } from '@platform/pyodide/types'
+import type { CompletionItem } from '@ports/KernelPort'
 
 interface CellListProps {
   cells: Cell[]

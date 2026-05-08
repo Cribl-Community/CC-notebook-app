@@ -11,7 +11,7 @@ This app ships as a Cribl App Platform `.tgz` and runs inside a **parent** UI wi
    - `CRIBL_E2E_START_PATH` — `/apps` is fine: after login the harness clicks the installed **Jupyter notebook app** row (link href contains `notebook-app` by default).
    - Optional `CRIBL_E2E_APP_PACK_PATH` — e.g. `/apps/a/notebook-app-1-0-68-tgz` to skip the catalog when you want a fixed URL after version bumps.
 
-Never commit `e2e/.env`, tokens, or `e2e/.auth/storageState.json`.
+Never commit `e2e/.env`, tokens, `e2e/.auth/storageState.json`, or `e2e/.auth/captured-credentials.env`.
 
 ## Auth (human login once)
 
@@ -23,6 +23,7 @@ npm run e2e:auth
 
 - Default flow: after the Apps page loads, complete SSO/login in the window, then either press **Enter** in the terminal or run **`touch e2e/.auth/login-complete`** in another shell. Enter sometimes fails because npm/Playwright do not attach the real TTY to `stdin`; reading from `/dev/tty` fixes that on macOS/Linux—if it still stalls, use the `touch` fallback.
 - Optional unattended capture: set `CRIBL_E2E_POST_LOGIN_SELECTOR` in `e2e/.env` to a CSS selector that appears only after login.
+- **Deploy token:** the setup records the same **`Authorization: Bearer`** JWT the UI sends on leader **`/api/v1/*`** requests into **`e2e/.auth/captured-credentials.env`** (gitignored). `npm run deploy:staging` loads it automatically unless **`CRIBL_API_TOKEN`** is set in **`e2e/.env`** (manual value wins).
 
 CI should use the same JSON produced locally, stored as a **base64-encoded secret** (see `.github/workflows/e2e-staging.yml`), never checked into Git.
 
@@ -75,14 +76,15 @@ Build and produce the archive:
 npm run package
 ```
 
-Upload to your tenant using **environment or CI secrets only**:
+Upload to your tenant using **environment or CI secrets only**. The deploy script mirrors the Apps UI: **PUT** raw `.tgz` as `application/gzip` to `/api/v1/apps?filename=…`, then **POST** `/api/v1/apps/preinstall-check`, then **POST** `/api/v1/apps`. If registration conflicts with an existing pack id, it **DELETE**s `/api/v1/apps/{id}` and retries once (disable with `CRIBL_DEPLOY_NO_CONFLICT_RETRY=1`).
 
 | Variable | Purpose |
 |----------|---------|
-| `CRIBL_DEPLOY_URL` | Full HTTPS URL for the upload request (from your platform/OpenAPI docs) |
-| `CRIBL_API_TOKEN` | Bearer token |
+| `CRIBL_API_TOKEN` | Bearer token accepted by the workspace leader API |
+| `CRIBL_DEPLOY_BASE_URL` or `CRIBL_E2E_BASE_URL` | Leader origin only (no `/apps` path), e.g. `https://appplat-….cribl-staging.cloud` |
+| `CRIBL_DEPLOY_URL` | Optional legacy helper: only **origin** is used if base vars are unset |
 | `PACKAGE_TGZ` | Optional path; defaults to newest `*.tgz` under `build/` |
-| `CRIBL_DEPLOY_FORM_FIELD` | Optional multipart field name (default `package`) |
+| `CRIBL_DEPLOY_PACK_ID` | Optional override for install pack id (default from `package.json`) |
 
 ```bash
 npm run deploy:staging

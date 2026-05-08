@@ -2,7 +2,7 @@
  * Jinja2 rendering in the Pyodide kernel (shared by `%%cribl_search`, `%%cribl_api`, and future cell magics).
  */
 import type { KernelPort } from '@ports/KernelPort'
-import type { IOPubMessage, OutputRecord } from '@platform/pyodide/types'
+import type { IOPubMessage, OutputRecord } from '@/domain/kernel'
 
 export const JINJA_RESULT_KEY_CRIBL_SEARCH = '__cribl_search_rendered' as const
 export const JINJA_RESULT_KEY_CRIBL_API = '__cribl_api_rendered' as const

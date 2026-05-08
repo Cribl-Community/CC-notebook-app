@@ -1,106 +1,28 @@
-export type CompletionKind = 'module' | 'class' | 'function' | 'instance'
-
-export type CompletionItem = { name: string; kind: CompletionKind }
-
 /**
- * A Jupyter MIME bundle. Each value is the canonical text/binary form for that
- * mime type. Per nbformat 4.x, values may be stored as a string OR an array of
- * strings on disk; we always normalize to a single string in memory and only
- * ever emit a single string when serializing.
- *
- * Binary mime types (image/png, image/jpeg) are base64-encoded strings.
+ * Notebook/kernel DTOs are defined in {@link '@/domain/kernel'} and
+ * {@link '@/domain/criblSearchMime'} — re-exported here for the Pyodide worker
+ * bridge and legacy import paths.
  */
-export type MimeBundle = Record<string, string>
+export type {
+  CellOutput,
+  CompletionKind,
+  CompletionItem,
+  DisplayDataOutput,
+  ErrorOutput,
+  ExecuteResultOutput,
+  IOPubMessage,
+  KernelIOPubMessage,
+  KernelMimeBundle,
+  KernelMimeMetadata,
+  KernelOutputRecord,
+  KernelResult,
+  MimeBundle,
+  MimeMetadata,
+  OutputRecord,
+  StreamOutput,
+} from '@/domain/kernel'
 
-export type MimeMetadata = Record<string, unknown>
-
-/** Structured cell output records, modelled after JupyterLab's `IOutputModel`. */
-export type StreamOutput = {
-  output_type: 'stream'
-  name: 'stdout' | 'stderr'
-  text: string
-}
-
-export type DisplayDataOutput = {
-  output_type: 'display_data'
-  data: MimeBundle
-  metadata: MimeMetadata
-  /** Stable id used by `update_display_data` to locate this record. */
-  display_id?: string
-}
-
-export type ExecuteResultOutput = {
-  output_type: 'execute_result'
-  execution_count: number | null
-  data: MimeBundle
-  metadata: MimeMetadata
-  display_id?: string
-}
-
-export type ErrorOutput = {
-  output_type: 'error'
-  ename: string
-  evalue: string
-  traceback: string[]
-}
-
-export type OutputRecord = StreamOutput | DisplayDataOutput | ExecuteResultOutput | ErrorOutput
-
-/** Backwards-compatible alias for the old union name. */
-export type CellOutput = OutputRecord
-
-/** Mime key for structured Cribl Search cell output in `.ipynb` display_data. */
-export const CRIBL_SEARCH_MIME = 'application/vnd.cribl.notebook.cribl-search+json'
-
-export type CriblSearchPayload =
-  | { kind: 'running'; progress: number; label: string }
-  | {
-      kind: 'completed'
-      columns: string[]
-      rows: Record<string, unknown>[]
-      recordsReturned: number
-      totalRecords: number | null
-      /** Pandas DataFrame variable in the kernel (from `var=` or default `results_df`). Omitted in older saved notebooks. */
-      dataframeVar?: string
-      /** When false, interactive table is hidden (`preview=false` on %%cribl_search). Omitted/undefined = show table. */
-      showTable?: boolean
-      /** When true, English was translated to KQL but no search job ran (`translate_only=true`). */
-      translateOnly?: boolean
-      /** KQL shown in output when `translateOnly` is set (mirrors stdout `Generated KQL:`). */
-      generatedKql?: string
-    }
-  | { kind: 'failed'; message: string }
-
-/**
- * IOPub-style messages emitted by the kernel during a single execution.
- * Mirrors the subset of Jupyter's IOPub channel that we need: stream,
- * display_data, execute_result, update_display_data, clear_output, error,
- * and status.
- */
-export type IOPubMessage =
-  | { msg_type: 'stream'; name: 'stdout' | 'stderr'; text: string }
-  | {
-      msg_type: 'display_data'
-      data: MimeBundle
-      metadata: MimeMetadata
-      transient?: { display_id?: string }
-    }
-  | {
-      msg_type: 'execute_result'
-      execution_count: number | null
-      data: MimeBundle
-      metadata: MimeMetadata
-      transient?: { display_id?: string }
-    }
-  | {
-      msg_type: 'update_display_data'
-      data: MimeBundle
-      metadata: MimeMetadata
-      transient: { display_id: string }
-    }
-  | { msg_type: 'clear_output'; wait: boolean }
-  | { msg_type: 'error'; ename: string; evalue: string; traceback: string[] }
-  | { msg_type: 'status'; execution_state: 'busy' | 'idle' }
+export { CRIBL_SEARCH_MIME, type CriblSearchPayload } from '@/domain/criblSearchMime'
 
 /**
  * Subset of `RequestInit` the worker → main-thread fetch bridge forwards.
@@ -119,6 +41,8 @@ export type ForwardedFetchInit = {
   mode?: RequestMode
   integrity?: string
 }
+
+import type { CompletionItem, IOPubMessage } from '@/domain/kernel'
 
 export type WorkerInbound =
   | {
@@ -172,5 +96,3 @@ export type WorkerOutbound =
       url: string
       init: ForwardedFetchInit
     }
-
-export type KernelResult = { outputs: OutputRecord[] }

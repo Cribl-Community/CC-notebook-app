@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
 import type { PyodideKernel } from '@platform/pyodide/PyodideKernel'
-import type { IOPubMessage } from '@platform/pyodide/types'
+import type { IOPubMessage } from '@ports/KernelPort'
 import type { NotebookAction } from '@features/notebook/model/types'
 
 function mockKernel(executeImpl: (

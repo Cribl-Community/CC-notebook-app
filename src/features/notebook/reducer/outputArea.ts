@@ -20,7 +20,7 @@
  * to make this safe to use inside a React reducer.
  */
 
-import type { IOPubMessage, MimeMetadata, OutputRecord } from '@platform/pyodide/types'
+import type { IOPubMessage, MimeMetadata, OutputRecord } from '@/domain/kernel'
 
 export interface OutputAreaState {
   records: OutputRecord[]

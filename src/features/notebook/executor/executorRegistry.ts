@@ -1,5 +1,6 @@
+import type { SearchService } from '@ports/SearchService'
 import { criblApiExecutor } from './criblApiExecutor'
-import { criblSearchExecutor } from './criblSearchExecutor'
+import { createCriblSearchExecutor } from './criblSearchExecutor'
 import { pythonExecutor } from './pythonExecutor'
 import type { CellExecutor } from './cellExecutor'
 
@@ -7,9 +8,34 @@ import type { CellExecutor } from './cellExecutor'
  * Default ordered registry of executors. Specialized executors must come
  * first so `selectExecutor` picks them before falling through to the
  * catch-all Python executor (which matches every source).
+ *
+ * Search-backed execution uses a {@link SearchService} implementation from
+ * the composition root (see {@link SearchProvider}). The stub here exists so
+ * callers that omit `executors` (mostly unit tests for plain Python cells)
+ * still resolve the registry shape; production passes real services via
+ * {@link createDefaultCellExecutors}.
  */
-export const DEFAULT_CELL_EXECUTORS: readonly CellExecutor[] = [
-  criblApiExecutor,
-  criblSearchExecutor,
-  pythonExecutor,
-]
+const UNIT_TEST_STUB_SEARCH_SERVICE: SearchService = {
+  async runSearch() {
+    return { rows: [], columns: [], totalRecords: null }
+  },
+  async translateEnglishToKql(q: string) {
+    return q
+  },
+}
+
+export function createDefaultCellExecutors(
+  searchService: SearchService,
+  criblApiBase: string,
+): readonly CellExecutor[] {
+  return [
+    criblApiExecutor,
+    createCriblSearchExecutor({ searchService, criblApiBase }),
+    pythonExecutor,
+  ]
+}
+
+export const DEFAULT_CELL_EXECUTORS: readonly CellExecutor[] = createDefaultCellExecutors(
+  UNIT_TEST_STUB_SEARCH_SERVICE,
+  '',
+)

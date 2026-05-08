@@ -4,7 +4,7 @@ import { EditorView } from '@codemirror/view'
 import type { CodeCell as CellData } from '@features/notebook/model/types'
 import { CellOutput } from '@features/notebook/ui/CellOutput'
 import { createPythonCellExtensions } from '@ui/editor/pythonCodeMirror'
-import type { CompletionItem } from '@platform/pyodide/types'
+import type { CompletionItem } from '@ports/KernelPort'
 import { DEFAULT_RIPTIDE_PROMPT_PREFIX, parseRiptidePromptFromCellSource } from '@features/ai-riptide/riptideService'
 
 interface CodeCellProps {

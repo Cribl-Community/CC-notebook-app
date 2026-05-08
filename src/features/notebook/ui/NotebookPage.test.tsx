@@ -19,6 +19,11 @@ vi.mock('@app/providers', () => ({
   useTheme: () => ({ appStyle: 'default', setAppStyle: vi.fn(), codeMirrorLuma: false }),
   useDialogs: () => ({ alert: vi.fn(), confirm: vi.fn().mockResolvedValue(true), prompt: vi.fn() }),
   useAiCodeService: () => ({ isAvailable: () => false, generatePythonFromPrompt: vi.fn() }),
+  useEnv: () => ({ apiBase: '', isCriblHosted: false, isKvMock: true }),
+  useSearchService: () => ({
+    runSearch: vi.fn(),
+    translateEnglishToKql: vi.fn(),
+  }),
 }))
 
 vi.mock('@features/library/hooks/useNotebookLibrary', () => ({

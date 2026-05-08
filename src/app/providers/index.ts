@@ -1,6 +1,12 @@
 export { AiCodeProvider, useAiCodeService } from './AiCodeProvider'
 export { DialogProvider, useDialogs } from './DialogProvider'
 export { EnvProvider, useEnv } from './EnvProvider'
+export {
+  KernelProvider,
+  useKernelFactory,
+  useOptionalKernelFactory,
+} from './KernelProvider'
+export { SearchProvider, useSearchService } from './SearchProvider'
 export { ThemeProvider, useTheme, type ThemeController } from './ThemeProvider'
 export type { AppStyleId, AppStyleInfo, CodeMirrorLuma } from '@app/styles/nbStyles'
 export { NOTEBOOK_STYLES, DEFAULT_APP_STYLE } from '@app/styles/nbStyles'

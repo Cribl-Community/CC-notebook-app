@@ -3,9 +3,25 @@
  * knowledge of Pyodide, Web Workers, or any specific runtime. Adapters live
  * under `src/platform/pyodide`.
  */
-import type { CompletionItem, KernelIOPubMessage, KernelResult } from '@/domain/kernel'
+import type {
+  CellOutput,
+  CompletionItem,
+  KernelIOPubMessage,
+  KernelResult,
+  MimeBundle,
+  MimeMetadata,
+  OutputRecord,
+} from '@/domain/kernel'
 
-export type { CompletionItem, KernelIOPubMessage as IOPubMessage, KernelResult }
+export type {
+  CellOutput,
+  CompletionItem,
+  KernelIOPubMessage as IOPubMessage,
+  KernelResult,
+  MimeBundle,
+  MimeMetadata,
+  OutputRecord,
+}
 
 export interface KernelInitProgress {
   phase: 'boot' | 'worker' | 'runtime' | 'env' | 'bootstrap'

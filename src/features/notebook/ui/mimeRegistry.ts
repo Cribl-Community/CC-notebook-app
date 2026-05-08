@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { MimeBundle, MimeMetadata } from '@platform/pyodide/types'
+import type { MimeBundle, MimeMetadata } from '@/domain/kernel'
 
 /**
  * A registry entry knows how to render exactly one mime type. The renderer

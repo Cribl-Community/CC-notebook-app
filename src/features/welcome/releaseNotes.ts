@@ -11,6 +11,15 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.69',
+    date: '2026-05-08',
+    highlights: [
+      'Architecture: `SearchService` and kernel factory are wired through app providers; cell runners use the search port instead of calling Cribl Search clients directly.',
+      'Architecture: notebook/kernel display types live under `domain/`; Pyodide worker types re-export them. Library KV reads/writes go through `notebookKv` so the repo adapter no longer depends on feature internals.',
+      'Packaging: build 1.0.69 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.0.68',
     date: '2026-05-07',
     highlights: [

@@ -6,7 +6,7 @@ import {
   serializeNotebookToIpynbJson,
 } from '@features/notebook/codec/ipynb'
 import type { NotebookState } from '@features/notebook/model/types'
-import { CRIBL_SEARCH_MIME } from '@platform/pyodide/types'
+import { CRIBL_SEARCH_MIME } from '@/domain/criblSearchMime'
 
 const readyKernelInit: NotebookState['kernelInit'] = {
   phase: 'ready',

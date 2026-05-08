@@ -1,8 +1,7 @@
-import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
-import { translateEnglishToKql } from '@platform/cribl/aiTranslate'
-import { getCriblApiBase } from '@platform/cribl/kvstore'
-import { DEFAULT_CRIBL_SEARCH_MAX_ROWS, runCriblSearchJob } from '@platform/cribl/searchJobs'
+import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
+import type { SearchService } from '@ports/SearchService'
 import { describeFetchError } from '@platform/cribl/fetchFailure'
+import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import {
   buildCriblSearchDataframeCode,
   encodeRowsJsonForPythonBase64,
@@ -24,25 +23,37 @@ export interface CriblSearchExecutorDeps {
   buildCriblSearchDataframeCode: typeof buildCriblSearchDataframeCode
   encodeRowsJsonForPythonBase64: typeof encodeRowsJsonForPythonBase64
   filterPyodidePackageChatter: typeof filterPyodidePackageChatter
-  runCriblSearchJob: typeof runCriblSearchJob
-  translateEnglishToKql: typeof translateEnglishToKql
-  getCriblApiBase: typeof getCriblApiBase
+  searchService: SearchService
+  /** Same signal as {@link getCriblApiBase} / {@link EnvService.apiBase}: empty when not hosted in Cribl. */
+  criblApiBase: string
   criblSearchMaxRows: number
   wantsCriblSearchJinjaTemplating: typeof wantsCriblSearchJinjaTemplating
   runCriblSearchJinjaInKernel: typeof runCriblSearchJinjaInKernel
 }
 
-export const DEFAULT_CRIBL_SEARCH_EXECUTOR_DEPS: CriblSearchExecutorDeps = {
+const CRIBL_SEARCH_LOCAL_DEFAULTS = {
   parseCriblSearchMagic,
   buildCriblSearchDataframeCode,
   encodeRowsJsonForPythonBase64,
   filterPyodidePackageChatter,
-  runCriblSearchJob,
-  translateEnglishToKql,
-  getCriblApiBase,
-  criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_MAX_ROWS,
+  criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS,
   wantsCriblSearchJinjaTemplating,
   runCriblSearchJinjaInKernel,
+} as const
+
+export function createCriblSearchExecutor(
+  required: Pick<CriblSearchExecutorDeps, 'searchService' | 'criblApiBase'> &
+    Partial<Omit<CriblSearchExecutorDeps, 'searchService' | 'criblApiBase'>>,
+): CellExecutor {
+  const deps: CriblSearchExecutorDeps = {
+    ...CRIBL_SEARCH_LOCAL_DEFAULTS,
+    ...required,
+  }
+  return {
+    name: 'cribl-search',
+    matches: looksLikeCriblSearchMagic,
+    execute: (ctx) => executeCriblSearchCell(ctx, deps),
+  }
 }
 
 /**
@@ -62,24 +73,6 @@ export function looksLikeCriblSearchMagic(source: string): boolean {
   }
   return false
 }
-
-/**
- * Creates the Cribl Search cell executor. Dependencies are injected so
- * tests can stub the search backend, AI translate, and Pyodide bridge
- * without touching the global network.
- */
-export function createCriblSearchExecutor(
-  overrides: Partial<CriblSearchExecutorDeps> = {},
-): CellExecutor {
-  const deps: CriblSearchExecutorDeps = { ...DEFAULT_CRIBL_SEARCH_EXECUTOR_DEPS, ...overrides }
-  return {
-    name: 'cribl-search',
-    matches: looksLikeCriblSearchMagic,
-    execute: (ctx) => executeCriblSearchCell(ctx, deps),
-  }
-}
-
-export const criblSearchExecutor: CellExecutor = createCriblSearchExecutor()
 
 async function executeCriblSearchCell(
   ctx: CellExecutionContext,
@@ -104,6 +97,7 @@ async function executeCriblSearchCell(
     magic.value
   const displayId = `cribl-search-${id}`
   let generatedKqlForReport: string | undefined
+  const apiBase = deps.criblApiBase.trim()
   try {
     emitIOPub(
       criblSearchIOPub(
@@ -143,7 +137,7 @@ async function executeCriblSearchCell(
     if (isStale()) return 'stale'
 
     if (lang === 'english') {
-      if (!deps.getCriblApiBase()) {
+      if (!apiBase) {
         emitIOPub(
           criblSearchIOPub(
             {
@@ -169,7 +163,9 @@ async function executeCriblSearchCell(
             true,
           ),
         )
-        searchQuery = await deps.translateEnglishToKql(searchQuery, { datasetHint: dataset })
+        searchQuery = await deps.searchService.translateEnglishToKql(searchQuery, {
+          datasetHint: dataset,
+        })
         generatedKqlForReport = searchQuery
         emitIOPub({
           msg_type: 'stream',
@@ -201,7 +197,7 @@ async function executeCriblSearchCell(
       }
     }
 
-    const { rows, columns, totalRecords } = await deps.runCriblSearchJob({
+    const { rows, columns, totalRecords } = await deps.searchService.runSearch({
       query: searchQuery,
       queryMode: 'verbatim',
       maxRows: limit,

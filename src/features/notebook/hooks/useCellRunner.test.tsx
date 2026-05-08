@@ -1,5 +1,9 @@
+import type { ReactNode } from 'react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
+import type { SearchService } from '@ports/SearchService'
+// eslint-disable-next-line no-restricted-imports -- test wrapper mirrors App providers
+import { EnvProvider, SearchProvider } from '@app/providers'
 import { useCellRunner } from './useCellRunner'
 import type { NotebookState } from '@features/notebook/model/types'
 import type { WorkspaceState, WorkspaceAction, NotebookTab } from '@features/notebook/reducer/tabWorkspace'
@@ -104,6 +108,19 @@ function makeTab(state: NotebookState): NotebookTab {
   }
 }
 
+const stubSearchService: SearchService = {
+  runSearch: vi.fn().mockResolvedValue({ rows: [], columns: [], totalRecords: null }),
+  translateEnglishToKql: vi.fn().mockImplementation(async (q: string) => q),
+}
+
+function cellRunnerProvidersWrapper({ children }: { children: ReactNode }) {
+  return (
+    <EnvProvider value={{ apiBase: '', isCriblHosted: false, isKvMock: true }}>
+      <SearchProvider value={stubSearchService}>{children}</SearchProvider>
+    </EnvProvider>
+  )
+}
+
 describe('useCellRunner', () => {
   beforeEach(() => {
     runNotebookCellAfterReady.mockReset()
@@ -118,15 +135,17 @@ describe('useCellRunner', () => {
     const dispatch = vi.fn<(action: WorkspaceAction) => void>()
     const { runtime } = makeRuntimeController()
 
-    const { result } = renderHook(() =>
-      useCellRunner({
-        runtime,
-        workspaceRef: workspaceRef as never,
-        activeTabIdRef: activeTabIdRef as never,
-        dispatch,
-        activeTab: workspace.tabs[0],
-        state: notebook,
-      }),
+    const { result } = renderHook(
+      () =>
+        useCellRunner({
+          runtime,
+          workspaceRef: workspaceRef as never,
+          activeTabIdRef: activeTabIdRef as never,
+          dispatch,
+          activeTab: workspace.tabs[0],
+          state: notebook,
+        }),
+      { wrapper: cellRunnerProvidersWrapper },
     )
 
     act(() => {
@@ -154,15 +173,17 @@ describe('useCellRunner', () => {
     const dispatch = vi.fn<(action: WorkspaceAction) => void>()
     const { runtime } = makeRuntimeController()
 
-    const { result } = renderHook(() =>
-      useCellRunner({
-        runtime,
-        workspaceRef: workspaceRef as never,
-        activeTabIdRef: activeTabIdRef as never,
-        dispatch,
-        activeTab: workspace.tabs[0],
-        state: notebook,
-      }),
+    const { result } = renderHook(
+      () =>
+        useCellRunner({
+          runtime,
+          workspaceRef: workspaceRef as never,
+          activeTabIdRef: activeTabIdRef as never,
+          dispatch,
+          activeTab: workspace.tabs[0],
+          state: notebook,
+        }),
+      { wrapper: cellRunnerProvidersWrapper },
     )
 
     act(() => {
@@ -190,15 +211,17 @@ describe('useCellRunner', () => {
     const dispatch = vi.fn<(action: WorkspaceAction) => void>()
     const { runtime, state, initKernelForTab, interruptKernelForTab } = makeRuntimeController()
 
-    const { result } = renderHook(() =>
-      useCellRunner({
-        runtime,
-        workspaceRef: workspaceRef as never,
-        activeTabIdRef: activeTabIdRef as never,
-        dispatch,
-        activeTab: workspace.tabs[0],
-        state: notebook,
-      }),
+    const { result } = renderHook(
+      () =>
+        useCellRunner({
+          runtime,
+          workspaceRef: workspaceRef as never,
+          activeTabIdRef: activeTabIdRef as never,
+          dispatch,
+          activeTab: workspace.tabs[0],
+          state: notebook,
+        }),
+      { wrapper: cellRunnerProvidersWrapper },
     )
 
     act(() => {

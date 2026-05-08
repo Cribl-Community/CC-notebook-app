@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
-import type { CompletionItem } from '@platform/pyodide/types'
+import type { CompletionItem } from '@ports/KernelPort'
 import type { CellId } from '@features/notebook/model/types'
 import { serializeNotebookToIpynbJson, titleToDownloadFilename } from '@features/notebook/codec/ipynb'
 import { Toolbar } from '@features/notebook/ui/Toolbar'
@@ -14,6 +14,7 @@ import { formatGeneratedPythonSource } from '@features/ai-riptide/riptideService
 import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
 import { runRiptidePromptJinjaInKernel } from '@features/notebook/jinjaInKernel'
 import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristic'
+// eslint-disable-next-line no-restricted-imports -- shell reads ports from composition root
 import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useCellRunner } from '@features/notebook/hooks/useCellRunner'

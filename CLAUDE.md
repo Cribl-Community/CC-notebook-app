@@ -17,7 +17,7 @@ npm run e2e:auth     # Save staging login session to e2e/.auth/ (headed)
 npm run e2e          # Playwright vs staging (needs e2e/.env + saved session)
 npm run e2e:quick    # Same, minus @slow Pyodide kernel assertion
 npm run e2e:report # Open last Playwright HTML report
-npm run deploy:staging   # Upload build/*.tgz using CRIBL_DEPLOY_URL + CRIBL_API_TOKEN
+npm run deploy:staging   # PUT .tgz to leader /api/v1/apps (+ preinstall + register); CRIBL_API_TOKEN + CRIBL_E2E_BASE_URL or CRIBL_DEPLOY_BASE_URL
 ```
 
 Tests live next to the code they cover (`*.test.ts` / `*.test.tsx`) and

@@ -8,6 +8,7 @@ import { describeFetchError } from '@platform/cribl/fetchFailure'
 import { normalizeSearchQuery } from '@platform/cribl/searchQuery'
 import { deriveColumnNames } from '@platform/cribl/searchResultModel'
 import { runLocalSearchStub } from '@platform/cribl/searchStub'
+import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 
 export { normalizeSearchQuery } from '@platform/cribl/searchQuery'
 
@@ -21,7 +22,7 @@ export const DEFAULT_SEARCH_EARLIEST = '-1h'
 export const DEFAULT_SEARCH_LATEST = 'now'
 
 /** Max rows shown in the interactive result table (full DataFrame may be larger). */
-export const DEFAULT_CRIBL_SEARCH_MAX_ROWS = 20
+export const DEFAULT_CRIBL_SEARCH_MAX_ROWS = DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS
 
 /** Rows per `/results` request when paginating (magic `limit=0` loads all pages). */
 export const CRIBL_SEARCH_RESULTS_PAGE_SIZE = 5000
