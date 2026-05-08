@@ -106,6 +106,7 @@ Upgrade check:
   Cribl Search MIME, etc.).
 - Patches Altair and Plotly display/show behavior to work in Pyodide notebook
   context.
+- **Plotly 6+** on PyPI depends on **narwhals**; unpinned ``micropip.install('plotly')`` can fail or break ``plotly.express`` with pandas in WASM. Pin **Plotly 5.24.x** when you need Express + pandas (``public/Examples/Visualisations.ipynb`` does this).
 - Converts Python exceptions to structured error payloads.
 
 Upgrade check:
