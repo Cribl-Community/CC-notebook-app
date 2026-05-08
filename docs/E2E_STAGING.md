@@ -20,7 +20,7 @@ Run a **headed** browser, sign in to staging, then save cookies/local storage to
 npm run e2e:auth
 ```
 
-- Default flow: after the Apps page loads, complete SSO/login in the window, return to the terminal, press **Enter** to persist session state.
+- Default flow: after the Apps page loads, complete SSO/login in the window, then either press **Enter** in the terminal or run **`touch e2e/.auth/login-complete`** in another shell. Enter sometimes fails because npm/Playwright do not attach the real TTY to `stdin`; reading from `/dev/tty` fixes that on macOS/Linux—if it still stalls, use the `touch` fallback.
 - Optional unattended capture: set `CRIBL_E2E_POST_LOGIN_SELECTOR` in `e2e/.env` to a CSS selector that appears only after login.
 
 CI should use the same JSON produced locally, stored as a **base64-encoded secret** (see `.github/workflows/e2e-staging.yml`), never checked into Git.

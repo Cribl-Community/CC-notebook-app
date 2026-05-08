@@ -18,6 +18,7 @@ e2e/.env
 
 # Playwright / staging E2E (never commit auth or local secrets)
 e2e/.auth/
+e2e/.auth/login-complete
 playwright-report/
 test-results/
 blob-report/
