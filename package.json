@@ -12,6 +12,9 @@
     "package": "npm run build && node scripts/package.mjs",
     "deploy:staging": "node scripts/deploy-staging.mjs",
     "e2e:package-and-deploy": "npm run package && npm run deploy:staging",
+    "e2e": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging",
+    "e2e:auth": "playwright test --config=e2e/playwright.setup.config.ts --project=setup",
+    "e2e:install": "playwright install chromium",
     "update:cribl-api": "node scripts/cribl-openapi-to-catalog.mjs",
     "update:cribl-api:release": "CRIBL_OPENAPI_CHANNEL=release node scripts/cribl-openapi-to-catalog.mjs"
   },
@@ -37,6 +40,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -47,6 +51,7 @@
     "@types/react-dom": "^19.2.3",
     "@types/react-plotly.js": "^2.6.4",
     "@vitejs/plugin-react": "^6.0.1",
+    "dotenv": "^16.6.1",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",

@@ -238,7 +238,7 @@ export function NotebookPage() {
 
   return (
     <>
-      <div className="nb-app-frame">
+      <div className="nb-app-frame" data-testid="notebook-app-root">
         <div className="nb-page">
           {!ready ? (
             <div className="nb-loading">Loading…</div>
