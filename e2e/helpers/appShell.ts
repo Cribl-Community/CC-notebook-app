@@ -1,4 +1,4 @@
-import type { Frame, Locator, Page } from '@playwright/test'
+import { expect, type Frame, type Locator, type Page } from '@playwright/test'
 
 const SHELL_SELECTOR = '[data-testid="notebook-app-root"], .nb-app-frame'
 
@@ -92,4 +92,28 @@ export async function notebookChromeScope(page: Page, timeoutMs = 180_000): Prom
   const chrome = frame.locator('.nb-page').first()
   await chrome.waitFor({ state: 'visible', timeout: timeoutMs })
   return chrome
+}
+
+/** Pyodide finished loading; code cells can run. */
+export async function waitForKernelReady(nb: Frame, timeoutMs = 180_000): Promise<void> {
+  await expect(nb.locator('.nb-kernel-status').getByText('Ready', { exact: true })).toBeVisible({
+    timeout: timeoutMs,
+  })
+}
+
+/** Replace source of the first CodeMirror cell (new notebooks start with one empty code cell). */
+export async function fillFirstCodeCell(page: Page, nb: Frame, source: string): Promise<void> {
+  const editor = nb.locator('.cm-content').first()
+  await editor.waitFor({ state: 'visible', timeout: 90_000 })
+  await editor.click()
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+  await page.keyboard.press(`${mod}+A`)
+  await page.keyboard.press('Backspace')
+  await page.keyboard.insertText(source)
+}
+
+export async function clickRunFirstCodeCell(nb: Frame): Promise<void> {
+  const run = nb.getByTitle('Run cell (Shift+Enter)')
+  await expect(run).toBeEnabled({ timeout: 30_000 })
+  await run.click()
 }
