@@ -122,4 +122,24 @@ describe('fetchWithPackageSessionCache (same-origin pyodide — network efficien
     // Bypasses the cache path — separate window.fetch per call (old behaviour for “no base”).
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
+
+  it('does not session-cache non-OK GETs so wheel retries are not stuck on HTML/error bodies', async () => {
+    const url = 'https://files.pythonhosted.org/packages/aa/bb/cc/dd-placeholder.whl'
+    const init: RequestInit = { cache: 'no-store' }
+    let calls = 0
+    fetchMock.mockImplementation(() => {
+      calls += 1
+      if (calls === 1) {
+        return Promise.resolve(new Response('<html>503</html>', { status: 503, statusText: 'Unavailable' }))
+      }
+      return Promise.resolve(new Response(new ArrayBuffer(8), { status: 200, statusText: 'OK' }))
+    })
+
+    const r1 = await fetchWithPackageSessionCache(url, init)
+    expect(r1.ok).toBe(false)
+
+    const r2 = await fetchWithPackageSessionCache(url, init)
+    expect(r2.ok).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
 })

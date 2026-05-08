@@ -81,6 +81,7 @@ Upgrade check:
   - `pypi.org` / `www.pypi.org`
   - `files.pythonhosted.org`
   - same-origin app-hosted `pyodide/` URLs when bridged.
+- Session memory stores **only `ok` responses**; non-OK bodies (HTML error pages from a flaky proxy) are not reused, which avoids micropip seeing `BadZipFile: File is not a zip file` on a later fetch of the same URL.
 
 Upgrade check:
 - Keep allowlist aligned with `config/proxies.yml`.
@@ -108,7 +109,8 @@ Upgrade check:
   Cribl Search MIME, etc.).
 - Patches Altair and Plotly display/show behavior to work in Pyodide notebook
   context.
-- **Plotly 6+** on PyPI depends on **narwhals**; unpinned ``micropip.install('plotly')`` can fail or break ``plotly.express`` with pandas in WASM. Pin **Plotly 5.24.x** when you need Express + pandas (``public/Examples/Visualisations.ipynb`` does this).
+- **Plotly 6+** on PyPI depends on **narwhals**; unpinned ``micropip.install('plotly')`` can fail or break ``plotly.express`` with pandas in WASM. Pin **Plotly 5.24.x** when you need Express + pandas (``public/Examples/Visualisations.ipynb`` installs ``altair==5.5.0`` + ``plotly==5.24.1`` only and lets micropip resolve transitive wheels—avoid long hand-pinned transitive lists that fight the solver).
+- **``cribl-control-plane``** (``public/Examples/Cribl_Python_SDK.ipynb``) depends on **pydantic** / **httpx** with native extensions; pin those to the **Pyodide built-in** versions (WASM wheels) before the SDK so micropip does not pull manylinux ``pydantic-core`` from PyPI. Refresh pins when bumping ``PYODIDE_RELEASE`` (see [packages built in Pyodide](https://pyodide.org/en/stable/usage/packages-in-pyodide.html)).
 - Converts Python exceptions to structured error payloads.
 
 Upgrade check:
