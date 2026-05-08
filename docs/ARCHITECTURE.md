@@ -246,6 +246,9 @@ User clicks Run
   `src/testing/setup.ts`.
 - Integration smoke: `src/testing/appSmoke.test.tsx` renders the whole
   App shell with stubbed KV and a fake `KernelFactory`.
+- **Staging E2E:** Playwright specs under `e2e/specs/` exercise a live Cribl
+  tenant (iframe + real shell). Auth is gitignored; flow and CI wiring are
+  documented in [`docs/E2E_STAGING.md`](./E2E_STAGING.md).
 - Unit tests you can copy from as templates:
   - `src/features/notebook/hooks/useTabNotebookRuntime.test.tsx`
   - `src/features/notebook/hooks/useNotebookWorkspace.test.tsx`
