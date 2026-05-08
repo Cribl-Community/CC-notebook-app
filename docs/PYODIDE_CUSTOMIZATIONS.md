@@ -64,6 +64,8 @@ Upgrade check:
 - Injects `CRIBL_API_URL` into Python `os.environ`.
 - Installs completion + IOPub bootstrap Python code at worker init.
 - Wraps execution to emit IOPub-like events (`status`, `stream`, `error`).
+- **`loadPackagesFromImports(user_cell)`** failures are caught so PyPI-only imports
+  still reach `_nb_run` (micropip / auto-import can handle them).
 
 Upgrade check:
 - Revalidate fetch-routing conditions after any platform URL/path changes.
@@ -79,6 +81,7 @@ Upgrade check:
   - `pypi.org` / `www.pypi.org`
   - `files.pythonhosted.org`
   - same-origin app-hosted `pyodide/` URLs when bridged.
+- Session memory stores **only `ok` responses**; non-OK bodies (HTML error pages from a flaky proxy) are not reused, which avoids micropip seeing `BadZipFile: File is not a zip file` on a later fetch of the same URL.
 
 Upgrade check:
 - Keep allowlist aligned with `config/proxies.yml`.
@@ -90,11 +93,24 @@ Upgrade check:
   - `display(...)`
   - `clear_output(wait=...)`
   - `_nb_run(...)` execution wrapper
+- Rewrites line-oriented **`%pip install …`** and **`!pip install …`** (Jupyter-style)
+  to **`await micropip.install(...)`** before parsing the cell. Only `install` is
+  implemented; other pip subcommands print a stderr hint.
+- Installs a **`builtins.__import__` wrapper** (Pyodide only): on
+  **`ModuleNotFoundError`** for a **top-level** absolute import, runs
+  **`micropip.install(<top-level>)`** once via **`pyodide.ffi.run_sync`**, then
+  retries. Skips stdlib (`sys.stdlib_module_names`) and `micropip` / `js` /
+  `pyodide` / **`scikits`** (namespace, not a distribution). If ``micropip.install``
+  fails, the **original** ``ModuleNotFoundError`` is re-raised so optional-import
+  patterns (e.g. Plotly → xarray) keep working. **PyPI names may differ from import names**
+  (e.g. `Pillow` vs `PIL`); auto-install cannot fix every mismatch.
 - Uses IPython formatter where possible; falls back to repr methods.
 - Includes MIME allowlist for rich outputs (Plotly, Vega/Vega-Lite, widgets,
   Cribl Search MIME, etc.).
 - Patches Altair and Plotly display/show behavior to work in Pyodide notebook
   context.
+- **Plotly 6+** on PyPI depends on **narwhals**; unpinned ``micropip.install('plotly')`` can fail or break ``plotly.express`` with pandas in WASM. Pin **Plotly 5.24.x** when you need Express + pandas (``public/Examples/Visualisations.ipynb`` installs ``altair==5.5.0`` + ``plotly==5.24.1`` only and lets micropip resolve transitive wheels—avoid long hand-pinned transitive lists that fight the solver).
+- **``cribl-control-plane``** (``public/Examples/Cribl_Python_SDK.ipynb``) depends on **pydantic** / **httpx** with native extensions; pin those to the **Pyodide built-in** versions (WASM wheels) before the SDK so micropip does not pull manylinux ``pydantic-core`` from PyPI. Refresh pins when bumping ``PYODIDE_RELEASE`` (see [packages built in Pyodide](https://pyodide.org/en/stable/usage/packages-in-pyodide.html)).
 - Converts Python exceptions to structured error payloads.
 
 Upgrade check:
@@ -120,6 +136,7 @@ At minimum run:
 - `sandbox-test.html` pass (null-origin iframe)
 - Manual checks:
   - `micropip.install(...)`
+  - `%pip install …` / `!pip install …` and a plain `import <pypi_pkg>` auto-install
   - Plotly/Altair output rendering
   - `%%cribl_search` and `%%cribl_api`
   - Python SDK call path that touches `/api/v1/*` (no stuck busy state)

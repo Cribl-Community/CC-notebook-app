@@ -39,9 +39,10 @@ jobs:
           fi
           echo "$CRIBL_E2E_STORAGE_STATE_B64" | base64 -d > e2e/.auth/storageState.json
 
-      - name: Run staging E2E
+      - name: Run staging E2E (parallel, no @slow)
         env:
           CI: 'true'
+          CRIBL_E2E_WORKERS: ${{ vars.CRIBL_E2E_WORKERS || '4' }}
           CRIBL_E2E_BASE_URL: ${{ secrets.CRIBL_E2E_BASE_URL }}
           CRIBL_E2E_START_PATH: ${{ vars.CRIBL_E2E_START_PATH }}
           CRIBL_E2E_START_URL: ${{ vars.CRIBL_E2E_START_URL }}
@@ -52,7 +53,17 @@ jobs:
             echo "::error::Set GitHub Actions secret CRIBL_E2E_BASE_URL (staging origin, no trailing slash)."
             exit 1
           fi
-          npm run e2e
+          npm run e2e:quick
+
+      - name: Run staging E2E (@slow, single worker)
+        env:
+          CI: 'true'
+          CRIBL_E2E_BASE_URL: ${{ secrets.CRIBL_E2E_BASE_URL }}
+          CRIBL_E2E_START_PATH: ${{ vars.CRIBL_E2E_START_PATH }}
+          CRIBL_E2E_START_URL: ${{ vars.CRIBL_E2E_START_URL }}
+          CRIBL_E2E_POST_LOGIN_SELECTOR: ${{ vars.CRIBL_E2E_POST_LOGIN_SELECTOR }}
+          CRIBL_E2E_PERF_SHELL_MS: ${{ vars.CRIBL_E2E_PERF_SHELL_MS }}
+        run: npm run e2e:slow
 
       - uses: actions/upload-artifact@v4
         if: failure()

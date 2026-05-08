@@ -1,4 +1,4 @@
-import type { Frame, Locator, Page } from '@playwright/test'
+import { expect, type Frame, type Locator, type Page } from '@playwright/test'
 
 const SHELL_SELECTOR = '[data-testid="notebook-app-root"], .nb-app-frame'
 
@@ -65,7 +65,9 @@ export async function navigateToStagingNotebookApp(page: Page): Promise<void> {
   if (packPath) {
     const p = packPath.startsWith('/') ? packPath : `/${packPath}`
     await page.goto(`${base}${p}`)
-    await waitForAppShell(page)
+    await page.waitForLoadState('domcontentloaded')
+    // Pack URLs embed the widget iframe; cold loads regularly exceed the default 120s shell timeout on staging.
+    await waitForAppShell(page, 240_000)
     return
   }
 
@@ -82,7 +84,7 @@ export async function navigateToStagingNotebookApp(page: Page): Promise<void> {
   const link = page.locator(`a[href^="/apps/a/"][href*="${substr}"]`).first()
   await link.click({ timeout: 45_000 })
   await page.waitForLoadState('load')
-  await waitForAppShell(page)
+  await waitForAppShell(page, 240_000)
 }
 
 /** `.nb-page` inside the notebook shell (expects navigation to the widget already completed). */
@@ -92,4 +94,38 @@ export async function notebookChromeScope(page: Page, timeoutMs = 180_000): Prom
   const chrome = frame.locator('.nb-page').first()
   await chrome.waitFor({ state: 'visible', timeout: timeoutMs })
   return chrome
+}
+
+/** Welcome page: select a bundled ``*.ipynb`` by filename and open it in a new tab. */
+export async function openBundledExample(nb: Frame, filename: string): Promise<void> {
+  const select = nb.locator('#nb-welcome-examples-select')
+  await select.waitFor({ state: 'visible', timeout: 120_000 })
+  await select.selectOption(filename)
+  const openBtn = nb.getByRole('button', { name: 'Open example' })
+  await expect(openBtn).toBeEnabled({ timeout: 120_000 })
+  await openBtn.click()
+}
+
+/** Pyodide finished loading; code cells can run. */
+export async function waitForKernelReady(nb: Frame, timeoutMs = 180_000): Promise<void> {
+  await expect(nb.locator('.nb-kernel-status').getByText('Ready', { exact: true })).toBeVisible({
+    timeout: timeoutMs,
+  })
+}
+
+/** Replace source of the first code cell’s editor (scoped so extra cells do not steal focus). */
+export async function fillFirstCodeCell(page: Page, nb: Frame, source: string): Promise<void> {
+  const editor = nb.locator('.nb-cell').first().locator('.cm-content').first()
+  await editor.waitFor({ state: 'visible', timeout: 90_000 })
+  await editor.click()
+  const mod = process.platform === 'darwin' ? 'Meta' : 'Control'
+  await page.keyboard.press(`${mod}+A`)
+  await page.keyboard.press('Backspace')
+  await page.keyboard.insertText(source)
+}
+
+export async function clickRunFirstCodeCell(nb: Frame): Promise<void> {
+  const run = nb.locator('.nb-cell').first().getByTitle('Run cell (Shift+Enter)')
+  await expect(run).toBeEnabled({ timeout: 30_000 })
+  await run.click()
 }

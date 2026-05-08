@@ -169,7 +169,11 @@ async function fetchAndSerialize(
     await writeToPersistentCache(url, init, payload)
   }
 
-  sessionMemory.set(key, payload)
+  // Never cache failed responses in session memory: the body is often HTML (proxy/503)
+  // or other non-wheel bytes. Reusing it makes micropip's ZipFile open throw BadZipFile.
+  if (r.ok) {
+    sessionMemory.set(key, payload)
+  }
   return payload
 }
 

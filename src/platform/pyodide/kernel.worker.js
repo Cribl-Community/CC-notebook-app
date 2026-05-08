@@ -412,7 +412,12 @@ self.onmessage = async function (e) {
       // Load any imported packages BEFORE installing the user-facing stdout/stderr
       // hooks, so package loader chatter ("Loading X", "Loaded X") does not leak
       // into cell output.
-      await pyodide.loadPackagesFromImports(msg.code)
+      try {
+        await pyodide.loadPackagesFromImports(msg.code)
+      } catch (_lpfiErr) {
+        // Packages that only exist on PyPI (not in the Pyodide lockfile) can make this throw.
+        // Continue so ``_nb_run`` / micropip can install them.
+      }
 
       pyodide.setStdout({
         batched: function (text) {

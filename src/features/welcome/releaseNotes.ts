@@ -11,6 +11,15 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.0.70',
+    date: '2026-05-08',
+    highlights: [
+      'Pyodide: Jupyter-style `%pip` / `!pip install` lines rewrite to `await micropip.install(...)`; failed top-level imports attempt one `micropip.install` via `run_sync` before erroring; worker continues when `loadPackagesFromImports` cannot resolve PyPI-only modules.',
+      'Staging E2E: `pip-magic` spec exercises `%pip` / `!pip` preprocessing (stderr hints, no PyPI).',
+      'Packaging: build 1.0.70 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.0.69',
     date: '2026-05-08',
     highlights: [

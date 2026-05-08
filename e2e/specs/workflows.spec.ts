@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { getNotebookFrame, navigateToStagingNotebookApp } from '../helpers/appShell'
+import { getNotebookFrame, navigateToStagingNotebookApp, waitForKernelReady } from '../helpers/appShell'
 
 test.describe('@regression welcome', () => {
   test('hero, sidebar, and Welcome tab load', async ({ page }) => {
@@ -44,8 +44,6 @@ test.describe('@regression kernel', () => {
     const nb = await getNotebookFrame(page)
     await nb.getByRole('button', { name: 'New notebook', exact: true }).click()
     await nb.locator('.nb-tab-title').filter({ hasText: 'Untitled' }).waitFor({ state: 'visible', timeout: 60_000 })
-    await expect(nb.locator('.nb-kernel-status').getByText('Ready', { exact: true })).toBeVisible({
-      timeout: 180_000,
-    })
+    await waitForKernelReady(nb)
   })
 })
