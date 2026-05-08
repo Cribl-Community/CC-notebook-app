@@ -47,8 +47,9 @@ npm run e2e:quick
 | Time-to-visible shell | `e2e/specs/performance.spec.ts` | `@performance` |
 | Welcome, examples, new tab, toolbar, editor, kernel ready | `e2e/specs/workflows.spec.ts` | `@regression`, `@slow` on kernel test |
 | Jupyter-style `%pip` / `!pip` line rewrite (stderr hint, no PyPI) | `e2e/specs/pip-magic.spec.ts` | `@regression`, `@slow` |
+| Visualisations bundled notebook: Run All (micropip Plotly, charts) | `e2e/specs/visualisations-example.spec.ts` | `@regression`, `@slow` |
 
-Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide), **`%pip` / `!pip` preprocessing** (unsupported subcommands → stderr).
+Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide), **`%pip` / `!pip` preprocessing** (unsupported subcommands → stderr), **Visualisations example Run All** (requires deployed `.tgz` that bundles the matching `Visualisations.ipynb` + kernel).
 
 ### Keeping E2E current (features & refactors)
 

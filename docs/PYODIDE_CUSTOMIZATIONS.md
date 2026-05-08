@@ -99,8 +99,10 @@ Upgrade check:
   **`ModuleNotFoundError`** for a **top-level** absolute import, runs
   **`micropip.install(<top-level>)`** once via **`pyodide.ffi.run_sync`**, then
   retries. Skips stdlib (`sys.stdlib_module_names`) and `micropip` / `js` /
-  `pyodide`. **PyPI names may differ from import names** (e.g. `Pillow` vs `PIL`);
-  auto-install cannot fix every mismatch.
+  `pyodide` / **`scikits`** (namespace, not a distribution). If ``micropip.install``
+  fails, the **original** ``ModuleNotFoundError`` is re-raised so optional-import
+  patterns (e.g. Plotly → xarray) keep working. **PyPI names may differ from import names**
+  (e.g. `Pillow` vs `PIL`); auto-install cannot fix every mismatch.
 - Uses IPython formatter where possible; falls back to repr methods.
 - Includes MIME allowlist for rich outputs (Plotly, Vega/Vega-Lite, widgets,
   Cribl Search MIME, etc.).

@@ -506,13 +506,14 @@ def _install_nb_auto_micropip_import_hook() -> None:
     _attempted: set[str] = set()
     _busy = False
     stdlib = frozenset(sys.stdlib_module_names)
-    skip = frozenset({"micropip", "js", "pyodide", "pyodide_js"})
+    # ``scikits`` is a legacy namespace, not a PyPI distribution — micropip cannot install it.
+    skip = frozenset({"micropip", "js", "pyodide", "pyodide_js", "scikits"})
 
     def _wrapped(name: str, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001
         nonlocal _busy
         try:
             return _orig(name, globals, locals, fromlist, level)
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as first_missing:
             if level != 0 or _busy:
                 raise
             base = name.partition(".")[0]
@@ -524,7 +525,9 @@ def _install_nb_auto_micropip_import_hook() -> None:
 
                 run_sync(micropip.install(base))
             except BaseException:
-                raise
+                # Surfaces as ValueError/network errors from micropip; optional-import ``try: import …``
+                # chains (e.g. plotly → xarray) expect ImportError/ModuleNotFoundError only.
+                raise first_missing from None
             finally:
                 _busy = False
             _attempted.add(base)

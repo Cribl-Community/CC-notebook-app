@@ -65,7 +65,9 @@ export async function navigateToStagingNotebookApp(page: Page): Promise<void> {
   if (packPath) {
     const p = packPath.startsWith('/') ? packPath : `/${packPath}`
     await page.goto(`${base}${p}`)
-    await waitForAppShell(page)
+    await page.waitForLoadState('domcontentloaded')
+    // Pack URLs embed the widget iframe; cold loads regularly exceed the default 120s shell timeout on staging.
+    await waitForAppShell(page, 240_000)
     return
   }
 
@@ -82,7 +84,7 @@ export async function navigateToStagingNotebookApp(page: Page): Promise<void> {
   const link = page.locator(`a[href^="/apps/a/"][href*="${substr}"]`).first()
   await link.click({ timeout: 45_000 })
   await page.waitForLoadState('load')
-  await waitForAppShell(page)
+  await waitForAppShell(page, 240_000)
 }
 
 /** `.nb-page` inside the notebook shell (expects navigation to the widget already completed). */
@@ -92,6 +94,16 @@ export async function notebookChromeScope(page: Page, timeoutMs = 180_000): Prom
   const chrome = frame.locator('.nb-page').first()
   await chrome.waitFor({ state: 'visible', timeout: timeoutMs })
   return chrome
+}
+
+/** Welcome page: select a bundled ``*.ipynb`` by filename and open it in a new tab. */
+export async function openBundledExample(nb: Frame, filename: string): Promise<void> {
+  const select = nb.locator('#nb-welcome-examples-select')
+  await select.waitFor({ state: 'visible', timeout: 120_000 })
+  await select.selectOption(filename)
+  const openBtn = nb.getByRole('button', { name: 'Open example' })
+  await expect(openBtn).toBeEnabled({ timeout: 120_000 })
+  await openBtn.click()
 }
 
 /** Pyodide finished loading; code cells can run. */
