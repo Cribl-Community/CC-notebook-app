@@ -10,6 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "package": "npm run build && node scripts/package.mjs",
+    "deploy:staging": "node scripts/deploy-staging.mjs",
+    "e2e:package-and-deploy": "npm run package && npm run deploy:staging",
     "update:cribl-api": "node scripts/cribl-openapi-to-catalog.mjs",
     "update:cribl-api:release": "CRIBL_OPENAPI_CHANNEL=release node scripts/cribl-openapi-to-catalog.mjs"
   },
