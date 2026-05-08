@@ -1,36 +1,27 @@
 import type { Manifest } from '@/domain/library'
 import type { NotebookRepo } from '@ports/NotebookRepo'
 import {
-  fetchManifest,
-  fetchNotebookPayload,
-  storeManifest,
-  storeNotebookPayload,
-} from '@features/library/notebookLibrary'
-import { notebookPayloadKey } from '@features/library/manifest'
-import { kvDelete } from '@platform/cribl/kvstore'
-
-function mapManifestToDomain(manifest: Awaited<ReturnType<typeof fetchManifest>>): Manifest {
-  return {
-    version: manifest.version,
-    items: manifest.items,
-  }
-}
+  kvDeleteNotebookPayload,
+  kvFetchManifest,
+  kvFetchNotebookPayload,
+  kvStoreManifest,
+  kvStoreNotebookPayload,
+} from './notebookKv'
 
 export const kvNotebookRepo: NotebookRepo = {
-  async readManifest() {
-    const manifest = await fetchManifest()
-    return mapManifestToDomain(manifest)
+  readManifest() {
+    return kvFetchManifest()
   },
-  writeManifest(manifest) {
-    return storeManifest(manifest)
+  writeManifest(manifest: Manifest) {
+    return kvStoreManifest(manifest)
   },
   readPayload(notebookId) {
-    return fetchNotebookPayload(notebookId)
+    return kvFetchNotebookPayload(notebookId)
   },
   writePayload(notebookId, ipynbJson) {
-    return storeNotebookPayload(notebookId, ipynbJson)
+    return kvStoreNotebookPayload(notebookId, ipynbJson)
   },
   deletePayload(notebookId) {
-    return kvDelete(notebookPayloadKey(notebookId))
+    return kvDeleteNotebookPayload(notebookId)
   },
 }

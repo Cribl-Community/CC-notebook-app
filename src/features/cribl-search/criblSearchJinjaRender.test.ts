@@ -3,7 +3,7 @@ import {
   extractCriblSearchRenderedQueryFromOutputs,
   shouldSuppressCriblSearchJinjaRenderIOPub,
 } from '@features/cribl-search/criblSearchJinjaRender'
-import type { IOPubMessage, OutputRecord } from '@platform/pyodide/types'
+import type { IOPubMessage, OutputRecord } from '@/domain/kernel'
 
 describe('criblSearchJinjaRender', () => {
   it('suppresses only display/execute_result IOPub', () => {

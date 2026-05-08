@@ -1,5 +1,5 @@
 import type { KernelPort } from '@ports/KernelPort'
-import type { IOPubMessage } from '@platform/pyodide/types'
+import type { IOPubMessage } from '@ports/KernelPort'
 import type { CellId, NotebookAction } from '@features/notebook/model/types'
 
 /** Outcome of running one cell. `error` stops further queued cells; `stale` means the run was superseded. */

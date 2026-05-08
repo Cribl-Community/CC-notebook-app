@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
-  OutputRecord,
-  StreamOutput,
-  ExecuteResultOutput,
   DisplayDataOutput,
   ErrorOutput,
-} from '@platform/pyodide/types'
+  ExecuteResultOutput,
+  OutputRecord,
+  StreamOutput,
+} from '@/domain/kernel'
 import { MimeBundleView } from '@features/notebook/ui/MimeBundleView'
 import { stripAnsi, extractCellLineRefs } from '@features/notebook/ui/ansiUtils'
 import { suggestErrorFix } from '@features/ai-riptide/riptideService'

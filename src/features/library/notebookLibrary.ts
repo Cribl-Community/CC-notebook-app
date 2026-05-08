@@ -1,40 +1,36 @@
-import { kvDelete, kvGet, kvPut } from '@platform/cribl/kvstore'
 import { parseIpynbJson, serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
 import type { Cell, NotebookState } from '@features/notebook/model/types'
 import {
-  MANIFEST_KEY,
   collectSubtreeIds,
-  emptyManifest,
   isUnderFolder,
-  notebookPayloadKey,
-  parseManifestJson,
   siblingNameTaken,
   type Manifest,
   type ManifestItem,
 } from '@features/library/manifest'
+import {
+  kvDeleteNotebookPayload,
+  kvFetchManifest,
+  kvFetchNotebookPayload,
+  kvStoreManifest,
+  kvStoreNotebookPayload,
+} from '@platform/adapters/notebookKv'
 
 export type { Manifest, ManifestItem }
 
 export async function fetchManifest(): Promise<Manifest> {
-  const raw = await kvGet(MANIFEST_KEY)
-  if (!raw) return emptyManifest()
-  try {
-    return parseManifestJson(raw)
-  } catch {
-    return emptyManifest()
-  }
+  return kvFetchManifest()
 }
 
 export async function storeManifest(m: Manifest): Promise<void> {
-  await kvPut(MANIFEST_KEY, JSON.stringify(m))
+  await kvStoreManifest(m)
 }
 
 export async function fetchNotebookPayload(notebookId: string): Promise<string | null> {
-  return kvGet(notebookPayloadKey(notebookId))
+  return kvFetchNotebookPayload(notebookId)
 }
 
 export async function storeNotebookPayload(notebookId: string, ipynbJson: string): Promise<void> {
-  await kvPut(notebookPayloadKey(notebookId), ipynbJson)
+  await kvStoreNotebookPayload(notebookId, ipynbJson)
 }
 
 export function stateToIpynbJson(state: NotebookState): string {
@@ -199,7 +195,7 @@ export async function createNotebookWithPayload(
 
 /** Delete KV payloads for notebook ids. */
 export async function deleteNotebookPayloads(ids: string[]): Promise<void> {
-  await Promise.all(ids.map((id) => kvDelete(notebookPayloadKey(id))))
+  await Promise.all(ids.map((id) => kvDeleteNotebookPayload(id)))
 }
 
 /** Rename in manifest and sync `metadata.title` in stored .ipynb for notebooks. */

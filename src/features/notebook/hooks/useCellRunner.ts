@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { Dispatch, MutableRefObject } from 'react'
-import type { IOPubMessage } from '@platform/pyodide/types'
+import type { IOPubMessage } from '@ports/KernelPort'
 import type { CellId, NotebookAction, NotebookState } from '@features/notebook/model/types'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
 import { createDefaultCellExecutors } from '@features/notebook/executor/executorRegistry'

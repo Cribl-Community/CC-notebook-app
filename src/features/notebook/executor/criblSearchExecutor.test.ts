@@ -4,7 +4,7 @@ import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import { createCriblSearchExecutor } from './criblSearchExecutor'
 import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
-import { CRIBL_SEARCH_MIME } from '@platform/pyodide/types'
+import { CRIBL_SEARCH_MIME } from '@/domain/criblSearchMime'
 import {
   buildCriblSearchDataframeCode,
   encodeRowsJsonForPythonBase64,

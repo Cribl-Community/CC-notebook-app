@@ -1,4 +1,4 @@
-import type { CellOutput, IOPubMessage, OutputRecord } from '@platform/pyodide/types'
+import type { CellOutput, IOPubMessage, OutputRecord } from '@/domain/kernel'
 
 export type { CellOutput, IOPubMessage, OutputRecord }
 

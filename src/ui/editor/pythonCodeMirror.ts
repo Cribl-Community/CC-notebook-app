@@ -11,7 +11,7 @@ import { python } from '@codemirror/lang-python'
 import { bracketMatching, HighlightStyle, indentOnInput, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
-import type { CompletionItem } from '@platform/pyodide/types'
+import type { CompletionItem } from '@ports/KernelPort'
 import {
   criblApiCompletionSource,
   createCriblApiFirstLineTooltipExtension,

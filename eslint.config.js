@@ -55,6 +55,11 @@ export default defineConfig([
               group: ['@app/*'],
               message: 'Feature code should not import from app composition root.',
             },
+            {
+              group: ['@platform/pyodide/types'],
+              message:
+                'Notebook/kernel DTOs live in @/domain/kernel and @/domain/criblSearchMime — use @ports/KernelPort for kernel-facing types.',
+            },
           ],
         },
       ],

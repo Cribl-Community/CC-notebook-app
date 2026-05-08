@@ -165,11 +165,22 @@ touch the network, `window`, or browser workers directly.
   `CRIBL_BASE_PATH` vs. local dev.
 - `platform/adapters/` — anti-corruption adapters that map concrete
   `platform/*` payloads into `ports/*` contract DTOs.
+  - `notebookKv.ts` — scoped KV read/write for manifest + notebook payloads
+    (`kvFetchManifest`, …); used by `notebookRepoAdapter` and orchestration in
+    `features/library/notebookLibrary.ts`.
 
 ### `src/domain/`
 
 Pure transport/domain DTOs shared across `ports/*`, features, and adapters.
 This avoids `ports/*` importing from `platform/*` or feature internals.
+
+- `domain/kernel.ts` — Jupyter-shaped IOPub messages, MIME bundles, and cell
+  output records (single source for notebook reducer + kernel port).
+- `domain/criblSearchMime.ts` — `%%cribl_search` structured display MIME key +
+  payload union.
+- `domain/notebookManifest.ts` — library manifest model helpers, KV key paths,
+  and tree/move utilities (shared by `features/library` and
+  `platform/adapters/notebookKv.ts` so repo adapters need not import feature internals).
 
 ### `src/ports/`
 
@@ -179,7 +190,7 @@ no coupling to a specific adapter.
 | Port | Purpose | Default adapter |
 |---|---|---|
 | `KernelPort` | Python kernel lifecycle + execute/complete | `PyodideKernelAdapter` |
-| `NotebookRepo` | Save/load notebooks (+ manifest) | `notebookLibrary.ts` (Cribl KV) |
+| `NotebookRepo` | Save/load notebooks (+ manifest) | `kvNotebookRepo` (`platform/adapters/notebookRepoAdapter.ts`) |
 | `AiCodeService` | Natural-language → Python, error-fix suggestions | `riptideAiCodeService` |
 | `SearchService` | Cribl Search job orchestration | `criblSearchService` (`platform/adapters/searchServiceAdapter.ts`) |
 | `DialogService` | alert / confirm / prompt | `DialogProvider` |
@@ -227,9 +238,9 @@ could be reused outside this feature pie should land here.
   touching those call sites.
 - `platform/pyodide/PyodideKernel.ts` imports `outputArea` from the notebook
   feature so IOPub folding stays single-sourced (see notebook reducer above).
-- `platform/adapters/notebookRepoAdapter.ts` currently delegates to
-  `@features/library/notebookLibrary` helpers — consolidation toward a
-  thinner adapter is future work.
+- `features/library/notebookLibrary.ts` imports `@platform/adapters/notebookKv`
+  for raw KV I/O while keeping manifest mutation + `.ipynb` orchestration in
+  the library slice.
 
 ### Notebook hooks and `app/providers`
 

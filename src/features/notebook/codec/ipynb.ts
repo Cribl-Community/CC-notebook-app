@@ -1,5 +1,5 @@
 import type { Cell, CodeCell, MarkdownCell, NotebookState } from '@features/notebook/model/types'
-import type { MimeBundle, MimeMetadata, OutputRecord } from '@platform/pyodide/types'
+import type { MimeBundle, MimeMetadata, OutputRecord } from '@/domain/kernel'
 
 const NBFORMAT = 4
 const NBFORMAT_MINOR = 5

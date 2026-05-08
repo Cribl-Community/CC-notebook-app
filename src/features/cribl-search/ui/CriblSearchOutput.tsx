@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { CriblSearchPayload } from '@platform/pyodide/types'
+import type { CriblSearchPayload } from '@/domain/criblSearchMime'
 
 function formatCellTime(row: Record<string, unknown>): string {
   const v = row._time ?? row.time

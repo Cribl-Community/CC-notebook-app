@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyIOPub, createOutputArea } from '@features/notebook/reducer/outputArea'
-import type { IOPubMessage } from '@platform/pyodide/types'
+import type { IOPubMessage } from '@/domain/kernel'
 
 function feed(msgs: IOPubMessage[]) {
   let s = createOutputArea()

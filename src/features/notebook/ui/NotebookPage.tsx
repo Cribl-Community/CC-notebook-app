@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from 'react'
-import type { CompletionItem } from '@platform/pyodide/types'
+import type { CompletionItem } from '@ports/KernelPort'
 import type { CellId } from '@features/notebook/model/types'
 import { serializeNotebookToIpynbJson, titleToDownloadFilename } from '@features/notebook/codec/ipynb'
 import { Toolbar } from '@features/notebook/ui/Toolbar'

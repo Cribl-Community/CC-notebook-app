@@ -1,5 +1,5 @@
 import type { KernelPort } from '@ports/KernelPort'
-import type { IOPubMessage, OutputRecord } from '@platform/pyodide/types'
+import type { IOPubMessage, OutputRecord } from '@/domain/kernel'
 import {
   JINJA_RESULT_KEY_CRIBL_API,
   JINJA_RESULT_KEY_CRIBL_SEARCH,
