@@ -19,6 +19,7 @@ and other IPython-based libraries forward through the same channel.
 from __future__ import annotations
 
 import ast
+import shlex
 
 # IPython.core.ultratb imports stack_data; Pyodide ships it but does not always
 # install it as a transitive of the ipython wheel — preload explicitly (same pattern as IPython below).
@@ -413,6 +414,129 @@ _configure_matplotlib_default_backend()
 _install_ipython_publisher()
 
 
+def _nb_preprocess_pip_shell_lines(code: str) -> str:
+    """Rewrite Jupyter-style ``%pip`` / ``!pip`` line magics to ``await micropip.install(...)``.
+
+    Only physical lines are considered (like IPython). ``%%`` cell magics are left
+    untouched. Supports ``pip install`` with optional ``-q`` / ``--quiet``,
+    ``--no-deps``, ``-y`` / ``--yes`` (ignored except ``--no-deps``).
+    """
+    lines = code.split("\n")
+    out: list[str] = []
+    for line in lines:
+        stripped = line.lstrip()
+        ws = line[: len(line) - len(stripped)]
+        if stripped.startswith("%%"):
+            out.append(line)
+            continue
+        rest: str | None = None
+        if stripped.startswith("%pip") and (len(stripped) == 4 or stripped[4] in " \t"):
+            rest = stripped[4:].lstrip()
+        elif stripped.startswith("!pip") and (len(stripped) == 4 or stripped[4] in " \t"):
+            rest = stripped[4:].lstrip()
+        if rest is None:
+            out.append(line)
+            continue
+        try:
+            parts = shlex.split(rest)
+        except ValueError as exc:
+            out.append(f"{ws}raise SyntaxError({str(exc)!r}) from None")
+            continue
+        if not parts:
+            out.append(f'{ws}raise SyntaxError("empty %pip / !pip command")')
+            continue
+        if parts[0] != "install":
+            out.append(
+                f"{ws}import sys\n"
+                f"{ws}print({repr('Only `pip install` is supported in this kernel (got ' + parts[0] + ').')}, file=sys.stderr)"
+            )
+            continue
+        reqs: list[str] = []
+        deps = True
+        i = 1
+        unknown_flag = False
+        while i < len(parts):
+            p = parts[i]
+            if p in ("-q", "--quiet"):
+                i += 1
+                continue
+            if p == "--no-deps":
+                deps = False
+                i += 1
+                continue
+            if p in ("-y", "--yes"):
+                i += 1
+                continue
+            if p.startswith("-"):
+                unknown_flag = True
+                i += 1
+                continue
+            reqs.append(p)
+            i += 1
+        if unknown_flag:
+            out.append(
+                f"{ws}import sys\n"
+                f"{ws}print('[kernel] Some pip flags were ignored; only install flags matching Jupyter/micropip are supported.', file=sys.stderr)"
+            )
+        if not reqs:
+            out.append(f'{ws}raise SyntaxError("pip install requires at least one requirement")')
+            continue
+        rs = ", ".join(repr(r) for r in reqs)
+        out.append(f"{ws}await __import__('micropip').install([{rs}], deps={deps!r})")
+    return "\n".join(out)
+
+
+def _install_nb_auto_micropip_import_hook() -> None:
+    """On ``ModuleNotFoundError``, try ``micropip.install(top-level)`` once, then retry import.
+
+    Uses :func:`pyodide.ffi.run_sync` so asynchronous ``micropip.install`` can run from
+    synchronous import. No-op outside Pyodide or when ``run_sync`` is unavailable.
+    """
+    if getattr(_install_nb_auto_micropip_import_hook, "_done", False):
+        return
+    try:
+        from pyodide.ffi import run_sync  # type: ignore[import-not-found]
+    except Exception:
+        _install_nb_auto_micropip_import_hook._done = True  # type: ignore[attr-defined]
+        return
+
+    import builtins
+
+    _orig = builtins.__import__
+    _attempted: set[str] = set()
+    _busy = False
+    stdlib = frozenset(sys.stdlib_module_names)
+    skip = frozenset({"micropip", "js", "pyodide", "pyodide_js"})
+
+    def _wrapped(name: str, globals=None, locals=None, fromlist=(), level=0):  # noqa: ANN001
+        nonlocal _busy
+        try:
+            return _orig(name, globals, locals, fromlist, level)
+        except ModuleNotFoundError:
+            if level != 0 or _busy:
+                raise
+            base = name.partition(".")[0]
+            if not base or base in stdlib or base in skip or base in _attempted:
+                raise
+            _busy = True
+            try:
+                import micropip  # type: ignore[import-untyped]
+
+                run_sync(micropip.install(base))
+            except BaseException:
+                raise
+            finally:
+                _busy = False
+            _attempted.add(base)
+            return _orig(name, globals, locals, fromlist, level)
+
+    builtins.__import__ = _wrapped
+    _install_nb_auto_micropip_import_hook._done = True  # type: ignore[attr-defined]
+
+
+_install_nb_auto_micropip_import_hook()
+
+
 def _has_top_level_await(tree: ast.Module) -> bool:
     """True if ``await`` appears outside nested def/class bodies (needs async exec)."""
     for stmt in tree.body:
@@ -478,6 +602,7 @@ async def _nb_run(code: str, execution_count: int) -> None:
     import builtins
     import inspect
 
+    code = _nb_preprocess_pip_shell_lines(code)
     user_ns = globals()
     prev_hook = sys.displayhook
     hook = _displayhook_factory(execution_count)

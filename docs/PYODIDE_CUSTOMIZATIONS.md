@@ -64,6 +64,8 @@ Upgrade check:
 - Injects `CRIBL_API_URL` into Python `os.environ`.
 - Installs completion + IOPub bootstrap Python code at worker init.
 - Wraps execution to emit IOPub-like events (`status`, `stream`, `error`).
+- **`loadPackagesFromImports(user_cell)`** failures are caught so PyPI-only imports
+  still reach `_nb_run` (micropip / auto-import can handle them).
 
 Upgrade check:
 - Revalidate fetch-routing conditions after any platform URL/path changes.
@@ -90,6 +92,15 @@ Upgrade check:
   - `display(...)`
   - `clear_output(wait=...)`
   - `_nb_run(...)` execution wrapper
+- Rewrites line-oriented **`%pip install …`** and **`!pip install …`** (Jupyter-style)
+  to **`await micropip.install(...)`** before parsing the cell. Only `install` is
+  implemented; other pip subcommands print a stderr hint.
+- Installs a **`builtins.__import__` wrapper** (Pyodide only): on
+  **`ModuleNotFoundError`** for a **top-level** absolute import, runs
+  **`micropip.install(<top-level>)`** once via **`pyodide.ffi.run_sync`**, then
+  retries. Skips stdlib (`sys.stdlib_module_names`) and `micropip` / `js` /
+  `pyodide`. **PyPI names may differ from import names** (e.g. `Pillow` vs `PIL`);
+  auto-install cannot fix every mismatch.
 - Uses IPython formatter where possible; falls back to repr methods.
 - Includes MIME allowlist for rich outputs (Plotly, Vega/Vega-Lite, widgets,
   Cribl Search MIME, etc.).
@@ -120,6 +131,7 @@ At minimum run:
 - `sandbox-test.html` pass (null-origin iframe)
 - Manual checks:
   - `micropip.install(...)`
+  - `%pip install …` / `!pip install …` and a plain `import <pypi_pkg>` auto-install
   - Plotly/Altair output rendering
   - `%%cribl_search` and `%%cribl_api`
   - Python SDK call path that touches `/api/v1/*` (no stuck busy state)
