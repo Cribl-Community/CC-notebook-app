@@ -1,3 +1,6 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import {
   filenameStemToDisplayTitle,
@@ -5,6 +8,8 @@ import {
   parseIpynbJson,
   serializeNotebookToIpynbJson,
 } from '@features/notebook/codec/ipynb'
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..')
 import type { NotebookState } from '@features/notebook/model/types'
 import { CRIBL_SEARCH_MIME } from '@/domain/criblSearchMime'
 
@@ -165,6 +170,31 @@ describe('parseIpynbJson', () => {
       metadata: { isolated: true },
       display_id: 'd1',
     })
+  })
+})
+
+describe('bundled public/Examples ipynb files', () => {
+  it('parses every shipped example without throwing', () => {
+    const dir = join(repoRoot, 'public', 'Examples')
+    const names = readdirSync(dir).filter((f) => f.endsWith('.ipynb'))
+    expect(names.length).toBeGreaterThan(0)
+    for (const filename of names) {
+      const text = readFileSync(join(dir, filename), 'utf8')
+      expect(() => parseIpynbJson(text, { filename })).not.toThrow()
+    }
+  })
+
+  it('Cribl API examples use normal YAML double-quotes in %%cribl_api POST bodies (no stray backslashes)', () => {
+    const text = readFileSync(join(repoRoot, 'public', 'Examples', 'Cribl_API_Examples.ipynb'), 'utf8')
+    expect(text).not.toMatch(/\\\\\\"/)
+    const { cells } = parseIpynbJson(text, { filename: 'Cribl_API_Examples.ipynb' })
+    const templated = cells.find(
+      (c) => c.cell_type === 'code' && c.source.includes('var=templated_job'),
+    )
+    expect(templated?.cell_type).toBe('code')
+    if (templated?.cell_type !== 'code') return
+    expect(templated.source).toContain('dataset="{{ api_dataset }}"')
+    expect(templated.source.includes('\\"')).toBe(false)
   })
 })
 
