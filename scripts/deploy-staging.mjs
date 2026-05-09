@@ -1,7 +1,8 @@
 /**
- * Deploy the packaged `.tgz` to a Cribl workspace leader using the same API flow as the Apps UI:
+ * Deploy the packaged `.tgz` to a Cribl workspace leader using the Apps UI-style API flow:
  *   1. PUT /api/v1/apps?filename=<basename>   (body = raw archive, Content-Type: application/gzip)
- *   2. POST /api/v1/apps/preinstall-check      ({ source: staged name from step 1 })
+ *   2. POST /api/v1/apps/preinstall-check      ({ source: staged name from step 1 }) — skipped if the
+ *      leader returns 404/405 (route absent) or CRIBL_DEPLOY_SKIP_PREINSTALL_CHECK=1
  *   3. POST /api/v1/apps                       ({ source, id: pack id })
  *
  * Tokens MUST come from the environment or CI secrets — never commit them.
@@ -28,6 +29,7 @@
  * If POST /api/v1/apps reports a conflict (e.g. pack id already installed), the script
  * DELETEs `/api/v1/apps/{packId}` and retries registration once.
  *   CRIBL_DEPLOY_NO_CONFLICT_RETRY — Set to `1` to disable delete+retry (fail on conflict).
+ *   CRIBL_DEPLOY_SKIP_PREINSTALL_CHECK — Set to `1` to skip POST …/preinstall-check (some leaders omit this route).
  */
 import { existsSync } from 'node:fs'
 import { readdir, readFile, stat } from 'node:fs/promises'
@@ -264,6 +266,15 @@ function collectApiErrorText(json) {
   return parts.filter(Boolean).join(' ')
 }
 
+/** Express-style “Cannot POST …” / plain not-found when the route was removed from the leader. */
+function looksLikeMissingHttpRoute(httpStatus, bodyText) {
+  if (httpStatus !== 404 && httpStatus !== 405) return false
+  const t = (bodyText ?? '').trim()
+  if (/cannot\s+(post|put|get|delete)\s+\//i.test(t)) return true
+  if (httpStatus === 405) return true
+  return false
+}
+
 function looksLikeInstallConflict(httpStatus, bodyText) {
   if (httpStatus === 409 || httpStatus === 412) return true
   const lower = bodyText.toLowerCase()
@@ -361,34 +372,46 @@ async function criblLeaderDeployAppsPack(baseUrl, token, packagePath, packId) {
   }
   console.log(`Staged as: ${stagedSource}`)
 
-  const preUrl = `${baseUrl}/api/v1/apps/preinstall-check`
-  console.log(`POST ${preUrl}`)
-  const preRes = await fetch(preUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'x-cribl-agent': DEPLOY_AGENT,
-    },
-    body: JSON.stringify({ source: stagedSource }),
-  })
-  const preText = await preRes.text()
+  const skipPreinstall =
+    process.env.CRIBL_DEPLOY_SKIP_PREINSTALL_CHECK === '1' ||
+    process.env.CRIBL_DEPLOY_SKIP_PREINSTALL === '1'
 
-  if (!preRes.ok) {
-    console.error(`preinstall-check failed: HTTP ${preRes.status}`)
-    console.error(preText.slice(0, 2000))
-    process.exitCode = 1
-    return false
+  if (skipPreinstall) {
+    console.log('Skipping POST …/apps/preinstall-check (CRIBL_DEPLOY_SKIP_PREINSTALL_CHECK=1).')
+  } else {
+    const preUrl = `${baseUrl}/api/v1/apps/preinstall-check`
+    console.log(`POST ${preUrl}`)
+    const preRes = await fetch(preUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'x-cribl-agent': DEPLOY_AGENT,
+      },
+      body: JSON.stringify({ source: stagedSource }),
+    })
+    const preText = await preRes.text()
+
+    if (!preRes.ok) {
+      if (looksLikeMissingHttpRoute(preRes.status, preText)) {
+        console.warn(
+          `preinstall-check unavailable on this leader (HTTP ${preRes.status}); continuing without it.`,
+        )
+      } else {
+        console.error(`preinstall-check failed: HTTP ${preRes.status}`)
+        console.error(preText.slice(0, 2000))
+        process.exitCode = 1
+        return false
+      }
+    } else if (looksLikeHtmlResponse(preText, preRes.headers.get('content-type'))) {
+      console.error(explainWrongLeaderBase())
+      console.error(preText.slice(0, 800))
+      process.exitCode = 1
+      return false
+    } else {
+      console.log(`preinstall-check OK (${preText.length} bytes)`)
+    }
   }
-
-  if (looksLikeHtmlResponse(preText, preRes.headers.get('content-type'))) {
-    console.error(explainWrongLeaderBase())
-    console.error(preText.slice(0, 800))
-    process.exitCode = 1
-    return false
-  }
-
-  console.log(`preinstall-check OK (${preText.length} bytes)`)
 
   console.log(`POST ${baseUrl}/api/v1/apps`)
   let { res: installRes, text: installText } = await postRegisterPack(baseUrl, token, stagedSource, packId)
