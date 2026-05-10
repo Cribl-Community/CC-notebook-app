@@ -21,9 +21,8 @@ from __future__ import annotations
 import ast
 import shlex
 
-# IPython imports stack_data (wheel `stack-data`) via ultratb — the worker installs it via
-# `loadPyodide({ packages: ['stack-data'] })` before this module runs.
-import IPython  # noqa: F401 — top-level so Pyodide loadPackagesFromImports loads the wheel before this module runs.
+# IPython + `stack-data` (ultratb) are installed in the worker before this module runs.
+import IPython  # noqa: F401 — top-level so Pyodide loadPackagesFromImports stays aligned if preload changes.
 import base64
 import json
 import sys

@@ -33,7 +33,7 @@ CI should use the same JSON produced locally, stored as a **base64-encoded secre
 npm run e2e
 ```
 
-Full regression runs in **two phases**: `e2e:quick` (everything except `@slow`, **parallel** with multiple workers) then `e2e:slow` (**one worker**) so two Pyodide-heavy tests never compete on the same machine.
+Full regression runs in **two phases**: `e2e:quick` (everything except `@slow`, **parallel** with multiple workers) then `e2e:slow` (**one worker**, **`@heavy` excluded** so pack-proxy–heavy notebooks do not run immediately after other Pyodide specs). Use **`npm run e2e:slow:all`** to include `@heavy` (Anomaly PyOD Run All).
 
 Skip the slow Pyodide-heavy specs entirely (~multi-minute):
 
@@ -41,10 +41,16 @@ Skip the slow Pyodide-heavy specs entirely (~multi-minute):
 npm run e2e:quick
 ```
 
-Run only `@slow` specs (single worker):
+Run only `@slow` specs (single worker), excluding `@heavy`:
 
 ```bash
 npm run e2e:slow
+```
+
+Run **all** `@slow` specs including `@heavy`:
+
+```bash
+npm run e2e:slow:all
 ```
 
 ### Parallelism and host load
@@ -63,10 +69,11 @@ If the machine struggles (memory, CPU fans), set `CRIBL_E2E_WORKERS=1` in `e2e/.
 |------|------|------|
 | Shell mount / chrome | `e2e/specs/smoke.spec.ts` | `@smoke`, `@regression` |
 | Time-to-visible shell | `e2e/specs/performance.spec.ts` | `@performance` |
-| Welcome, examples, new tab, toolbar, editor, kernel ready | `e2e/specs/workflows.spec.ts` | `@regression`, `@slow` on kernel test |
+| Welcome, examples, new tab, toolbar, editor | `e2e/specs/workflows.spec.ts` | `@regression` |
+| Pyodide kernel Ready (new notebook tab) | `e2e/specs/kernel-ready.spec.ts` | `@regression`, `@slow` |
 | Jupyter-style `%pip` / `!pip` line rewrite (stderr hint, no PyPI) | `e2e/specs/pip-magic.spec.ts` | `@regression`, `@slow` |
 | Visualisations bundled notebook: Run All (micropip Plotly, charts) | `e2e/specs/visualisations-example.spec.ts` | `@regression`, `@slow` |
-| Anomaly Detection PyOD notebook: Run All (micropip PyOD stack, `%%cribl_search`, Plotly) | `e2e/specs/anomaly-detection-example.spec.ts` | `@regression`, `@slow` |
+| Anomaly Detection PyOD notebook: Run All (micropip PyOD stack, `%%cribl_search`, Plotly) | `e2e/specs/zz-anomaly-detection-example.spec.ts` | `@regression`, `@slow`, `@heavy` (opt-in via `npm run e2e:slow:all`) |
 
 Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide), **`%pip` / `!pip` preprocessing** (unsupported subcommands → stderr), **Visualisations example Run All** (requires deployed `.tgz` that bundles the matching `Visualisations.ipynb` + kernel), **Anomaly Detection PyOD example Run All** (needs **Cribl Search** for `%%cribl_search` / `externaldata` and a `.tgz` that bundles `Anomaly_Detection_PyOD.ipynb`; cold micropip can be very slow).
 

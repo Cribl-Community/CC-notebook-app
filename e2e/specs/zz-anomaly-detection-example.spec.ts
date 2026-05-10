@@ -11,7 +11,10 @@ import {
  * First-time micropip (SciPy, sklearn, Plotly, PyOD) can take tens of minutes — timeouts are high.
  */
 test.describe('@regression examples', () => {
-  test('@slow Anomaly Detection PyOD example: Run All completes without cell errors', async ({ page }) => {
+  test.describe.configure({ retries: 1 })
+
+  /** `@heavy`: huge micropip + Search surface; run after other `@slow` specs can trip pack-proxy limits — use `npm run e2e:slow:all`. */
+  test('@slow @heavy Anomaly Detection PyOD example: Run All completes without cell errors', async ({ page }) => {
     test.setTimeout(2_400_000)
 
     await navigateToStagingNotebookApp(page)

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { getNotebookFrame, navigateToStagingNotebookApp, waitForKernelReady } from '../helpers/appShell'
+import { getNotebookFrame, navigateToStagingNotebookApp } from '../helpers/appShell'
 
 test.describe('@regression welcome', () => {
   test('hero, sidebar, and Welcome tab load', async ({ page }) => {
@@ -35,21 +35,5 @@ test.describe('@regression workspace', () => {
     await expect(nb.getByTitle('Add code cell at end')).toBeVisible()
     await expect(nb.getByRole('button', { name: /Run All/ })).toBeVisible()
     await expect(nb.locator('.cm-editor').first()).toBeVisible({ timeout: 90_000 })
-  })
-})
-
-test.describe('@regression kernel', () => {
-  test('@slow Pyodide kernel reaches Ready after opening a notebook tab', async ({ page }) => {
-    // Shell navigation can take up to 240s; Pyodide cold-start on staging often needs several minutes.
-    test.setTimeout(720_000)
-
-    await navigateToStagingNotebookApp(page)
-    const nb = await getNotebookFrame(page)
-    // "+" tab control is unique (Welcome vs sidebar both expose "New notebook" copy).
-    await nb.locator('button.nb-tab-new').click()
-    await expect(nb.getByRole('textbox', { name: 'Notebook title' })).toHaveValue('Untitled', {
-      timeout: 90_000,
-    })
-    await waitForKernelReady(nb, 480_000)
   })
 })

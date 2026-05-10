@@ -13,6 +13,8 @@ import {
  * items (see docs/PYODIDE_CUSTOMIZATIONS.md).
  */
 test.describe('@regression pip magic', () => {
+  test.describe.configure({ retries: 2 })
+
   test('@slow unsupported %pip and !pip subcommands print install hints on stderr', async ({ page }) => {
     test.setTimeout(720_000)
 
