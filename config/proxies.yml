@@ -18,9 +18,3 @@ files.pythonhosted.org:
   paths:
     allowlist:
       - /packages/
-
-# Example notebook `Anomaly_Detection_PyOD.ipynb` loads the daily minimum temperatures CSV from GitHub raw.
-raw.githubusercontent.com:
-  paths:
-    allowlist:
-      - /jbrownlee/Datasets/master/daily-min-temperatures.csv
