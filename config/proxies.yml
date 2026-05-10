@@ -19,8 +19,3 @@ files.pythonhosted.org:
     allowlist:
       - /packages/
 
-# Public CSV URL used in docs / notebook text; not required for Search `externaldata` (server-side fetch).
-raw.githubusercontent.com:
-  paths:
-    allowlist:
-      - /jbrownlee/Datasets/master/daily-min-temperatures.csv
