@@ -26,7 +26,7 @@ Run tests with `npm test` (Vitest + JSDOM + React Testing Library).
 
 **Staging E2E:** Playwright drives a real tenant (Apps iframe + notebook shell).
 Use `npm run e2e:auth` once to save session state (gitignored), then `npm run e2e`
-(or `npm run e2e:quick` to skip the slow Pyodide-ready assertion).
+(or `npm run e2e:quick` to skip the slow Pyodide-heavy phase). For `@heavy` specs (Anomaly PyOD Run All), run `npm run e2e:slow:all` separately when needed.
 Deploy artifacts with `npm run deploy:staging` (leader `PUT`/`POST` flow; see `scripts/deploy-staging.mjs` header) using env/CI secrets only.
 Coverage and maintenance rules (when to update specs for new features): [`docs/E2E_STAGING.md`](./docs/E2E_STAGING.md).
 

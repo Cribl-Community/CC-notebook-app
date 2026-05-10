@@ -313,9 +313,6 @@ self.onmessage = async function (e) {
         packageBaseUrl: msg.pyodidePackageBaseUrl,
         // Same-origin lock from the shipped `public/pyodide/` tree; avoids CSP blocks on jsDelivr in iframes.
         lockFileURL: msg.pyodideLockFileUrl,
-        // `stack_data` (wheel name `stack-data`) is required by IPython ultratb before IOPUB bootstrap runs.
-        // Installing here is more reliable than a separate `loadPackage` after `loadPyodide` returns.
-        packages: ['stack-data'],
       })
       if (msg.interruptSharedArrayBuffer) {
         try {
@@ -332,7 +329,18 @@ self.onmessage = async function (e) {
       await pyodide.runPythonAsync(
         'import os\nos.environ["CRIBL_API_URL"] = ' + JSON.stringify(criblApiUrl),
       )
+      // Preload from the lockfile in sequence: `loadPyodide({ packages: [...] })` can race transitive
+      // installs (e.g. IPython without traitlets). Lazy-loading matplotlib mid-notebook also spikes
+      // proxied fetches and flakes on staging.
       initPhase = 'bootstrap'
+      postInitProgress('bootstrap', 'Loading IPython', 72)
+      await pyodide.loadPackage('ipython')
+      postInitProgress('bootstrap', 'Loading stack-data', 75)
+      await pyodide.loadPackage('stack-data')
+      postInitProgress('bootstrap', 'Loading matplotlib', 78)
+      await pyodide.loadPackage('matplotlib')
+      postInitProgress('bootstrap', 'Loading pandas', 82)
+      await pyodide.loadPackage('pandas')
       postInitProgress('bootstrap', 'Loading notebook bootstrap scripts', 85)
       await pyodide.runPythonAsync(COMPLETION_PY)
       await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY)
