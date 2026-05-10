@@ -537,6 +537,31 @@ def _install_nb_auto_micropip_import_hook() -> None:
     _install_nb_auto_micropip_import_hook._done = True  # type: ignore[attr-defined]
 
 
+def _suppress_micropip_pypi_simple_api_minor_warnings() -> None:
+    """Silence ``APIVersionWarning: Unsupported API minor version`` from micropip / mousebender.
+
+    PyPI's Simple HTML responses can advertise a newer API minor than the vendored
+    ``mousebender`` bundled with ``micropip``; parsing still works. Filtering avoids
+    scaring users on every ``await micropip.install(...)``.
+    """
+    import warnings
+
+    # Message match works even before ``micropip`` is importable.
+    warnings.filterwarnings("ignore", message=r"Unsupported API minor version")
+    try:
+        from micropip._vendored.mousebender.simple import APIVersionWarning
+
+        warnings.filterwarnings("ignore", category=APIVersionWarning)
+    except Exception:
+        try:
+            from mousebender.simple import APIVersionWarning
+
+            warnings.filterwarnings("ignore", category=APIVersionWarning)
+        except Exception:
+            pass
+
+
+_suppress_micropip_pypi_simple_api_minor_warnings()
 _install_nb_auto_micropip_import_hook()
 
 
