@@ -58,6 +58,14 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '10 min',
     recommendedOrder: 6,
   },
+  'Anomaly_Detection_PyOD.ipynb': {
+    summary:
+      'Time-series windows with eighteen PyOD detectors and per-model Matplotlib charts (after JaminJeong/AnomalyDetectionUsingPyOD).',
+    tags: ['python', 'ml', 'pyod', 'visualization'],
+    level: 'advanced',
+    estimatedRuntime: '25–40 min first run',
+    recommendedOrder: 8,
+  },
   'Visualisations.ipynb': {
     summary: 'Rendering recipes with Matplotlib, Plotly, and Vega-Lite.',
     tags: ['visualization', 'plotly', 'altair'],
