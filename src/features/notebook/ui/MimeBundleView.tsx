@@ -148,6 +148,7 @@ function MarkdownMime({ data }: { data: string }) {
     const rendered = marked.parse(data, { async: false }) as string
     return DOMPurify.sanitize(rendered, {
       ADD_TAGS: ['iframe'],
+      ADD_ATTR: ['target', 'rel'],
       FORBID_TAGS: ['script'],
     })
   }, [data])

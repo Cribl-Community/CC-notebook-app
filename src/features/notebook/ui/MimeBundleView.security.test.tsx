@@ -3,6 +3,17 @@ import { render, screen } from '@testing-library/react'
 import { MimeBundleView } from '@features/notebook/ui/MimeBundleView'
 
 describe('MimeBundleView security behavior', () => {
+  it('preserves target and rel on markdown anchor tags', () => {
+    const md =
+      '<p><a href="https://example.com/path" target="_blank" rel="noopener noreferrer">external</a></p>'
+    const { container } = render(<MimeBundleView data={{ 'text/markdown': md }} metadata={{}} />)
+
+    const a = container.querySelector('.nb-mime-markdown a')
+    expect(a?.getAttribute('href')).toBe('https://example.com/path')
+    expect(a?.getAttribute('target')).toBe('_blank')
+    expect(a?.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
   it('sanitizes markdown script tags', () => {
     const { container } = render(
       <MimeBundleView

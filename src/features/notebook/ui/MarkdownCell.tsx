@@ -17,7 +17,9 @@ interface MarkdownCellProps {
 
 function renderMarkdown(source: string): string {
   const raw = marked(source || '_Double-click to edit…_', { async: false })
-  return DOMPurify.sanitize(raw)
+  return DOMPurify.sanitize(raw, {
+    ADD_ATTR: ['target', 'rel'],
+  })
 }
 
 export function MarkdownCell({
