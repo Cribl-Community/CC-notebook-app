@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.1.0',
+    date: '2026-05-10',
+    highlights: [
+      'Examples: bundled `Anomaly_Detection_PyOD.ipynb` — eighteen PyOD detectors on sliding-window temperatures with per-model charts (after JaminJeong/AnomalyDetectionUsingPyOD); `proxies.yml` allowlists the GitHub raw CSV used by `pd.read_csv`.',
+      'Packaging: build 1.1.0 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.0.70',
     date: '2026-05-08',
     highlights: [
