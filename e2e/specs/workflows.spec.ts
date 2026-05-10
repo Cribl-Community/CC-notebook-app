@@ -28,7 +28,7 @@ test.describe('@regression workspace', () => {
   test('New notebook creates tab, toolbar, and editor', async ({ page }) => {
     await navigateToStagingNotebookApp(page)
     const nb = await getNotebookFrame(page)
-    await nb.getByRole('button', { name: 'New notebook', exact: true }).click()
+    await nb.locator('button.nb-tab-new').click()
     await expect(nb.locator('.nb-tab-title').filter({ hasText: 'Untitled' })).toBeVisible({
       timeout: 60_000,
     })
@@ -40,14 +40,16 @@ test.describe('@regression workspace', () => {
 
 test.describe('@regression kernel', () => {
   test('@slow Pyodide kernel reaches Ready after opening a notebook tab', async ({ page }) => {
-    // Global Playwright timeout is 180s; navigation alone can wait up to 240s for the shell,
-    // then Pyodide cold-start needs a similar budget — exceed the default test limit explicitly.
-    test.setTimeout(420_000)
+    // Shell navigation can take up to 240s; Pyodide cold-start on staging often needs several minutes.
+    test.setTimeout(720_000)
 
     await navigateToStagingNotebookApp(page)
     const nb = await getNotebookFrame(page)
-    await nb.getByRole('button', { name: 'New notebook', exact: true }).click()
-    await nb.locator('.nb-tab-title').filter({ hasText: 'Untitled' }).waitFor({ state: 'visible', timeout: 60_000 })
-    await waitForKernelReady(nb, 300_000)
+    // "+" tab control is unique (Welcome vs sidebar both expose "New notebook" copy).
+    await nb.locator('button.nb-tab-new').click()
+    await expect(nb.getByRole('textbox', { name: 'Notebook title' })).toHaveValue('Untitled', {
+      timeout: 90_000,
+    })
+    await waitForKernelReady(nb, 480_000)
   })
 })

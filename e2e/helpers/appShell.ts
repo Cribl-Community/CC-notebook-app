@@ -108,7 +108,8 @@ export async function openBundledExample(nb: Frame, filename: string): Promise<v
 
 /** Pyodide finished loading; code cells can run. */
 export async function waitForKernelReady(nb: Frame, timeoutMs = 180_000): Promise<void> {
-  const ready = nb.locator('.nb-kernel-status').getByText('Ready', { exact: true })
+  // Scope to toolbar — avoids any stray markup and matches the active tab's kernel strip.
+  const ready = nb.locator('.nb-toolbar .nb-kernel-status').getByText('Ready', { exact: true })
   const failedBanner = nb.getByRole('alert').filter({ hasText: 'Kernel failed to load' })
   const end = Date.now() + timeoutMs
   while (Date.now() < end) {

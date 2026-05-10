@@ -313,6 +313,9 @@ self.onmessage = async function (e) {
         packageBaseUrl: msg.pyodidePackageBaseUrl,
         // Same-origin lock from the shipped `public/pyodide/` tree; avoids CSP blocks on jsDelivr in iframes.
         lockFileURL: msg.pyodideLockFileUrl,
+        // `stack_data` (wheel name `stack-data`) is required by IPython ultratb before IOPUB bootstrap runs.
+        // Installing here is more reliable than a separate `loadPackage` after `loadPyodide` returns.
+        packages: ['stack-data'],
       })
       if (msg.interruptSharedArrayBuffer) {
         try {
@@ -332,9 +335,6 @@ self.onmessage = async function (e) {
       initPhase = 'bootstrap'
       postInitProgress('bootstrap', 'Loading notebook bootstrap scripts', 85)
       await pyodide.runPythonAsync(COMPLETION_PY)
-      // `stack_data` (PyPI name `stack-data`) is an IPython ultratb dependency; `loadPackagesFromImports`
-      // does not always map the import to this wheel before IOPUB bootstrap runs.
-      await pyodide.loadPackage('stack-data')
       await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY)
       await pyodide.runPythonAsync(IOPUB_BOOTSTRAP_PY)
       postInitProgress('bootstrap', 'Finalizing kernel startup', 98)
