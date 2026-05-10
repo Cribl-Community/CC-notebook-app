@@ -60,8 +60,8 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
   },
   'Anomaly_Detection_PyOD.ipynb': {
     summary:
-      'Time-series windows: PyOD where WASM allows, otherwise sklearn-labeled substitutes (Numba/torch slots); temperatures via %%cribl_search externaldata and Matplotlib per model (after JaminJeong/AnomalyDetectionUsingPyOD).',
-    tags: ['python', 'ml', 'pyod', 'visualization'],
+      'Time-series windows: PyOD where WASM allows, otherwise sklearn-labeled substitutes (Numba/torch slots); temperatures via %%cribl_search externaldata; interactive Plotly per model with anomaly markers (after JaminJeong/AnomalyDetectionUsingPyOD).',
+    tags: ['python', 'ml', 'pyod', 'visualization', 'plotly'],
     level: 'advanced',
     estimatedRuntime: '25–40 min first run',
     recommendedOrder: 8,
