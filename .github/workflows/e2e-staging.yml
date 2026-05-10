@@ -13,7 +13,8 @@ concurrency:
 jobs:
   playwright:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # Quick phase + slow phase (Pyodide): Visualisations + Anomaly notebook micropip/Run All can exceed 45m.
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
