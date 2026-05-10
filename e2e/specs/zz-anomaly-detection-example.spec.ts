@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import {
+  expectNoCriticalNotebookErrors,
   getNotebookFrame,
   navigateToStagingNotebookApp,
   openBundledExample,
@@ -36,7 +37,7 @@ test.describe('@regression examples', () => {
       timeout: 2_100_000,
     })
 
-    await expect(nb.locator('.nb-output-error')).toHaveCount(0)
+    await expectNoCriticalNotebookErrors(nb)
 
     await expect(nb.locator('.nb-mime-plotly').first()).toBeVisible({ timeout: 300_000 })
   })

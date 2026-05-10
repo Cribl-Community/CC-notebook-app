@@ -107,6 +107,36 @@ export async function openBundledExample(nb: Frame, filename: string): Promise<v
 }
 
 /** Pyodide finished loading; code cells can run. */
+/**
+ * Cell error headers render as `{ename}: {evalue}` (see `CellOutput.tsx`).
+ * Micropip, packaging, and PyPI Simple parsers often surface **warnings** as IOPub `error`
+ * messages with exception types ending in `Warning`, which should not fail staging regression.
+ */
+export function isBenignNotebookCellErrorHeader(header: string): boolean {
+  const trimmed = header.trim()
+  const colon = trimmed.indexOf(':')
+  const enamePart = (colon >= 0 ? trimmed.slice(0, colon) : trimmed).trim()
+  const ename = enamePart.includes('.') ? enamePart.replace(/^.*\./, '') : enamePart
+  return ename === 'Warning' || ename.endsWith('Warning')
+}
+
+/** Fails only when a cell has a structured error whose type is not a Warning subclass. */
+export async function expectNoCriticalNotebookErrors(nb: Frame, timeoutMs = 60_000): Promise<void> {
+  const end = Date.now() + timeoutMs
+  while (Date.now() < end) {
+    const headers = await nb.locator('.nb-output-error-header').allInnerTexts()
+    const critical = headers.filter((h) => !isBenignNotebookCellErrorHeader(h))
+    if (critical.length === 0) return
+    await delay(250)
+  }
+  const headers = await nb.locator('.nb-output-error-header').allInnerTexts()
+  const critical = headers.filter((h) => !isBenignNotebookCellErrorHeader(h))
+  throw new Error(
+    `Expected no critical notebook cell errors; got ${critical.length}: ${critical.map((c) => c.split('\n')[0]?.trim() ?? c).join(' | ')}`,
+  )
+}
+
+/** Pyodide finished loading; code cells can run. */
 export async function waitForKernelReady(nb: Frame, timeoutMs = 180_000): Promise<void> {
   // Scope to toolbar — avoids any stray markup and matches the active tab's kernel strip.
   const ready = nb.locator('.nb-toolbar .nb-kernel-status').getByText('Ready', { exact: true })
