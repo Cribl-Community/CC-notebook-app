@@ -332,6 +332,9 @@ self.onmessage = async function (e) {
       initPhase = 'bootstrap'
       postInitProgress('bootstrap', 'Loading notebook bootstrap scripts', 85)
       await pyodide.runPythonAsync(COMPLETION_PY)
+      // `stack_data` (PyPI name `stack-data`) is an IPython ultratb dependency; `loadPackagesFromImports`
+      // does not always map the import to this wheel before IOPUB bootstrap runs.
+      await pyodide.loadPackage('stack-data')
       await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY)
       await pyodide.runPythonAsync(IOPUB_BOOTSTRAP_PY)
       postInitProgress('bootstrap', 'Finalizing kernel startup', 98)
