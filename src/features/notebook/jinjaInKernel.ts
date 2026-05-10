@@ -163,7 +163,7 @@ async def __cribl_jinja():
         import jinja2
     except ModuleNotFoundError:
         import micropip
-        await micropip.install("jinja2")
+        await micropip.install('jinja2==3.1.6')
         import jinja2
     from jinja2.sandbox import SandboxedEnvironment
     from jinja2 import meta as jinja2_meta

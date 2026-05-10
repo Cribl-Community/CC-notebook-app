@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.1.0',
+    date: '2026-05-10',
+    highlights: [
+      'Examples: bundled `Anomaly_Detection_PyOD.ipynb` — eighteen detector slots on sliding-window temperatures with per-model charts (PyOD where supported in Pyodide; **sklearn substitute for …** sections replace Numba/torch-only PyOD models with scikit-learn alternatives); temperatures load via `%%cribl_search` and Cribl Search `externaldata` instead of `pd.read_csv`.',
+      'Packaging: build 1.1.0 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.0.70',
     date: '2026-05-08',
     highlights: [
