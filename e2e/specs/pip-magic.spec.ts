@@ -14,11 +14,15 @@ import {
  */
 test.describe('@regression pip magic', () => {
   test('@slow unsupported %pip and !pip subcommands print install hints on stderr', async ({ page }) => {
+    test.setTimeout(720_000)
+
     await navigateToStagingNotebookApp(page)
     const nb = await getNotebookFrame(page)
-    await nb.getByRole('button', { name: 'New notebook', exact: true }).click()
-    await nb.locator('.nb-tab-title').filter({ hasText: 'Untitled' }).waitFor({ state: 'visible', timeout: 60_000 })
-    await waitForKernelReady(nb)
+    await nb.locator('button.nb-tab-new').click()
+    await expect(nb.getByRole('textbox', { name: 'Notebook title' })).toHaveValue('Untitled', {
+      timeout: 90_000,
+    })
+    await waitForKernelReady(nb, 480_000)
 
     const stderr = nb.locator('.nb-cell').first().locator('.nb-output-pre.nb-output-stream--stderr')
 

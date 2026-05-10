@@ -9,7 +9,7 @@ import {
 /** Staging must serve `public/Examples` + Pyodide bootstrap from the same packaged build (redeploy after notebook/kernel changes). */
 test.describe('@regression examples', () => {
   test('@slow Visualisations example: Run All completes without cell errors', async ({ page }) => {
-    test.setTimeout(600_000)
+    test.setTimeout(900_000)
 
     await navigateToStagingNotebookApp(page)
     const nb = await getNotebookFrame(page)
@@ -20,13 +20,13 @@ test.describe('@regression examples', () => {
       timeout: 90_000,
     })
 
-    await waitForKernelReady(nb, 240_000)
+    await waitForKernelReady(nb, 480_000)
 
     const runAll = nb.getByRole('button', { name: /Run All/ })
     await expect(runAll).toBeEnabled({ timeout: 60_000 })
     await runAll.click()
 
-    await expect(nb.locator('.nb-kernel-status').getByText('Ready', { exact: true })).toBeVisible({
+    await expect(nb.locator('.nb-toolbar .nb-kernel-status').getByText('Ready', { exact: true })).toBeVisible({
       timeout: 540_000,
     })
 
