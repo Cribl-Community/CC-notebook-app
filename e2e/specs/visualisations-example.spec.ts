@@ -20,7 +20,7 @@ test.describe('@regression examples', () => {
       timeout: 90_000,
     })
 
-    await waitForKernelReady(nb, 240_000)
+    await waitForKernelReady(nb, 360_000)
 
     const runAll = nb.getByRole('button', { name: /Run All/ })
     await expect(runAll).toBeEnabled({ timeout: 60_000 })

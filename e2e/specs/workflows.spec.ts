@@ -40,10 +40,14 @@ test.describe('@regression workspace', () => {
 
 test.describe('@regression kernel', () => {
   test('@slow Pyodide kernel reaches Ready after opening a notebook tab', async ({ page }) => {
+    // Global Playwright timeout is 180s; navigation alone can wait up to 240s for the shell,
+    // then Pyodide cold-start needs a similar budget — exceed the default test limit explicitly.
+    test.setTimeout(420_000)
+
     await navigateToStagingNotebookApp(page)
     const nb = await getNotebookFrame(page)
     await nb.getByRole('button', { name: 'New notebook', exact: true }).click()
     await nb.locator('.nb-tab-title').filter({ hasText: 'Untitled' }).waitFor({ state: 'visible', timeout: 60_000 })
-    await waitForKernelReady(nb)
+    await waitForKernelReady(nb, 300_000)
   })
 })

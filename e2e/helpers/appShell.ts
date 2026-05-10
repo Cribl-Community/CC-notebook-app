@@ -108,9 +108,18 @@ export async function openBundledExample(nb: Frame, filename: string): Promise<v
 
 /** Pyodide finished loading; code cells can run. */
 export async function waitForKernelReady(nb: Frame, timeoutMs = 180_000): Promise<void> {
-  await expect(nb.locator('.nb-kernel-status').getByText('Ready', { exact: true })).toBeVisible({
-    timeout: timeoutMs,
-  })
+  const ready = nb.locator('.nb-kernel-status').getByText('Ready', { exact: true })
+  const failedBanner = nb.getByRole('alert').filter({ hasText: 'Kernel failed to load' })
+  const end = Date.now() + timeoutMs
+  while (Date.now() < end) {
+    if (await ready.isVisible().catch(() => false)) return
+    if (await failedBanner.isVisible().catch(() => false)) {
+      const summary = await nb.locator('.nb-kernel-banner-message').first().innerText().catch(() => '')
+      throw new Error(`Kernel failed to reach Ready: ${summary.trim() || '(no summary)'}`)
+    }
+    await delay(250)
+  }
+  throw new Error(`Kernel did not reach Ready within ${timeoutMs}ms`)
 }
 
 /** Replace source of the first code cell’s editor (scoped so extra cells do not steal focus). */
