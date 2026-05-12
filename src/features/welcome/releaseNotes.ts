@@ -11,6 +11,11 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.1',
+    date: '2026-05-12',
+    highlights: ['Packaging: build 1.2.1 and refreshed distribution package.'],
+  },
+  {
     version: '1.2.0',
     date: '2026-05-12',
     highlights: [
