@@ -73,14 +73,6 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '10 min',
     recommendedOrder: 7,
   },
-  'Widgets_Demo.ipynb': {
-    summary:
-      'Interactive IntSlider via Jupyter IOPub comm_open and the in-browser @jupyter-widgets/controls view.',
-    tags: ['widgets', 'ipywidgets', 'visualization'],
-    level: 'beginner',
-    estimatedRuntime: '2 min',
-    recommendedOrder: 9,
-  },
 }
 
 function displayTitle(filename: string): string {

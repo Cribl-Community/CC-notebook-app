@@ -708,8 +708,8 @@ def _nb_deliver_comm_msg(comm_id: str, data: object) -> None:
 def _nb_demo_int_slider() -> None:
     """Emit IOPub ``comm_open`` + a raw ``display_data`` bundle for an ``IntSlider``.
 
-    Used by the bundled ``Widgets_Demo.ipynb`` example so interactive widgets
-    work without ``micropip`` when the stock Pyodide stack lacks ``ipywidgets``.
+    Call from a notebook cell (e.g. ``_nb_demo_int_slider()``) to exercise the
+    widget bridge without ``micropip`` when the stock Pyodide stack lacks ``ipywidgets``.
     """
     import json
     import uuid
