@@ -31,6 +31,8 @@ type RuntimeState = {
   runQueue: { p: Promise<void> }
   scheduled: Set<string>
   executionCount: number
+  runAllBatchId: number
+  abortedRunAllBatchId: number | null
 }
 
 function makeRuntimeController(): {
@@ -45,16 +47,21 @@ function makeRuntimeController(): {
     runQueue: { p: Promise.resolve() },
     scheduled: new Set<string>(),
     executionCount: 0,
+    runAllBatchId: 0,
+    abortedRunAllBatchId: null,
   }
   const initKernelForTab = vi.fn()
   const interruptKernelForTab = vi.fn()
   const runtime: TabRuntimeController = {
     get: () => ({
       kernel: state.kernel,
+      widgetManager: null,
       generation: state.generation,
       runQueue: state.runQueue,
       executionCount: state.executionCount,
       scheduledIds: state.scheduled,
+      runAllBatchId: state.runAllBatchId,
+      abortedRunAllBatchId: state.abortedRunAllBatchId,
     }),
     kernelFor: () => state.kernel,
     generationOf: () => state.generation,
@@ -68,11 +75,22 @@ function makeRuntimeController(): {
       state.executionCount = count
     },
     scheduledSetOf: () => state.scheduled,
+    beginRunAllBatch: () => {
+      state.runAllBatchId += 1
+      state.abortedRunAllBatchId = null
+      return state.runAllBatchId
+    },
+    abortRunAllBatch: (_tabId, batchId) => {
+      state.abortedRunAllBatchId = batchId
+    },
+    shouldSkipQueuedRunAllCell: (_tabId, batchId) =>
+      batchId != null && state.abortedRunAllBatchId === batchId,
     initKernelForTab,
     restartKernelForTab: vi.fn(),
     interruptKernelForTab,
     resetQueueState: vi.fn(),
     disposeTab: vi.fn(),
+    widgetManagerFor: () => null,
   }
   return { runtime, state, initKernelForTab, interruptKernelForTab }
 }
@@ -165,7 +183,7 @@ describe('useCellRunner', () => {
     })
   })
 
-  it('runAll enqueues each code cell', async () => {
+  it('runAll runs each code cell when all succeed', async () => {
     const notebook = makeNotebookState()
     const workspace: WorkspaceState = { tabs: [makeTab(notebook)], activeTabId: 't1' }
     const workspaceRef = { current: workspace }
@@ -196,6 +214,42 @@ describe('useCellRunner', () => {
     })
 
     expect(runNotebookCellAfterReady).toHaveBeenCalledTimes(2)
+  })
+
+  it('runAll does not run later code cells after a cell returns error', async () => {
+    const notebook = makeNotebookState()
+    const workspace: WorkspaceState = { tabs: [makeTab(notebook)], activeTabId: 't1' }
+    const workspaceRef = { current: workspace }
+    const activeTabIdRef = { current: 't1' }
+    const dispatch = vi.fn<(action: WorkspaceAction) => void>()
+    const { runtime } = makeRuntimeController()
+
+    runNotebookCellAfterReady.mockResolvedValueOnce('error').mockResolvedValue('ok')
+
+    const { result } = renderHook(
+      () =>
+        useCellRunner({
+          runtime,
+          workspaceRef: workspaceRef as never,
+          activeTabIdRef: activeTabIdRef as never,
+          dispatch,
+          activeTab: workspace.tabs[0],
+          state: notebook,
+        }),
+      { wrapper: cellRunnerProvidersWrapper },
+    )
+
+    act(() => {
+      result.current.runAll()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(runNotebookCellAfterReady).toHaveBeenCalledTimes(1)
   })
 
   it('stopExecution clears queue and interrupts kernel without re-init', () => {

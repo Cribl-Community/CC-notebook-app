@@ -5,6 +5,7 @@ import type { KernelFactory, KernelPort } from '@ports/KernelPort'
 import { useOptionalKernelFactory } from '@app/providers'
 import type { CellId } from '@features/notebook/model/types'
 import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
+import type { NotebookWidgetManager } from '@features/notebook/widgets/notebookWidgetManager'
 
 /**
  * Per-tab runtime state. Previously the hook exposed five parallel
@@ -16,6 +17,8 @@ import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer
 export interface TabRuntime {
   /** Active Pyodide kernel for the tab, or null before init / after dispose. */
   kernel: KernelPort | null
+  /** Live ipywidgets bridge; null until the kernel finishes booting. */
+  widgetManager: NotebookWidgetManager | null
   /**
    * Generation counter bumped on every restart/stop so in-flight runs can
    * detect and bail if they outlive their kernel.
@@ -27,6 +30,13 @@ export interface TabRuntime {
   executionCount: number
   /** Set of cell ids currently scheduled or running; used to de-dupe clicks. */
   scheduledIds: Set<CellId>
+  /**
+   * Monotonic id issued at each Run All start; queued cells capture it so later
+   * cells can no-op after an earlier cell in the same batch errors.
+   */
+  runAllBatchId: number
+  /** When equal to a cell's captured batch id, that Run All batch was aborted. */
+  abortedRunAllBatchId: number | null
 }
 
 export interface TabRuntimeController {
@@ -49,15 +59,25 @@ export interface TabRuntimeController {
   resetQueueState(tabId: string): void
   /** Dispose the kernel if present and forget the tab entirely. */
   disposeTab(tabId: string): void
+  widgetManagerFor(tabId: string): NotebookWidgetManager | null
+  /** Start a new Run All batch; returns the id cells should capture. */
+  beginRunAllBatch(tabId: string): number
+  /** Mark every remaining cell in this Run All batch as cancelled (after a cell error). */
+  abortRunAllBatch(tabId: string, batchId: number): void
+  /** True when this cell was queued for Run All and a prior cell in the same batch failed. */
+  shouldSkipQueuedRunAllCell(tabId: string, batchId: number | undefined): boolean
 }
 
 function makeTabRuntime(): TabRuntime {
   return {
     kernel: null,
+    widgetManager: null,
     generation: 0,
     runQueue: { p: Promise.resolve() },
     executionCount: 0,
     scheduledIds: new Set<CellId>(),
+    runAllBatchId: 0,
+    abortedRunAllBatchId: null,
   }
 }
 
@@ -124,8 +144,13 @@ export function useTabNotebookRuntime(
         })
       })
       kernel.ready
-        .then(() => {
+        .then(async () => {
           if (r.generation === gen) {
+            r.widgetManager?.disconnect()
+            const { NotebookWidgetManager } = await import(
+              '@features/notebook/widgets/notebookWidgetManager'
+            )
+            r.widgetManager = new NotebookWidgetManager(kernel)
             dispatch({
               type: 'TAB_NOTEBOOK',
               tabId,
@@ -135,6 +160,8 @@ export function useTabNotebookRuntime(
         })
         .catch((err: unknown) => {
           if (r.generation === gen) {
+            r.widgetManager?.disconnect()
+            r.widgetManager = null
             const initErr = kernel.getLastInitError?.()
             const fallbackSummary = err instanceof Error ? err.message : 'Kernel startup failed'
             const fallbackDetail =
@@ -165,6 +192,7 @@ export function useTabNotebookRuntime(
       r.runQueue.p = Promise.resolve()
       r.executionCount = 0
       r.scheduledIds.clear()
+      r.abortedRunAllBatchId = null
     },
     [get],
   )
@@ -172,11 +200,14 @@ export function useTabNotebookRuntime(
   const restartKernelForTab = useCallback(
     (tabId: string) => {
       const r = get(tabId)
+      r.widgetManager?.disconnect()
+      r.widgetManager = null
       r.kernel?.dispose()
       r.kernel = null
       r.runQueue.p = Promise.resolve()
       r.executionCount = 0
       r.scheduledIds.clear()
+      r.abortedRunAllBatchId = null
       dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'RESTART' } })
       initKernelForTab(tabId)
     },
@@ -195,6 +226,8 @@ export function useTabNotebookRuntime(
     const m = runtimesRef.current
     const r = m.get(tabId)
     if (!r) return
+    r.widgetManager?.disconnect()
+    r.widgetManager = null
     r.kernel?.dispose()
     m.delete(tabId)
   }, [])
@@ -229,11 +262,25 @@ export function useTabNotebookRuntime(
         get(tabId).executionCount = count
       },
       scheduledSetOf: (tabId) => get(tabId).scheduledIds,
+      beginRunAllBatch: (tabId) => {
+        const r = get(tabId)
+        r.runAllBatchId += 1
+        r.abortedRunAllBatchId = null
+        return r.runAllBatchId
+      },
+      abortRunAllBatch: (tabId, batchId) => {
+        get(tabId).abortedRunAllBatchId = batchId
+      },
+      shouldSkipQueuedRunAllCell: (tabId, batchId) => {
+        if (batchId == null) return false
+        return get(tabId).abortedRunAllBatchId === batchId
+      },
       initKernelForTab,
       restartKernelForTab,
       interruptKernelForTab,
       resetQueueState,
       disposeTab,
+      widgetManagerFor: (tabId) => get(tabId).widgetManager,
     }),
     [get, initKernelForTab, restartKernelForTab, interruptKernelForTab, resetQueueState, disposeTab],
   )

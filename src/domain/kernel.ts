@@ -73,7 +73,39 @@ export type KernelIOPubMessage =
   | { msg_type: 'clear_output'; wait: boolean }
   | { msg_type: 'error'; ename: string; evalue: string; traceback: string[] }
   | { msg_type: 'status'; execution_state: 'busy' | 'idle' }
+  /**
+   * Jupyter IOPub comm messages (kernel → client). Shapes mirror
+   * `jupyter_client` / `@jupyterlab/services` `content` payloads.
+   */
+  | {
+      msg_type: 'comm_open'
+      channel?: 'iopub'
+      content: {
+        comm_id: string
+        target_name: string
+        data: Record<string, unknown>
+      }
+    }
+  | {
+      msg_type: 'comm_msg'
+      channel?: 'iopub'
+      content: { comm_id: string; data: Record<string, unknown> }
+    }
+  | {
+      msg_type: 'comm_close'
+      channel?: 'iopub'
+      content: { comm_id: string; data?: Record<string, unknown> }
+    }
 
 export type IOPubMessage = KernelIOPubMessage
+
+export function isCommIOPubMessage(
+  msg: KernelIOPubMessage,
+): msg is Extract<
+  KernelIOPubMessage,
+  { msg_type: 'comm_open' } | { msg_type: 'comm_msg' } | { msg_type: 'comm_close' }
+> {
+  return msg.msg_type === 'comm_open' || msg.msg_type === 'comm_msg' || msg.msg_type === 'comm_close'
+}
 
 export type KernelResult = { outputs: KernelOutputRecord[] }

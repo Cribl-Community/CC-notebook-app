@@ -7,6 +7,7 @@ import { CriblSearchOutputView } from '@features/cribl-search/ui/CriblSearchOutp
 import { PlotlyMimeView } from '@features/notebook/ui/PlotlyMimeView'
 import { VegaMimeView } from '@features/notebook/ui/VegaMimeView'
 import { pickRenderer, registerMimeRenderer } from '@features/notebook/ui/mimeRegistry'
+import { WidgetMimeView } from '@features/notebook/widgets/WidgetMimeView'
 
 const SCRIPT_RE = /<script[\s>]/i
 const LONG_JSON_LINE_THRESHOLD = 24
@@ -250,14 +251,6 @@ function CriblSearchMime({ data }: { data: string }) {
   return <CriblSearchOutputView payload={payload} />
 }
 
-function WidgetFallback() {
-  return (
-    <pre className="nb-output-pre nb-mime-widget-fallback">
-      [Jupyter widget — interactive rendering not yet implemented]
-    </pre>
-  )
-}
-
 let registered = false
 function ensureRegistered() {
   if (registered) return
@@ -270,7 +263,7 @@ function ensureRegistered() {
   registerMimeRenderer({
     mime: 'application/vnd.jupyter.widget-view+json',
     rank: 90,
-    render: () => <WidgetFallback />,
+    render: (data) => <WidgetMimeView viewJson={data} />,
   })
   /*
    * Plotly + Vega must rank above the Jupyter widget stub (90). Otherwise a

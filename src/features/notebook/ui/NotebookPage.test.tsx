@@ -57,6 +57,7 @@ vi.mock('@features/notebook/hooks/useNotebookLibraryActions', () => ({
 vi.mock('@features/notebook/hooks/useTabNotebookRuntime', () => ({
   useTabNotebookRuntime: () => ({
     kernelFor: () => null,
+    widgetManagerFor: () => null,
   }),
 }))
 

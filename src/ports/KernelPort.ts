@@ -55,6 +55,11 @@ export interface KernelPort {
    * Best-effort when the runtime supports it (Pyodide interrupt buffer); resolves when the signal is sent.
    */
   interrupt(): Promise<void>
+  /**
+   * Deliver a `comm_msg` from the client to the Python kernel (ipywidgets).
+   * No-op for stubs that do not implement a comm bridge.
+   */
+  postComm?(commId: string, data: Record<string, unknown>): void
   dispose(): void
 }
 

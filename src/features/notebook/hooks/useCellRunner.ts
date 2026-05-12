@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import type { Dispatch, MutableRefObject } from 'react'
 import type { IOPubMessage } from '@ports/KernelPort'
 import type { CellId, NotebookAction, NotebookState } from '@features/notebook/model/types'
+import { isCommIOPubMessage } from '@/domain/kernel'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
 import { createDefaultCellExecutors } from '@features/notebook/executor/executorRegistry'
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
@@ -60,7 +61,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
   )
 
   const runCell = useCallback(
-    (id: CellId) => {
+    (id: CellId, runAllBatch?: number) => {
       const tid = activeTabIdRef.current
       const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
       if (!tab || tab.kind === 'welcome') return
@@ -86,6 +87,11 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
             return
           }
 
+          if (runAllBatch != null && runtime.shouldSkipQueuedRunAllCell(tid, runAllBatch)) {
+            scheduled.delete(id)
+            return
+          }
+
           dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_RUNNING', id } })
 
           try {
@@ -102,6 +108,10 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
 
             const emitIOPub = (msg: IOPubMessage) => {
               if (runtime.generationOf(tid) !== myGen) return
+              if (isCommIOPubMessage(msg)) {
+                runtime.widgetManagerFor(tid)?.handleKernelIOPub(msg)
+                return
+              }
               dispatch({
                 type: 'TAB_NOTEBOOK',
                 tabId: tid,
@@ -130,10 +140,15 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
                 tabId: tid,
                 action: { type: 'CLEAR_ALL_PENDING' },
               })
+              if (runAllBatch != null) {
+                runtime.abortRunAllBatch(tid, runAllBatch)
+              }
               throw new RunQueueAbortedError()
             }
           } catch (e) {
-            if (e instanceof RunQueueAbortedError) throw e
+            if (e instanceof RunQueueAbortedError) {
+              return
+            }
             if (runtime.generationOf(tid) === myGen) {
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
               runtime.scheduledSetOf(tid).clear()
@@ -142,6 +157,9 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
                 tabId: tid,
                 action: { type: 'CLEAR_ALL_PENDING' },
               })
+              if (runAllBatch != null) {
+                runtime.abortRunAllBatch(tid, runAllBatch)
+              }
             }
             throw new RunQueueAbortedError()
           } finally {
@@ -191,8 +209,11 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
     const tid = activeTabIdRef.current
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
     if (!tab || tab.kind === 'welcome') return
-    tab.notebook.cells.filter((c) => c.cell_type === 'code').forEach((cell) => runCell(cell.id))
-  }, [runCell, workspaceRef, activeTabIdRef])
+    const batchId = runtime.beginRunAllBatch(tid)
+    tab.notebook.cells
+      .filter((c) => c.cell_type === 'code')
+      .forEach((cell) => runCell(cell.id, batchId))
+  }, [runCell, runtime, workspaceRef, activeTabIdRef])
 
   const restartKernel = useCallback(() => {
     const tid = activeTabIdRef.current
