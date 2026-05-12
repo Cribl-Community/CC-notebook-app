@@ -1,0 +1,32 @@
+# Scans the full Git history on each PR and on pushes to the default branch.
+# Repo admins should also enable GitHub "Secret scanning" and "Push protection"
+# under Settings → Code security and analysis.
+
+name: Secret scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks:
+    name: Gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.3.1
+        with:
+          fetch-depth: 0
+          # Partial clone: full history for merge-base / log scan, blobs fetched on demand.
+          filter: 'blob:none'
+
+      - uses: gitleaks/gitleaks-action@v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

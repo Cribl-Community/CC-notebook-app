@@ -128,6 +128,12 @@ For deep performance investigation (CPU trace, Lighthouse) on the same staging U
 
 ## GitHub Actions
 
+PRs and pushes to `main` run **Secret scan** (Gitleaks) on full history. Repository admins should also turn on **Secret scanning** and **Push protection** under *Settings → Code security* so GitHub blocks accidental token pushes before they land.
+
+For **public** repos, under *Settings → Actions → General* → **Fork pull request workflows from outside collaborators**, choose an option that **requires approval** before workflows from fork PRs run, then **Save**. See GitHub’s [Managing GitHub Actions settings for a repository](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
+
+If you ever **rewrote Git history** (for example to drop large `build/*.tgz` blobs), delete or update stale **remote branches** that still point at pre-rewrite SHAs; otherwise clones of those branches can resurrect old objects.
+
 Workflow: **Staging E2E** (`workflow_dispatch`). Required secrets:
 
 - `CRIBL_E2E_BASE_URL`
