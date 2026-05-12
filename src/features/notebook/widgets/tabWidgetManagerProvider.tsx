@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { TabWidgetManagerContext } from '@features/notebook/widgets/tabWidgetManagerContext'
+import type { NotebookWidgetManager } from '@features/notebook/widgets/notebookWidgetManager'
 
 export function TabWidgetManagerProvider({
   manager,
