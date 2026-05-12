@@ -1,7 +1,7 @@
 {
   "name": "notebook-app",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -29,6 +29,9 @@
     "@codemirror/language": "^6.11.3",
     "@codemirror/state": "^6.5.4",
     "@codemirror/view": "^6.39.11",
+    "@jupyter-widgets/base": "^6.0.11",
+    "@jupyter-widgets/base-manager": "^1.0.12",
+    "@jupyter-widgets/controls": "^5.0.12",
     "@lezer/highlight": "^1.2.3",
     "dompurify": "^3.4.0",
     "marked": "^18.0.1",

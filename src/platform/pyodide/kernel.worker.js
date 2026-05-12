@@ -358,6 +358,18 @@ self.onmessage = async function (e) {
     return
   }
 
+  if (msg.type === 'comm_inject') {
+    if (!pyodide) return
+    try {
+      pyodide.globals.set('_nb_comm_inject_id', msg.comm_id)
+      pyodide.globals.set('_nb_comm_inject_data', msg.data)
+      await pyodide.runPythonAsync('_nb_deliver_comm_msg(_nb_comm_inject_id, _nb_comm_inject_data)')
+    } catch (_e) {
+      /* ignore */
+    }
+    return
+  }
+
   if (msg.type === 'complete') {
     if (!pyodide) return
     const id = msg.id

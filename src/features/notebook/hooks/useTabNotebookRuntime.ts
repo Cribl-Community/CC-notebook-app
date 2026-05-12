@@ -5,6 +5,7 @@ import type { KernelFactory, KernelPort } from '@ports/KernelPort'
 import { useOptionalKernelFactory } from '@app/providers'
 import type { CellId } from '@features/notebook/model/types'
 import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
+import type { NotebookWidgetManager } from '@features/notebook/widgets/notebookWidgetManager'
 
 /**
  * Per-tab runtime state. Previously the hook exposed five parallel
@@ -16,6 +17,8 @@ import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer
 export interface TabRuntime {
   /** Active Pyodide kernel for the tab, or null before init / after dispose. */
   kernel: KernelPort | null
+  /** Live ipywidgets bridge; null until the kernel finishes booting. */
+  widgetManager: NotebookWidgetManager | null
   /**
    * Generation counter bumped on every restart/stop so in-flight runs can
    * detect and bail if they outlive their kernel.
@@ -49,11 +52,13 @@ export interface TabRuntimeController {
   resetQueueState(tabId: string): void
   /** Dispose the kernel if present and forget the tab entirely. */
   disposeTab(tabId: string): void
+  widgetManagerFor(tabId: string): NotebookWidgetManager | null
 }
 
 function makeTabRuntime(): TabRuntime {
   return {
     kernel: null,
+    widgetManager: null,
     generation: 0,
     runQueue: { p: Promise.resolve() },
     executionCount: 0,
@@ -124,8 +129,13 @@ export function useTabNotebookRuntime(
         })
       })
       kernel.ready
-        .then(() => {
+        .then(async () => {
           if (r.generation === gen) {
+            r.widgetManager?.disconnect()
+            const { NotebookWidgetManager } = await import(
+              '@features/notebook/widgets/notebookWidgetManager'
+            )
+            r.widgetManager = new NotebookWidgetManager(kernel)
             dispatch({
               type: 'TAB_NOTEBOOK',
               tabId,
@@ -135,6 +145,8 @@ export function useTabNotebookRuntime(
         })
         .catch((err: unknown) => {
           if (r.generation === gen) {
+            r.widgetManager?.disconnect()
+            r.widgetManager = null
             const initErr = kernel.getLastInitError?.()
             const fallbackSummary = err instanceof Error ? err.message : 'Kernel startup failed'
             const fallbackDetail =
@@ -172,6 +184,8 @@ export function useTabNotebookRuntime(
   const restartKernelForTab = useCallback(
     (tabId: string) => {
       const r = get(tabId)
+      r.widgetManager?.disconnect()
+      r.widgetManager = null
       r.kernel?.dispose()
       r.kernel = null
       r.runQueue.p = Promise.resolve()
@@ -195,6 +209,8 @@ export function useTabNotebookRuntime(
     const m = runtimesRef.current
     const r = m.get(tabId)
     if (!r) return
+    r.widgetManager?.disconnect()
+    r.widgetManager = null
     r.kernel?.dispose()
     m.delete(tabId)
   }, [])
@@ -234,6 +250,7 @@ export function useTabNotebookRuntime(
       interruptKernelForTab,
       resetQueueState,
       disposeTab,
+      widgetManagerFor: (tabId) => get(tabId).widgetManager,
     }),
     [get, initKernelForTab, restartKernelForTab, interruptKernelForTab, resetQueueState, disposeTab],
   )

@@ -51,6 +51,7 @@ function makeRuntimeController(): {
   const runtime: TabRuntimeController = {
     get: () => ({
       kernel: state.kernel,
+      widgetManager: null,
       generation: state.generation,
       runQueue: state.runQueue,
       executionCount: state.executionCount,
@@ -73,6 +74,7 @@ function makeRuntimeController(): {
     interruptKernelForTab,
     resetQueueState: vi.fn(),
     disposeTab: vi.fn(),
+    widgetManagerFor: () => null,
   }
   return { runtime, state, initKernelForTab, interruptKernelForTab }
 }

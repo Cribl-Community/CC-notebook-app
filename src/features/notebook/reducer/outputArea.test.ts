@@ -214,3 +214,40 @@ describe('applyIOPub – status', () => {
     expect(after.pendingClear).toBe(before.pendingClear)
   })
 })
+
+describe('applyIOPub – widget comm (iopub)', () => {
+  it('does not append comm_open / comm_msg / comm_close as output records', () => {
+    const s = feed([
+      { msg_type: 'stream', name: 'stdout', text: 'x\n' },
+      {
+        msg_type: 'comm_open',
+        content: {
+          comm_id: 'c1',
+          target_name: 'jupyter.widget',
+          data: { state: { _model_name: 'IntSliderModel' }, buffer_paths: [] },
+        },
+      },
+      {
+        msg_type: 'comm_msg',
+        content: { comm_id: 'c1', data: { state: { value: 3 } } },
+      },
+      {
+        msg_type: 'comm_close',
+        content: { comm_id: 'c1', data: {} },
+      },
+    ])
+    expect(s.records).toEqual([{ output_type: 'stream', name: 'stdout', text: 'x\n' }])
+  })
+
+  it('flushes pending clear when comm_open arrives', () => {
+    let s = createOutputArea()
+    s = applyIOPub(s, { msg_type: 'clear_output', wait: true })
+    expect(s.pendingClear).toBe(true)
+    s = applyIOPub(s, {
+      msg_type: 'comm_open',
+      content: { comm_id: 'c', target_name: 'jupyter.widget', data: {} },
+    })
+    expect(s.pendingClear).toBe(false)
+    expect(s.records).toEqual([])
+  })
+})

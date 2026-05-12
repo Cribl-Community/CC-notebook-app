@@ -63,6 +63,12 @@ export type WorkerInbound =
   | { type: 'exec'; id: string; code: string; execution_count: number }
   | { type: 'complete'; id: string; code: string; cursor: number }
   | {
+      /** Client → kernel widget comm (ipywidgets). */
+      type: 'comm_inject'
+      comm_id: string
+      data: Record<string, unknown>
+    }
+  | {
       type: 'fetch_response'
       id: string
       ok?: boolean

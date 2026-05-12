@@ -686,4 +686,73 @@ async def _nb_run(code: str, execution_count: int) -> None:
 
 
 # Make the helpers reachable as bare globals so user code can call them.
-__all__ = ["display", "clear_output", "_nb_run"]
+
+
+_NB_COMM_HANDLERS: dict[str, object] = {}
+
+
+def _nb_deliver_comm_msg(comm_id: str, data: object) -> None:
+    """Receive a ``comm_msg`` from the browser host (ipywidgets / tests).
+
+    Real ipywidgets integration registers per-comm handlers here; the demo
+    slider is static unless ``ipywidgets`` is installed and patched.
+    """
+    try:
+        h = _NB_COMM_HANDLERS.get(comm_id)
+        if h is not None and callable(h):
+            h(data)
+    except Exception:
+        pass
+
+
+def _nb_demo_int_slider() -> None:
+    """Emit IOPub ``comm_open`` + a raw ``display_data`` bundle for an ``IntSlider``.
+
+    Used by the bundled ``Widgets_Demo.ipynb`` example so interactive widgets
+    work without ``micropip`` when the stock Pyodide stack lacks ``ipywidgets``.
+    """
+    import json
+    import uuid
+
+    cid = uuid.uuid4().hex
+    state: dict = {
+        "_model_name": "IntSliderModel",
+        "_model_module": "@jupyter-widgets/controls",
+        "_model_module_version": "2.0.0",
+        "_view_name": "IntSliderView",
+        "_view_module": "@jupyter-widgets/controls",
+        "_view_module_version": "2.0.0",
+        "layout": None,
+        "style": None,
+        "value": 7,
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "description": "Demo",
+        "disabled": False,
+        "orientation": "horizontal",
+        "readout": True,
+        "readout_format": "d",
+        "continuous_update": True,
+    }
+    _emit(
+        {
+            "msg_type": "comm_open",
+            "content": {
+                "comm_id": cid,
+                "target_name": "jupyter.widget",
+                "data": {"state": state, "buffer_paths": []},
+            },
+        }
+    )
+    view = json.dumps({"version_major": 2, "version_minor": 1, "model_id": cid})
+    display(
+        {
+            "application/vnd.jupyter.widget-view+json": view,
+            "text/plain": "IntSlider()",
+        },
+        raw=True,
+    )
+
+
+__all__ = ["display", "clear_output", "_nb_run", "_nb_deliver_comm_msg", "_nb_demo_int_slider"]

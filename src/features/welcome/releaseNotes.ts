@@ -11,6 +11,15 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.0',
+    date: '2026-05-12',
+    highlights: [
+      'Widgets: Jupyter IOPub `comm_open` / `comm_msg` / `comm_close` messages are routed to a per-kernel `@jupyter-widgets/base-manager` bridge; `IntSlider` and other controls render in cell outputs (bundled `Widgets_Demo.ipynb`).',
+      'Pyodide: `_nb_demo_int_slider()` and `_nb_deliver_comm_msg()` in the IOPub bootstrap support the demo and future `ipywidgets` comm delivery from the host.',
+      'Packaging: build 1.2.0 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-05-10',
     highlights: [

@@ -19,6 +19,7 @@ import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useCellRunner } from '@features/notebook/hooks/useCellRunner'
 import { useNotebookLibraryActions } from '@features/notebook/hooks/useNotebookLibraryActions'
+import { TabWidgetManagerProvider } from '@features/notebook/widgets/tabWidgetManagerContext'
 
 export function NotebookPage() {
   const { appStyle, setAppStyle, codeMirrorLuma } = useTheme()
@@ -359,16 +360,24 @@ export function NotebookPage() {
                     )}
                     <div className="nb-main">
                       <div className="nb-scroll">
-                        <CellList
-                          cells={state.cells}
-                          selectedId={state.selectedId}
-                          dispatch={dispatchNotebook}
-                          onRunAndAdvance={runCellAndAdvance}
-                          codeMirrorLuma={codeMirrorLuma}
-                          completeCode={completeCode}
-                          onAiGenerateFromPrompt={handleAiGenerateFromPrompt}
-                          aiCodeBusyCellId={aiCodeBusyCellId}
-                        />
+                        <TabWidgetManagerProvider
+                          manager={
+                            activeTab && activeTab.kind === 'notebook'
+                              ? runtime.widgetManagerFor(activeTab.id)
+                              : null
+                          }
+                        >
+                          <CellList
+                            cells={state.cells}
+                            selectedId={state.selectedId}
+                            dispatch={dispatchNotebook}
+                            onRunAndAdvance={runCellAndAdvance}
+                            codeMirrorLuma={codeMirrorLuma}
+                            completeCode={completeCode}
+                            onAiGenerateFromPrompt={handleAiGenerateFromPrompt}
+                            aiCodeBusyCellId={aiCodeBusyCellId}
+                          />
+                        </TabWidgetManagerProvider>
                       </div>
                     </div>
                   </>

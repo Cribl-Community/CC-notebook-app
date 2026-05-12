@@ -205,6 +205,10 @@ export class PyodideKernel {
     return Promise.resolve()
   }
 
+  postComm(commId: string, data: Record<string, unknown>): void {
+    this.worker.postMessage({ type: 'comm_inject', comm_id: commId, data })
+  }
+
   /**
    * Bridge for the worker's `fetch()` calls: cross-origin (micropip → PyPI,
    * jsDelivr wheels) and same-origin `public/pyodide/` assets (routed to the

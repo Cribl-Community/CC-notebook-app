@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import type { Dispatch, MutableRefObject } from 'react'
 import type { IOPubMessage } from '@ports/KernelPort'
 import type { CellId, NotebookAction, NotebookState } from '@features/notebook/model/types'
+import { isCommIOPubMessage } from '@/domain/kernel'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
 import { createDefaultCellExecutors } from '@features/notebook/executor/executorRegistry'
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
@@ -102,6 +103,10 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
 
             const emitIOPub = (msg: IOPubMessage) => {
               if (runtime.generationOf(tid) !== myGen) return
+              if (isCommIOPubMessage(msg)) {
+                runtime.widgetManagerFor(tid)?.handleKernelIOPub(msg)
+                return
+              }
               dispatch({
                 type: 'TAB_NOTEBOOK',
                 tabId: tid,

@@ -94,6 +94,12 @@ export function applyIOPub(state: OutputAreaState, msg: IOPubMessage): OutputAre
     return state
   }
 
+  /** Widget comm traffic is not persisted as nbformat output records. */
+  if (msg.msg_type === 'comm_open' || msg.msg_type === 'comm_msg' || msg.msg_type === 'comm_close') {
+    const flushed = maybeFlushPendingClear(state)
+    return { records: flushed.records, pendingClear: false }
+  }
+
   if (msg.msg_type === 'clear_output') {
     if (msg.wait) {
       return { records: state.records, pendingClear: true }
