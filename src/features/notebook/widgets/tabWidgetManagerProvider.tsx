@@ -1,7 +1,5 @@
-import { createContext, type ReactNode } from 'react'
-import type { NotebookWidgetManager } from '@features/notebook/widgets/notebookWidgetManager'
-
-export const TabWidgetManagerContext = createContext<NotebookWidgetManager | null>(null)
+import type { ReactNode } from 'react'
+import { TabWidgetManagerContext } from '@features/notebook/widgets/tabWidgetManagerContext'
 
 export function TabWidgetManagerProvider({
   manager,

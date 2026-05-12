@@ -19,7 +19,7 @@ import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useCellRunner } from '@features/notebook/hooks/useCellRunner'
 import { useNotebookLibraryActions } from '@features/notebook/hooks/useNotebookLibraryActions'
-import { TabWidgetManagerProvider } from '@features/notebook/widgets/tabWidgetManagerContext'
+import { TabWidgetManagerProvider } from '@features/notebook/widgets/tabWidgetManagerProvider'
 
 export function NotebookPage() {
   const { appStyle, setAppStyle, codeMirrorLuma } = useTheme()
