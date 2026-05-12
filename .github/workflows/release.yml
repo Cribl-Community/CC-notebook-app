@@ -1,0 +1,51 @@
+# Publishes a GitHub Release with the Cribl pack .tgz and notes from RELEASE_NOTES
+# when a semver tag is pushed (e.g. v1.2.3). Tag must match package.json version.
+
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.3.1
+
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -e "const fs=require('fs');console.log(JSON.parse(fs.readFileSync('package.json','utf8')).version)")
+          if [ "$TAG" != "$PKG" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME implies version $TAG but package.json has $PKG"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build distribution package
+        run: npm run package
+
+      - name: Write GitHub release notes
+        run: node --experimental-strip-types scripts/emit-github-release-notes.ts "${GITHUB_REF_NAME#v}" > gh-release-notes.md
+
+      - name: Create GitHub Release with .tgz
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Jupyter notebook app ${{ github.ref_name }}
+          body_path: gh-release-notes.md
+          files: build/notebook-app-*.tgz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
