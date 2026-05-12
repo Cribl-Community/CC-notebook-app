@@ -20,7 +20,10 @@ npm run e2e:slow     # @slow only (excludes @heavy); pair with e2e:quick via `np
 npm run e2e:slow:all # All @slow specs including @heavy (Anomaly PyOD notebook)
 npm run e2e:report # Open last Playwright HTML report
 npm run deploy:staging   # PUT .tgz to leader /api/v1/apps (+ preinstall + register); CRIBL_API_TOKEN + CRIBL_E2E_BASE_URL or CRIBL_DEPLOY_BASE_URL
+npm run release:github-notes -- X.Y.Z   # Print GitHub Release Markdown for semver X.Y.Z (from RELEASE_NOTES)
 ```
+
+**GitHub Releases:** Bump `package.json`, prepend an entry in `src/features/welcome/releaseNotes.ts` (newest first; tests require the latest block to match `package.json`), merge to the default branch, then create and push a tag `vX.Y.Z` that matches that version. Pushing the tag runs `.github/workflows/release.yml`, which runs `npm run package`, uploads `build/notebook-app-*.tgz`, and sets the release description from the same notes shown in the app welcome screen.
 
 Tests live next to the code they cover (`*.test.ts` / `*.test.tsx`) and
 run against a JSDOM environment. Setup lives in `src/testing/setup.ts`
