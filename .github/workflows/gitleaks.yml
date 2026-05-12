@@ -15,6 +15,9 @@ concurrency:
 
 permissions:
   contents: read
+  # gitleaks-action lists PR commits via the REST API; without this scope the
+  # default token cannot read pull-requests and fails with 403 on pull_request.
+  pull-requests: read
 
 jobs:
   gitleaks:
