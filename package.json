@@ -20,7 +20,8 @@
     "e2e:install": "playwright install chromium",
     "e2e:report": "playwright show-report",
     "update:cribl-api": "node scripts/cribl-openapi-to-catalog.mjs",
-    "update:cribl-api:release": "CRIBL_OPENAPI_CHANNEL=release node scripts/cribl-openapi-to-catalog.mjs"
+    "update:cribl-api:release": "CRIBL_OPENAPI_CHANNEL=release node scripts/cribl-openapi-to-catalog.mjs",
+    "release:github-notes": "node --experimental-strip-types scripts/emit-github-release-notes.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.0",
