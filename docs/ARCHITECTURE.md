@@ -5,6 +5,8 @@ This document is the authoritative description of the layering. If you
 change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
 `AGENTS.md` to match.
 
+**Human-oriented entry:** [`docs/NAVIGATE.md`](./NAVIGATE.md) — first files to open, diagrams, and “if you want to…” pointers.
+
 ## Layering at a glance
 
 ```
@@ -35,6 +37,41 @@ change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
        │  concrete I/O    │           │ composition/wire │
        │  Pyodide, Cribl  │           │ default adapters │
        └──────────────────┘           └──────────────────┘
+```
+
+### Diagrams (Mermaid)
+
+```mermaid
+flowchart TB
+  subgraph app["app/"]
+    App["App.tsx"]
+    PR["providers/*"]
+  end
+  subgraph features["features/*"]
+    F1["vertical slices"]
+  end
+  subgraph contracts["ports/ + domain/"]
+    P1["interfaces + DTOs"]
+  end
+  subgraph platform["platform/"]
+    IO["Pyodide, Cribl, adapters"]
+  end
+  App --> PR
+  PR --> F1
+  F1 --> P1
+  P1 --> IO
+```
+
+```mermaid
+flowchart LR
+  EP["EnvProvider"]
+  TP["ThemeProvider"]
+  ACP["AiCodeProvider"]
+  DP["DialogProvider"]
+  SP["SearchProvider"]
+  KP["KernelProvider"]
+  NP["NotebookPage"]
+  EP --> TP --> ACP --> DP --> SP --> KP --> NP
 ```
 
 ### Why this shape?
@@ -260,6 +297,7 @@ User clicks Run
       await kernel.ready     (KernelPort; real impl = Pyodide worker)
       dispatch(SET_KERNEL_STATUS busy)
       pick executor via selectExecutor(source, DEFAULT_CELL_EXECUTORS):
+        %%cribl_api    → criblApiExecutor
         %cribl_search → criblSearchExecutor
         else          → pythonExecutor
       executor drives kernel.execute(...) and emits IOPub messages
@@ -270,6 +308,22 @@ User clicks Run
       finally → dispatch(SET_KERNEL_STATUS ready)
 ```
 
+```mermaid
+sequenceDiagram
+  participant UI as NotebookPage / hooks
+  participant CR as useCellRunner
+  participant RN as runNotebookCell
+  participant EX as Executors
+  participant K as KernelPort
+  participant R as notebookReducer
+  UI->>CR: enqueue run
+  CR->>RN: run cell
+  RN->>EX: selectExecutor
+  EX->>K: execute when Python path
+  K-->>R: IOPub messages
+  R-->>UI: updated state
+```
+
 ### Stop / restart semantics
 
 - `stopExecution` bumps the tab's generation (so queued `.then` bodies
@@ -278,6 +332,16 @@ User clicks Run
   and starts a fresh kernel.
 - `restartKernelForTab` is the same flow minus the "mark running
   cell errored" step — used for an explicit "Restart kernel" click.
+
+## Keeping architecture docs current
+
+Update docs in the same change when you:
+
+- Add or rename **`src/features/*`** slices — feature list in this file and the tables in [`docs/NAVIGATE.md`](./NAVIGATE.md).
+- Change **`src/App.tsx`** provider nesting or add a provider — provider list above and the Mermaid provider stack.
+- Add a **port** or change a default adapter — ports table under `src/ports/`.
+- Change **executor order** or run semantics — execution pipeline (text + diagrams) in this file and the run row in [`docs/NAVIGATE.md`](./NAVIGATE.md).
+- Change **`tsconfig.app.json` path aliases** — also update `CLAUDE.md` and `AGENTS.md` (see the note at the top of this document).
 
 ## Testing
 
