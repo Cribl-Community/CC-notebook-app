@@ -300,7 +300,11 @@ export function NotebookPage() {
                 {isWelcome ? (
                   <div className="nb-main">
                     <div className="nb-scroll">
-                      <WelcomePage onOpenExample={handleOpenExample} onNewNotebook={handleNewTab} />
+                      <WelcomePage
+                        onOpenExample={handleOpenExample}
+                        onNewNotebook={handleNewTab}
+                        onImportFile={handleImportFile}
+                      />
                     </div>
                   </div>
                 ) : (
