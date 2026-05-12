@@ -9,6 +9,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -20,6 +24,8 @@ jobs:
       - uses: actions/checkout@v4.3.1
         with:
           fetch-depth: 0
+          # Partial clone: full history for merge-base / log scan, blobs fetched on demand.
+          filter: 'blob:none'
 
       - uses: gitleaks/gitleaks-action@v2.3.9
         env:
