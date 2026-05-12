@@ -128,6 +128,8 @@ For deep performance investigation (CPU trace, Lighthouse) on the same staging U
 
 ## GitHub Actions
 
+PRs and pushes to `main` run **Secret scan** (Gitleaks) on full history. Repository admins should also turn on **Secret scanning** and **Push protection** under *Settings → Code security* so GitHub blocks accidental token pushes before they land.
+
 Workflow: **Staging E2E** (`workflow_dispatch`). Required secrets:
 
 - `CRIBL_E2E_BASE_URL`

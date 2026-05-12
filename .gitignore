@@ -10,11 +10,26 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+# Packaged app archives from `npm run package` — keep out of Git (use Releases or CI artifacts).
+/build/
+
 public/pyodide
 public/Examples/manifest.json
 *.local
+
+# Env files with secrets (templates stay tracked as *.example)
+/.env
+/.env.local
+/.env.development.local
+/.env.test.local
+/.env.production.local
 .env.e2e
 e2e/.env
+
+# Local key material
+*.pem
+*.p12
+*.pfx
 
 # Playwright / staging E2E (never commit auth or local secrets)
 e2e/.auth/
