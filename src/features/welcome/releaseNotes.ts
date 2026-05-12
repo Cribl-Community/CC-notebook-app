@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.2',
+    date: '2026-05-13',
+    highlights: [
+      'Welcome: **Upload** next to **New notebook** on the welcome tab — opens the same `.ipynb` import flow as the notebook toolbar.',
+      'Packaging: build 1.2.2 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.1',
     date: '2026-05-12',
     highlights: ['Packaging: build 1.2.1 and refreshed distribution package.'],

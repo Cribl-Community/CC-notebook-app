@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
 import { useExamples } from '@features/examples/useExamples'
 import { RELEASE_NOTES } from '@features/welcome/releaseNotes'
@@ -6,9 +7,11 @@ import { WelcomeProxyCheck } from '@features/welcome/WelcomeProxyCheck'
 export type WelcomePageProps = {
   onOpenExample: (filename: string) => void
   onNewNotebook: () => void
+  onImportFile: (file: File) => void
 }
 
-export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) {
+export function WelcomePage({ onOpenExample, onNewNotebook, onImportFile }: WelcomePageProps) {
+  const fileRef = useRef<HTMLInputElement>(null)
   const [top, ...rest] = RELEASE_NOTES
   const { state: examplesLoad, setSelected } = useExamples()
 
@@ -26,6 +29,27 @@ export function WelcomePage({ onOpenExample, onNewNotebook }: WelcomePageProps) 
           <button type="button" className="nb-btn nb-btn-primary" onClick={onNewNotebook}>
             New notebook
           </button>
+          <button
+            type="button"
+            className="nb-btn"
+            onClick={() => fileRef.current?.click()}
+            title="Open a Jupyter notebook file"
+          >
+            ⬆ Upload
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            className="nb-toolbar-file-input"
+            accept=".ipynb,application/json,.json"
+            aria-hidden
+            tabIndex={-1}
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) onImportFile(f)
+              e.target.value = ''
+            }}
+          />
         </div>
       </header>
 
