@@ -1,73 +1,29 @@
-# React + TypeScript + Vite
+# Cribl Notebook App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript notebook UI for the **Cribl App Platform**: Jupyter-style cells, a Pyodide-backed Python kernel, Cribl Search and REST cell magics, and a KV-backed notebook library.
 
-Currently, two official plugins are available:
+## Documentation
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Document | Purpose |
+| --- | --- |
+| [docs/NAVIGATE.md](./docs/NAVIGATE.md) | **Start here** — first files to open, “if you want to…”, diagrams |
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layering, ports, import rules, execution pipeline, recipes |
+| [AGENTS.md](./AGENTS.md) | Platform `fetch` proxy, KV store, git workflow, deployment |
+| [docs/E2E_STAGING.md](./docs/E2E_STAGING.md) | Playwright staging E2E setup and when to update specs |
+| [docs/PYODIDE_CUSTOMIZATIONS.md](./docs/PYODIDE_CUSTOMIZATIONS.md) | Pyodide worker behavior and upgrade checklist |
 
-## React Compiler
+## Quick start
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev       # Vite — http://localhost:5173
+npm test          # Vitest (unit + smoke)
+npm run build     # TypeScript + production bundle → dist/
+npm run package   # Build + .tgz for Cribl app deploy
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Additional commands (lint, preview, e2e, deploy) are listed in [CLAUDE.md](./CLAUDE.md).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Vite, React 19, TypeScript, Vitest, Playwright (staging regression).

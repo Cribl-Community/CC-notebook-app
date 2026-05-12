@@ -3,7 +3,8 @@
 ## Notebook app architecture (read this first)
 
 This repo is a feature-sliced hexagonal React app. See
-[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full map.
+[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the full map and
+[`docs/NAVIGATE.md`](./docs/NAVIGATE.md) for where to open first files and task-oriented pointers.
 TL;DR:
 
 ```
@@ -11,7 +12,7 @@ src/
   app/          Composition root (App.tsx, providers/)
   domain/       Port-level DTOs shared across layers
   features/     Vertical slices (notebook, library, cribl-search,
-                ai-riptide, examples, welcome)
+                cribl-api, ai-riptide, examples, welcome)
   platform/    Real-world adapters (pyodide, cribl, env, staticAssets)
   ports/       Interfaces features depend on
   ui/          Framework-agnostic UI primitives

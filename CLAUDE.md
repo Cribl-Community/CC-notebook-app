@@ -34,6 +34,8 @@ Staging regression and performance budgets use Playwright (`e2e/`); see
 
 This is a React 19 + TypeScript SPA that runs as a **Cribl App Platform widget** — loaded inside a sandboxed iframe within the Cribl UI. It is packaged as a `.tgz` and deployed as a Cribl App.
 
+For a task-oriented map of directories and entry files, see [`docs/NAVIGATE.md`](./docs/NAVIGATE.md).
+
 ### Source layout (feature-sliced hexagonal)
 
 ```
@@ -46,6 +48,7 @@ src/
     notebook/      model, reducer, codec, executor, hooks, ui (NotebookPage lives here)
     library/       manifest + NotebookSidebar + useNotebookLibrary
     cribl-search/  %cribl_search magic parser/renderer
+    cribl-api/     %%cribl_api cell magic + OpenAPI catalog
     ai-riptide/    Riptide AI code gen + AiCodeService adapter
     examples/      Examples manifest + useExamples hook
     welcome/       WelcomePage + release notes
