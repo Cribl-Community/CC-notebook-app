@@ -61,7 +61,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
   )
 
   const runCell = useCallback(
-    (id: CellId) => {
+    (id: CellId, runAllBatch?: number) => {
       const tid = activeTabIdRef.current
       const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
       if (!tab || tab.kind === 'welcome') return
@@ -83,6 +83,11 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
       q.p = q.p
         .then(async () => {
           if (runtime.generationOf(tid) !== myGen) {
+            scheduled.delete(id)
+            return
+          }
+
+          if (runAllBatch != null && runtime.shouldSkipQueuedRunAllCell(tid, runAllBatch)) {
             scheduled.delete(id)
             return
           }
@@ -135,10 +140,15 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
                 tabId: tid,
                 action: { type: 'CLEAR_ALL_PENDING' },
               })
+              if (runAllBatch != null) {
+                runtime.abortRunAllBatch(tid, runAllBatch)
+              }
               throw new RunQueueAbortedError()
             }
           } catch (e) {
-            if (e instanceof RunQueueAbortedError) throw e
+            if (e instanceof RunQueueAbortedError) {
+              return
+            }
             if (runtime.generationOf(tid) === myGen) {
               dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'ERROR_CELL', id } })
               runtime.scheduledSetOf(tid).clear()
@@ -147,6 +157,9 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
                 tabId: tid,
                 action: { type: 'CLEAR_ALL_PENDING' },
               })
+              if (runAllBatch != null) {
+                runtime.abortRunAllBatch(tid, runAllBatch)
+              }
             }
             throw new RunQueueAbortedError()
           } finally {
@@ -196,8 +209,11 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
     const tid = activeTabIdRef.current
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
     if (!tab || tab.kind === 'welcome') return
-    tab.notebook.cells.filter((c) => c.cell_type === 'code').forEach((cell) => runCell(cell.id))
-  }, [runCell, workspaceRef, activeTabIdRef])
+    const batchId = runtime.beginRunAllBatch(tid)
+    tab.notebook.cells
+      .filter((c) => c.cell_type === 'code')
+      .forEach((cell) => runCell(cell.id, batchId))
+  }, [runCell, runtime, workspaceRef, activeTabIdRef])
 
   const restartKernel = useCallback(() => {
     const tid = activeTabIdRef.current

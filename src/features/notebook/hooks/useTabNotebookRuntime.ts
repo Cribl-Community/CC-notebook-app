@@ -30,6 +30,13 @@ export interface TabRuntime {
   executionCount: number
   /** Set of cell ids currently scheduled or running; used to de-dupe clicks. */
   scheduledIds: Set<CellId>
+  /**
+   * Monotonic id issued at each Run All start; queued cells capture it so later
+   * cells can no-op after an earlier cell in the same batch errors.
+   */
+  runAllBatchId: number
+  /** When equal to a cell's captured batch id, that Run All batch was aborted. */
+  abortedRunAllBatchId: number | null
 }
 
 export interface TabRuntimeController {
@@ -53,6 +60,12 @@ export interface TabRuntimeController {
   /** Dispose the kernel if present and forget the tab entirely. */
   disposeTab(tabId: string): void
   widgetManagerFor(tabId: string): NotebookWidgetManager | null
+  /** Start a new Run All batch; returns the id cells should capture. */
+  beginRunAllBatch(tabId: string): number
+  /** Mark every remaining cell in this Run All batch as cancelled (after a cell error). */
+  abortRunAllBatch(tabId: string, batchId: number): void
+  /** True when this cell was queued for Run All and a prior cell in the same batch failed. */
+  shouldSkipQueuedRunAllCell(tabId: string, batchId: number | undefined): boolean
 }
 
 function makeTabRuntime(): TabRuntime {
@@ -63,6 +76,8 @@ function makeTabRuntime(): TabRuntime {
     runQueue: { p: Promise.resolve() },
     executionCount: 0,
     scheduledIds: new Set<CellId>(),
+    runAllBatchId: 0,
+    abortedRunAllBatchId: null,
   }
 }
 
@@ -177,6 +192,7 @@ export function useTabNotebookRuntime(
       r.runQueue.p = Promise.resolve()
       r.executionCount = 0
       r.scheduledIds.clear()
+      r.abortedRunAllBatchId = null
     },
     [get],
   )
@@ -191,6 +207,7 @@ export function useTabNotebookRuntime(
       r.runQueue.p = Promise.resolve()
       r.executionCount = 0
       r.scheduledIds.clear()
+      r.abortedRunAllBatchId = null
       dispatch({ type: 'TAB_NOTEBOOK', tabId, action: { type: 'RESTART' } })
       initKernelForTab(tabId)
     },
@@ -245,6 +262,19 @@ export function useTabNotebookRuntime(
         get(tabId).executionCount = count
       },
       scheduledSetOf: (tabId) => get(tabId).scheduledIds,
+      beginRunAllBatch: (tabId) => {
+        const r = get(tabId)
+        r.runAllBatchId += 1
+        r.abortedRunAllBatchId = null
+        return r.runAllBatchId
+      },
+      abortRunAllBatch: (tabId, batchId) => {
+        get(tabId).abortedRunAllBatchId = batchId
+      },
+      shouldSkipQueuedRunAllCell: (tabId, batchId) => {
+        if (batchId == null) return false
+        return get(tabId).abortedRunAllBatchId === batchId
+      },
       initKernelForTab,
       restartKernelForTab,
       interruptKernelForTab,
