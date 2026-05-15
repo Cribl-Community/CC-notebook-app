@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
+import type { LookupService } from '@ports/LookupService'
 import type { SearchService } from '@ports/SearchService'
 // eslint-disable-next-line no-restricted-imports -- test wrapper mirrors App providers
-import { EnvProvider, SearchProvider } from '@app/providers'
+import { EnvProvider, LookupProvider, SearchProvider } from '@app/providers'
 import { useCellRunner } from './useCellRunner'
 import type { NotebookState } from '@features/notebook/model/types'
 import type { WorkspaceState, WorkspaceAction, NotebookTab } from '@features/notebook/reducer/tabWorkspace'
@@ -131,10 +132,17 @@ const stubSearchService: SearchService = {
   translateEnglishToKql: vi.fn().mockImplementation(async (q: string) => q),
 }
 
+const stubLookupService: LookupService = {
+  saveLookupFromCsv: vi.fn().mockResolvedValue(undefined),
+  downloadLookupCsv: vi.fn().mockResolvedValue('a,b\n'),
+}
+
 function cellRunnerProvidersWrapper({ children }: { children: ReactNode }) {
   return (
     <EnvProvider value={{ apiBase: '', isCriblHosted: false, isKvMock: true }}>
-      <SearchProvider value={stubSearchService}>{children}</SearchProvider>
+      <SearchProvider value={stubSearchService}>
+        <LookupProvider value={stubLookupService}>{children}</LookupProvider>
+      </SearchProvider>
     </EnvProvider>
   )
 }

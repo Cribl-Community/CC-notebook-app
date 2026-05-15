@@ -4,6 +4,7 @@ import {
   DialogProvider,
   EnvProvider,
   KernelProvider,
+  LookupProvider,
   SearchProvider,
   ThemeProvider,
 } from '@app/providers'
@@ -15,9 +16,11 @@ export default function App() {
         <AiCodeProvider>
           <DialogProvider>
             <SearchProvider>
-              <KernelProvider>
-                <NotebookPage />
-              </KernelProvider>
+              <LookupProvider>
+                <KernelProvider>
+                  <NotebookPage />
+                </KernelProvider>
+              </LookupProvider>
             </SearchProvider>
           </DialogProvider>
         </AiCodeProvider>

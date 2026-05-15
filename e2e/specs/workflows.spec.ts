@@ -16,6 +16,9 @@ test.describe('@regression welcome', () => {
     const nb = await getNotebookFrame(page)
     const select = nb.locator('#nb-welcome-examples-select')
     await select.waitFor({ state: 'visible', timeout: 120_000 })
+    await expect(
+      nb.locator('#nb-welcome-examples-select option').filter({ hasText: 'Cribl Search Lookup Magics' }),
+    ).not.toHaveCount(0)
     const openBtn = nb.getByRole('button', { name: 'Open example' })
     await expect(openBtn).toBeEnabled({ timeout: 120_000 })
     const tabsBefore = await nb.locator('[role="tab"]').count()

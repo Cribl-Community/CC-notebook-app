@@ -37,6 +37,14 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '12 min',
     recommendedOrder: 3,
   },
+  'Cribl_Search_Lookup_Magics.ipynb': {
+    summary:
+      'Save and load pandas DataFrames as Cribl Search lookup CSVs via %%cribl_save_search_lookup and %%cribl_load_search_lookup (default_search group).',
+    tags: ['search', 'lookups', 'magic-cells'],
+    level: 'intermediate',
+    estimatedRuntime: '8 min',
+    recommendedOrder: 9,
+  },
   'Cribl_API_Examples.ipynb': {
     summary: 'Use %%cribl_api for GET/POST requests and templated YAML payloads.',
     tags: ['api', 'magic-cells'],

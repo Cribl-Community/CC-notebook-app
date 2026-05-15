@@ -132,10 +132,12 @@ flowchart LR
   - `executor/` — cell execution strategies.
     - `cellExecutor.ts` — `CellExecutor` / `CellRunOutcome` interfaces.
     - `pythonExecutor.ts` — default kernel.execute() path.
-    - `criblSearchExecutor.ts` — `%cribl_search` magic.
+    - `criblSearchExecutor.ts` — `%%cribl_search` magic.
+    - `criblSearchLookupExecutor.ts` — `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup`.
     - `executorRegistry.ts` — `createDefaultCellExecutors(searchService,
-      criblApiBase)` builds the ordered list (cribl-api → cribl-search →
-      Python). Specialized matchers come before the catch-all Python executor.
+      criblApiBase, lookupService)` builds the ordered list (cribl-api →
+      cribl-search-lookup → cribl-search → Python). Specialized matchers come
+      before the catch-all Python executor.
     - `runNotebookCell.ts` — thin dispatcher that picks an executor
       and delegates.
   - `hooks/` — React hooks orchestrating the page.
@@ -147,8 +149,9 @@ flowchart LR
       optional `KernelFactory` as the fourth argument for tests.
     - `useCellRunner` — `runCell` / `runCellAndAdvance` / `runAll` /
       `restartKernel` / `stopExecution` / `canStopExecution`. Builds the
-      executor list from `useSearchService` + `useEnv().apiBase` so
-      `criblSearchExecutor` calls the port, not `platform/cribl/*` directly.
+      `useSearchService` + `useLookupService` + `useEnv().apiBase` so
+      `criblSearchExecutor` / `criblSearchLookupExecutor` call ports, not
+      `platform/cribl/*` directly.
   - `ui/` — the React components that paint the page.
     `NotebookPage.tsx` is the page composition; `Toolbar`, `CellList`,
     `CellView`, `NotebookTabs`, `NotebookDialog`, …
@@ -298,7 +301,8 @@ User clicks Run
       dispatch(SET_KERNEL_STATUS busy)
       pick executor via selectExecutor(source, DEFAULT_CELL_EXECUTORS):
         %%cribl_api    → criblApiExecutor
-        %cribl_search → criblSearchExecutor
+        %%cribl_save_search_lookup / %%cribl_load_search_lookup → criblSearchLookupExecutor
+        %%cribl_search → criblSearchExecutor
         else          → pythonExecutor
       executor drives kernel.execute(...) and emits IOPub messages
       emit → dispatch(IOPUB)     (reducer folds via applyIOPub)

@@ -9,7 +9,7 @@ import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
 import type { WorkspaceAction, WorkspaceState, NotebookTab } from '@features/notebook/reducer/tabWorkspace'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
 // eslint-disable-next-line no-restricted-imports -- notebook runtime reads ports from composition root
-import { useEnv, useSearchService } from '@app/providers'
+import { useEnv, useLookupService, useSearchService } from '@app/providers'
 
 export interface CellRunnerController {
   /** Enqueue one cell for execution on its tab's kernel. */
@@ -55,9 +55,10 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
   const { runtime, workspaceRef, activeTabIdRef, dispatch, activeTab, state } = args
   const { apiBase } = useEnv()
   const searchService = useSearchService()
+  const lookupService = useLookupService()
   const cellExecutors = useMemo(
-    () => createDefaultCellExecutors(searchService, apiBase),
-    [searchService, apiBase],
+    () => createDefaultCellExecutors(searchService, apiBase, lookupService),
+    [searchService, apiBase, lookupService],
   )
 
   const runCell = useCallback(
