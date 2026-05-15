@@ -11,6 +11,17 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.3',
+    date: '2026-05-16',
+    highlights: [
+      'Search lookups: `%%cribl_save_search_lookup` exports the DataFrame via `display(..., raw=True)` so the host always receives `application/json` from Pyodide (plain trailing dicts often lacked JSON MIME).',
+      'Cribl Search: `%%cribl_search` sends normalized KQL again (auto `cribl` prefix when missing), matching the job API for queries such as `$vt_lookups`.',
+      'Examples: `Cribl_Search_Lookup_Magics.ipynb` — section B uses `%%cribl_api` PUT/POST/DELETE instead of `pyfetch` for reliable JSON bodies; no micropip setup cell for that notebook.',
+      'Staging E2E: `@slow` spec runs Run All on the lookup magics example; `docs/E2E_STAGING.md` table updated.',
+      'Packaging: build 1.2.3 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.2',
     date: '2026-05-13',
     highlights: [

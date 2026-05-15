@@ -24,7 +24,7 @@ const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 
 export const DEFAULT_CRIBL_LOOKUP_DATAFRAME_VAR = 'results_df'
 
-/** `execute_result` JSON key holding `{ csv_b64, rows }` from the export helper cell. */
+/** JSON key (in `application/json`) holding `{ csv_b64, rows }` from the export helper cell. */
 export const CRIBL_LOOKUP_EXPORT_RESULT_KEY = '__cribl_lookup_export__' as const
 
 const SAVE_FIRST = /^%%cribl_save_search_lookup(?:\s+(.*))?$/
@@ -233,24 +233,28 @@ function base64ToUtf8(b64: string): string {
   return new TextDecoder().decode(bytes)
 }
 
+function parseLookupExportFromApplicationJson(js: unknown): { csvUtf8: string; rows: number } | null {
+  if (typeof js !== 'string') return null
+  try {
+    const v = JSON.parse(js) as Record<string, unknown>
+    const inner = v[CRIBL_LOOKUP_EXPORT_RESULT_KEY]
+    if (!inner || typeof inner !== 'object') return null
+    const rec = inner as { csv_b64?: unknown; rows?: unknown }
+    if (typeof rec.csv_b64 !== 'string' || typeof rec.rows !== 'number') return null
+    return { csvUtf8: base64ToUtf8(rec.csv_b64), rows: rec.rows }
+  } catch {
+    return null
+  }
+}
+
 export function extractLookupExportFromOutputs(
   outputs: readonly OutputRecord[],
 ): { csvUtf8: string; rows: number } | null {
   for (let i = outputs.length - 1; i >= 0; i--) {
     const o = outputs[i]
-    if (o.output_type !== 'execute_result') continue
-    const js = o.data['application/json']
-    if (!js) continue
-    try {
-      const v = JSON.parse(js) as Record<string, unknown>
-      const inner = v[CRIBL_LOOKUP_EXPORT_RESULT_KEY]
-      if (!inner || typeof inner !== 'object') continue
-      const rec = inner as { csv_b64?: unknown; rows?: unknown }
-      if (typeof rec.csv_b64 !== 'string' || typeof rec.rows !== 'number') continue
-      return { csvUtf8: base64ToUtf8(rec.csv_b64), rows: rec.rows }
-    } catch {
-      continue
-    }
+    if (o.output_type !== 'execute_result' && o.output_type !== 'display_data') continue
+    const parsed = parseLookupExportFromApplicationJson(o.data['application/json'])
+    if (parsed) return parsed
   }
   return null
 }
@@ -274,12 +278,15 @@ print("Loaded " + str(len(${varName}.index)) + " rows into " + ${JSON.stringify(
 }
 
 /**
- * Serialize an existing pandas DataFrame to CSV and return a JSON bundle with
- * {@link CRIBL_LOOKUP_EXPORT_RESULT_KEY} for the host to read from `execute_result`.
+ * Serialize an existing pandas DataFrame to CSV and emit `application/json` via
+ * `display(..., raw=True)` so the host can read it from IOPub (`display_data` or
+ * `execute_result`). A bare trailing dict often formats as `text/plain` only in
+ * IPython, which the host cannot parse.
  */
 export function buildExportDataframeToLookupBundleCode(varName: string): string {
   const key = JSON.stringify(CRIBL_LOOKUP_EXPORT_RESULT_KEY)
   return `import base64
+import json
 import pandas as pd
 
 __df = ${varName}
@@ -289,6 +296,7 @@ __n = int(len(__df.index))
 if __n > 10000:
     raise ValueError("Lookup export is limited to 10,000 rows (Cribl Search). Got " + str(__n))
 __csv_bytes = __df.to_csv(index=False).encode("utf-8")
-{ ${key}: {"csv_b64": base64.standard_b64encode(__csv_bytes).decode("ascii"), "rows": __n} }
+__payload = { ${key}: {"csv_b64": base64.standard_b64encode(__csv_bytes).decode("ascii"), "rows": __n} }
+display({"application/json": json.dumps(__payload)}, raw=True)
 `
 }

@@ -71,4 +71,20 @@ describe('extractLookupExportFromOutputs', () => {
     expect(out?.csvUtf8).toBe('a,b\n1,2\n')
     expect(out?.rows).toBe(1)
   })
+
+  it('reads display_data json bundle (display raw=True path)', () => {
+    const b64 = btoa('a,b\n1,2\n')
+    const inner = { csv_b64: b64, rows: 1 }
+    const out = extractLookupExportFromOutputs([
+      {
+        output_type: 'display_data',
+        data: {
+          'application/json': JSON.stringify({ [CRIBL_LOOKUP_EXPORT_RESULT_KEY]: inner }),
+        },
+        metadata: {},
+      },
+    ])
+    expect(out?.csvUtf8).toBe('a,b\n1,2\n')
+    expect(out?.rows).toBe(1)
+  })
 })

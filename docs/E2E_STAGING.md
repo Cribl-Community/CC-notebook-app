@@ -73,9 +73,10 @@ If the machine struggles (memory, CPU fans), set `CRIBL_E2E_WORKERS=1` in `e2e/.
 | Pyodide kernel Ready (new notebook tab) | `e2e/specs/kernel-ready.spec.ts` | `@regression`, `@slow` |
 | Jupyter-style `%pip` / `!pip` line rewrite (stderr hint, no PyPI) | `e2e/specs/pip-magic.spec.ts` | `@regression`, `@slow` |
 | Visualisations bundled notebook: Run All (micropip Plotly, charts) | `e2e/specs/visualisations-example.spec.ts` | `@regression`, `@slow` |
+| Cribl Search Lookup Magics notebook: Run All (lookup magics, `$vt_lookups`, `%%cribl_api` REST) | `e2e/specs/cribl-search-lookup-magics.spec.ts` | `@regression`, `@slow` |
 | Anomaly Detection PyOD notebook: Run All (micropip PyOD stack, `%%cribl_search`, Plotly) | `e2e/specs/zz-anomaly-detection-example.spec.ts` | `@regression`, `@slow`, `@heavy` (opt-in via `npm run e2e:slow:all`) |
 
-Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide), **`%pip` / `!pip` preprocessing** (unsupported subcommands → stderr), **Visualisations example Run All** (requires deployed `.tgz` that bundles the matching `Visualisations.ipynb` + kernel), **Anomaly Detection PyOD example Run All** (needs **Cribl Search** for `%%cribl_search` / `externaldata` and a `.tgz` that bundles `Anomaly_Detection_PyOD.ipynb`; cold micropip can be very slow).
+Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide), **`%pip` / `!pip` preprocessing** (unsupported subcommands → stderr), **Visualisations example Run All** (requires deployed `.tgz` that bundles the matching `Visualisations.ipynb` + kernel), **Cribl Search Lookup Magics Run All** (Search + lookup APIs + `Cribl_Search_Lookup_Magics.ipynb`), **Anomaly Detection PyOD example Run All** (needs **Cribl Search** for `%%cribl_search` / `externaldata` and a `.tgz` that bundles `Anomaly_Detection_PyOD.ipynb`; cold micropip can be very slow).
 
 ### Keeping E2E current (features & refactors)
 
