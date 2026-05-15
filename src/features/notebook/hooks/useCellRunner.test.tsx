@@ -135,6 +135,7 @@ const stubSearchService: SearchService = {
 const stubLookupService: LookupService = {
   saveLookupFromCsv: vi.fn().mockResolvedValue(undefined),
   downloadLookupCsv: vi.fn().mockResolvedValue('a,b\n'),
+  deleteLookup: vi.fn().mockResolvedValue(undefined),
 }
 
 function cellRunnerProvidersWrapper({ children }: { children: ReactNode }) {

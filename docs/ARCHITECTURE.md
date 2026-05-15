@@ -133,7 +133,7 @@ flowchart LR
     - `cellExecutor.ts` — `CellExecutor` / `CellRunOutcome` interfaces.
     - `pythonExecutor.ts` — default kernel.execute() path.
     - `criblSearchExecutor.ts` — `%%cribl_search` magic.
-    - `criblSearchLookupExecutor.ts` — `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup`.
+    - `criblSearchLookupExecutor.ts` — `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup` / `%%cribl_delete_search_lookup`.
     - `executorRegistry.ts` — `createDefaultCellExecutors(searchService,
       criblApiBase, lookupService)` builds the ordered list (cribl-api →
       cribl-search-lookup → cribl-search → Python). Specialized matchers come
@@ -301,7 +301,7 @@ User clicks Run
       dispatch(SET_KERNEL_STATUS busy)
       pick executor via selectExecutor(source, DEFAULT_CELL_EXECUTORS):
         %%cribl_api    → criblApiExecutor
-        %%cribl_save_search_lookup / %%cribl_load_search_lookup → criblSearchLookupExecutor
+        %%cribl_save_search_lookup / %%cribl_load_search_lookup / %%cribl_delete_search_lookup → criblSearchLookupExecutor
         %%cribl_search → criblSearchExecutor
         else          → pythonExecutor
       executor drives kernel.execute(...) and emits IOPub messages

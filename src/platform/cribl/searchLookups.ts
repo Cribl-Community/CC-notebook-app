@@ -114,6 +114,18 @@ export function normalizeSearchLookupCsvId(lookupId: string): string {
   return t.toLowerCase().endsWith('.csv') ? t : `${t}.csv`
 }
 
+export async function deleteLookupRaw(group: string, lookupId: string): Promise<void> {
+  const id = normalizeSearchLookupCsvId(lookupId)
+  const path = `${lookupsBasePath(group)}/${encodeURIComponent(id)}`
+  const res = await callCriblApi('DELETE', path, {
+    headers: {},
+    body: undefined,
+    bodyIsJson: false,
+  })
+  if (res.status === 404) return
+  if (!res.ok) throw httpError('DELETE', path, res.status, res.text)
+}
+
 async function saveLookupFromCsvImpl(opts: SaveSearchLookupOptions): Promise<void> {
   const id = normalizeSearchLookupCsvId(opts.lookupId)
   const uploadName = `notebook_upload_${Date.now()}.csv`
@@ -136,5 +148,8 @@ export const criblLookupService: LookupService = {
   saveLookupFromCsv: saveLookupFromCsvImpl,
   async downloadLookupCsv(opts) {
     return downloadLookupCsvRaw(opts.group, normalizeSearchLookupCsvId(opts.lookupId))
+  },
+  async deleteLookup(opts) {
+    await deleteLookupRaw(opts.group, opts.lookupId)
   },
 }

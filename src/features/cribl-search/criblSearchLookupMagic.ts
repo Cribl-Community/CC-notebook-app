@@ -1,5 +1,5 @@
 /**
- * Cell magics `%%cribl_save_search_lookup` and `%%cribl_load_search_lookup`.
+ * Cell magics `%%cribl_save_search_lookup`, `%%cribl_load_search_lookup`, and `%%cribl_delete_search_lookup`.
  * Leading empty lines and full-line `#` comments are skipped before the magic line.
  *
  * Save (first line):
@@ -7,6 +7,9 @@
  *
  * Load (first line):
  * %%cribl_load_search_lookup <lookup_name.csv> [var=df] [group=default_search]
+ *
+ * Delete (first line):
+ * %%cribl_delete_search_lookup <lookup_name.csv> [group=default_search]
  *
  * No body lines are required. `var=` names the pandas DataFrame to read/write.
  */
@@ -26,6 +29,7 @@ export const CRIBL_LOOKUP_EXPORT_RESULT_KEY = '__cribl_lookup_export__' as const
 
 const SAVE_FIRST = /^%%cribl_save_search_lookup(?:\s+(.*))?$/
 const LOAD_FIRST = /^%%cribl_load_search_lookup(?:\s+(.*))?$/
+const DELETE_FIRST = /^%%cribl_delete_search_lookup(?:\s+(.*))?$/
 
 export type CriblSaveSearchLookupMagicOk = {
   lookupId: string
@@ -41,9 +45,15 @@ export type CriblLoadSearchLookupMagicOk = {
   group: string
 }
 
+export type CriblDeleteSearchLookupMagicOk = {
+  lookupId: string
+  group: string
+}
+
 export type CriblSearchLookupMagicParse =
   | { kind: 'save'; value: CriblSaveSearchLookupMagicOk }
   | { kind: 'load'; value: CriblLoadSearchLookupMagicOk }
+  | { kind: 'delete'; value: CriblDeleteSearchLookupMagicOk }
   | { kind: 'error'; message: string }
   | { kind: 'none' }
 
@@ -123,6 +133,30 @@ function parseLoadParams(rest: string):
   return { ok: true, lookupId, varName, group }
 }
 
+function parseDeleteParams(rest: string): { ok: true; lookupId: string; group: string } | { ok: false; message: string } {
+  const tokens = rest.trim().split(/\s+/).filter(Boolean)
+  if (tokens.length === 0) {
+    return { ok: false, message: '%%cribl_delete_search_lookup requires a lookup filename (e.g. my_table.csv).' }
+  }
+  const lookupId = tokens[0]!
+  const paramTokens = tokens.slice(1)
+  let group = 'default_search'
+  for (const t of paramTokens) {
+    const eq = t.indexOf('=')
+    if (eq <= 0) {
+      return { ok: false, message: `Unexpected token ${JSON.stringify(t)} after lookup name.` }
+    }
+    const key = t.slice(0, eq).trim().toLowerCase()
+    const val = t.slice(eq + 1).trim()
+    if (key === 'group') group = val
+    else return { ok: false, message: `Unknown parameter ${JSON.stringify(key)}.` }
+  }
+  if (!group.trim()) {
+    return { ok: false, message: 'group= must be non-empty when set.' }
+  }
+  return { ok: true, lookupId, group }
+}
+
 export function parseCriblSearchLookupMagic(source: string): CriblSearchLookupMagicParse {
   const text = source.replace(/^\uFEFF/, '')
   const lines = text.split(/\r?\n/)
@@ -132,7 +166,8 @@ export function parseCriblSearchLookupMagic(source: string): CriblSearchLookupMa
   const firstLine = (lines[headerIdx] ?? '').trimStart().trimEnd()
   const saveM = SAVE_FIRST.exec(firstLine)
   const loadM = LOAD_FIRST.exec(firstLine)
-  if (!saveM && !loadM) {
+  const delM = DELETE_FIRST.exec(firstLine)
+  if (!saveM && !loadM && !delM) {
     return { kind: 'none' }
   }
 
@@ -171,6 +206,18 @@ export function parseCriblSearchLookupMagic(source: string): CriblSearchLookupMa
       value: {
         lookupId: p.lookupId,
         varName: p.varName,
+        group: p.group,
+      },
+    }
+  }
+
+  if (delM) {
+    const p = parseDeleteParams(delM[1]?.trim() ?? '')
+    if (!p.ok) return { kind: 'error', message: p.message }
+    return {
+      kind: 'delete',
+      value: {
+        lookupId: p.lookupId,
         group: p.group,
       },
     }

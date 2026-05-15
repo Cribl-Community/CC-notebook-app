@@ -31,6 +31,7 @@ const UNIT_TEST_STUB_LOOKUP_SERVICE: LookupService = {
   async downloadLookupCsv() {
     return 'a,b\n1,2\n'
   },
+  async deleteLookup() {},
 }
 
 export function createDefaultCellExecutors(

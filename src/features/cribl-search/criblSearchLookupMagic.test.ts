@@ -36,6 +36,14 @@ describe('parseCriblSearchLookupMagic', () => {
     expect(r.value.varName).toBe('loaded')
   })
 
+  it('parses delete', () => {
+    const r = parseCriblSearchLookupMagic('%%cribl_delete_search_lookup trash.csv group=default_search')
+    expect(r.kind).toBe('delete')
+    if (r.kind !== 'delete') return
+    expect(r.value.lookupId).toBe('trash.csv')
+    expect(r.value.group).toBe('default_search')
+  })
+
   it('errors on trailing body', () => {
     const r = parseCriblSearchLookupMagic('%%cribl_load_search_lookup x.csv\noops')
     expect(r.kind).toBe('error')

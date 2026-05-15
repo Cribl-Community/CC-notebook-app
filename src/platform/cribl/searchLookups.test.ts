@@ -118,4 +118,11 @@ describe('criblLookupService', () => {
       expect.any(Object),
     )
   })
+
+  it('deleteLookup issues DELETE and ignores 404', async () => {
+    const fn = vi.mocked(criblApiFetch.callCriblApi)
+    fn.mockResolvedValueOnce({ ok: false, status: 404, text: 'nope', jsonValue: null })
+    await criblLookupService.deleteLookup({ group: 'default_search', lookupId: 'gone.csv' })
+    expect(fn).toHaveBeenCalledWith('DELETE', '/m/default_search/system/lookups/gone.csv', expect.any(Object))
+  })
 })

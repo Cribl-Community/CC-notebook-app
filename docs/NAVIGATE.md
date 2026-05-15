@@ -7,7 +7,7 @@ Task-oriented map for humans. For layering rules, port tables, and recipes in de
 1. **Composition root:** [`src/App.tsx`](../src/App.tsx) nests providers (env, theme, AI, dialogs, search, kernel) then mounts [`NotebookPage`](../src/features/notebook/ui/NotebookPage.tsx).
 2. **Main page:** `NotebookPage` composes toolbar, tabs, cells, and wires hooks for workspace + runtime + cell runs.
 3. **State:** Tab workspace and notebook content are driven by reducers under [`src/features/notebook/reducer/`](../src/features/notebook/reducer/).
-4. **Execution:** [`useCellRunner`](../src/features/notebook/hooks/useCellRunner.ts) queues work per tab; [`runNotebookCell`](../src/features/notebook/executor/runNotebookCell.ts) picks an executor from [`executorRegistry.ts`](../src/features/notebook/executor/executorRegistry.ts) (order: `%%cribl_api` → `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup` → `%%cribl_search` → Python).
+4. **Execution:** [`useCellRunner`](../src/features/notebook/hooks/useCellRunner.ts) queues work per tab; [`runNotebookCell`](../src/features/notebook/executor/runNotebookCell.ts) picks an executor from [`executorRegistry.ts`](../src/features/notebook/executor/executorRegistry.ts) (order: `%%cribl_api` → `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup` / `%%cribl_delete_search_lookup` → `%%cribl_search` → Python).
 5. **I/O:** Concrete `fetch`, workers, and KV live under [`src/platform/`](../src/platform/). Features talk to **ports** (`src/ports/`) and read implementations from **`app/providers/`** in production.
 
 ```mermaid

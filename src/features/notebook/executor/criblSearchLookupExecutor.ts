@@ -2,6 +2,7 @@ import type { LookupService } from '@ports/LookupService'
 import { describeFetchError } from '@platform/cribl/fetchFailure'
 import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import type {
+  CriblDeleteSearchLookupMagicOk,
   CriblLoadSearchLookupMagicOk,
   CriblSaveSearchLookupMagicOk,
 } from '@features/cribl-search/criblSearchLookupMagic'
@@ -40,7 +41,9 @@ export function looksLikeCriblSearchLookupMagic(source: string): boolean {
   for (const line of source.split(/\r?\n/)) {
     if (lineSkipsMagicScan(line)) continue
     const t = line.trim()
-    return t.startsWith('%%cribl_save_search_lookup') || t.startsWith('%%cribl_load_search_lookup')
+    return t.startsWith('%%cribl_save_search_lookup') ||
+      t.startsWith('%%cribl_load_search_lookup') ||
+      t.startsWith('%%cribl_delete_search_lookup')
   }
   return false
 }
@@ -93,7 +96,10 @@ async function executeCriblSearchLookupCell(
     if (magic.kind === 'save') {
       return await runSave(ctx, deps, magic.value)
     }
-    return await runLoad(ctx, deps, magic.value)
+    if (magic.kind === 'load') {
+      return await runLoad(ctx, deps, magic.value)
+    }
+    return await runDelete(ctx, deps, magic.value)
   } catch (e) {
     const errMsg = describeFetchError(e, 'Cribl lookup request')
     emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${errMsg}\n` })
@@ -200,6 +206,26 @@ async function runLoad(
     dispatchNotebook({ type: 'ERROR_CELL', id })
     return 'error'
   }
+  dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
+  return 'ok'
+}
+
+async function runDelete(
+  ctx: CellExecutionContext,
+  deps: CriblSearchLookupExecutorDeps,
+  value: CriblDeleteSearchLookupMagicOk,
+): Promise<CellRunOutcome> {
+  const { cellId: id, executionCount: count, emitIOPub, isStale, dispatchNotebook } = ctx
+  await deps.lookupService.deleteLookup({
+    group: value.group,
+    lookupId: value.lookupId,
+  })
+  if (isStale()) return 'stale'
+  emitIOPub({
+    msg_type: 'stream',
+    name: 'stdout',
+    text: `Deleted lookup ${JSON.stringify(value.lookupId)} (or it was already absent).\n`,
+  })
   dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
   return 'ok'
 }

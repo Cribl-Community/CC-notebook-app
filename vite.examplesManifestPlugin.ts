@@ -39,7 +39,7 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
   },
   'Cribl_Search_Lookup_Magics.ipynb': {
     summary:
-      'Save and load pandas DataFrames as Cribl Search lookup CSVs via %%cribl_save_search_lookup and %%cribl_load_search_lookup (default_search group).',
+      'Search lookups: save/load/delete magics, $vt_lookups query, and httpx + cribl-control-plane REST create/delete (default_search).',
     tags: ['search', 'lookups', 'magic-cells'],
     level: 'intermediate',
     estimatedRuntime: '8 min',

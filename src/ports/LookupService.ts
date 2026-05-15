@@ -1,6 +1,6 @@
 /**
  * Port for Cribl Search lookup file CRUD used by `%%cribl_save_search_lookup` /
- * `%%cribl_load_search_lookup`. The default adapter uses `/m/{group}/system/lookups`
+ * `%%cribl_load_search_lookup`, and `%%cribl_delete_search_lookup`. The default adapter uses `/m/{group}/system/lookups`
  * (typically `default_search` in hosted Search).
  */
 
@@ -26,4 +26,6 @@ export interface LookupService {
   saveLookupFromCsv(opts: SaveSearchLookupOptions): Promise<void>
   /** Raw CSV text from `GET .../content?raw=1`. */
   downloadLookupCsv(opts: { group: string; lookupId: string }): Promise<string>
+  /** `DELETE .../system/lookups/{id}`. No-op when the server returns 404 (already absent). */
+  deleteLookup(opts: { group: string; lookupId: string }): Promise<void>
 }
