@@ -39,7 +39,7 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
   },
   'Cribl_Search_Lookup_Magics.ipynb': {
     summary:
-      'Search lookups: save/load/delete magics, $vt_lookups query, and httpx + cribl-control-plane REST create/delete (default_search).',
+      'Search lookups: save/load/delete magics, $vt_lookups query, and pyfetch + cribl-control-plane REST create/delete (default_search).',
     tags: ['search', 'lookups', 'magic-cells'],
     level: 'intermediate',
     estimatedRuntime: '8 min',
