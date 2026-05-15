@@ -199,7 +199,6 @@ async function executeCriblSearchCell(
 
     const { rows, columns, totalRecords } = await deps.searchService.runSearch({
       query: searchQuery,
-      queryMode: 'verbatim',
       maxRows: limit,
       earliest,
       latest,

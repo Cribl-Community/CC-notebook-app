@@ -73,6 +73,12 @@ export function WelcomePage({ onOpenExample, onNewNotebook, onImportFile }: Welc
             when appropriate.
           </li>
           <li>
+            <strong>%%cribl_save_search_lookup</strong> / <strong>%%cribl_load_search_lookup</strong> /{' '}
+            <strong>%%cribl_delete_search_lookup</strong> — Upload a pandas DataFrame as a Search lookup CSV (API
+            group <code className="nb-welcome-code">default_search</code>), load it back, or delete it. Use{' '}
+            <code className="nb-welcome-code">replace=true</code> on save to overwrite an existing lookup.
+          </li>
+          <li>
             <strong>Save &amp; organize</strong> — Persist .ipynb to the scoped KV API, with folders in the
             left sidebar.
           </li>

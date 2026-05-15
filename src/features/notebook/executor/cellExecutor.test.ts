@@ -61,6 +61,24 @@ describe('executor registry', () => {
     expect(selectExecutor(source, DEFAULT_CELL_EXECUTORS)?.name).toBe('cribl-search')
   })
 
+  it('routes lookup save magic to cribl-search-lookup executor', async () => {
+    const { DEFAULT_CELL_EXECUTORS } = await import('./executorRegistry')
+    const source = '%%cribl_save_search_lookup demo.csv var=df replace=true'
+    expect(selectExecutor(source, DEFAULT_CELL_EXECUTORS)?.name).toBe('cribl-search-lookup')
+  })
+
+  it('routes lookup load magic to cribl-search-lookup executor', async () => {
+    const { DEFAULT_CELL_EXECUTORS } = await import('./executorRegistry')
+    const source = '%%cribl_load_search_lookup demo.csv var=df'
+    expect(selectExecutor(source, DEFAULT_CELL_EXECUTORS)?.name).toBe('cribl-search-lookup')
+  })
+
+  it('routes lookup delete magic to cribl-search-lookup executor', async () => {
+    const { DEFAULT_CELL_EXECUTORS } = await import('./executorRegistry')
+    const source = '%%cribl_delete_search_lookup demo.csv'
+    expect(selectExecutor(source, DEFAULT_CELL_EXECUTORS)?.name).toBe('cribl-search-lookup')
+  })
+
   it('routes a %%cribl_api cell to the criblApiExecutor before the search executor', async () => {
     const { DEFAULT_CELL_EXECUTORS } = await import('./executorRegistry')
     const source = '%%cribl_api GET /m/default_search/search/jobs var=jobs\n'
