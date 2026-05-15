@@ -88,6 +88,11 @@ describe('normalizeSearchQuery', () => {
     expect(normalizeSearchQuery('cribl dataset=x')).toBe('cribl dataset=x')
     expect(normalizeSearchQuery('CRIBL dataset=x')).toBe('CRIBL dataset=x')
   })
+
+  it('does not prefix externaldata pipelines', () => {
+    const q = 'externaldata\n[\n  "https://example.com/t.csv"\n]\nwith(\n  datatype="CSV Datatypes"\n)'
+    expect(normalizeSearchQuery(q)).toBe(q)
+  })
 })
 
 describe('parseTotalRecordHint', () => {
