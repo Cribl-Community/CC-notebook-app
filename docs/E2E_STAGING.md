@@ -33,7 +33,7 @@ CI should use the same JSON produced locally, stored as a **base64-encoded secre
 npm run e2e
 ```
 
-Full regression runs in **two phases**: `e2e:quick` (everything except `@slow`, **parallel** with multiple workers) then `e2e:slow` (**one worker**, **`@heavy` excluded** so pack-proxy–heavy notebooks do not run immediately after other Pyodide specs). Use **`npm run e2e:slow:all`** to include `@heavy` (Anomaly PyOD Run All).
+Full regression runs in **two phases**: `e2e:quick` (Playwright `--grep-invert '@slow|@examples-all'`, **parallel** with multiple workers) then `e2e:slow` (**one worker**, **`@heavy` excluded** so pack-proxy–heavy notebooks do not run immediately after other Pyodide specs). Use **`npm run e2e:slow:all`** to include `@heavy` (Anomaly PyOD Run All).
 
 Skip the slow Pyodide-heavy specs entirely (~multi-minute):
 
@@ -51,6 +51,13 @@ Run **all** `@slow` specs including `@heavy`:
 
 ```bash
 npm run e2e:slow:all
+```
+
+Run **every** bundled example from `public/Examples/manifest.json` (manifest-driven **Run All**, single worker; long wall-clock):
+
+```bash
+npm run e2e:examples       # all except @heavy (Anomaly PyOD)
+npm run e2e:examples:all    # includes Anomaly PyOD
 ```
 
 ### Parallelism and host load
@@ -75,8 +82,9 @@ If the machine struggles (memory, CPU fans), set `CRIBL_E2E_WORKERS=1` in `e2e/.
 | Visualisations bundled notebook: Run All (micropip Plotly, charts) | `e2e/specs/visualisations-example.spec.ts` | `@regression`, `@slow` |
 | Cribl Search Lookup Magics notebook: Run All (lookup magics, `$vt_lookups`, `%%cribl_api` REST) | `e2e/specs/cribl-search-lookup-magics.spec.ts` | `@regression`, `@slow` |
 | Anomaly Detection PyOD notebook: Run All (micropip PyOD stack, `%%cribl_search`, Plotly) | `e2e/specs/zz-anomaly-detection-example.spec.ts` | `@regression`, `@slow`, `@heavy` (opt-in via `npm run e2e:slow:all`) |
+| All bundled examples: Run All per `manifest.json` (opt-in matrix) | `e2e/specs/all-example-notebooks.spec.ts` | `@examples-all`; Anomaly also `@heavy` — `npm run e2e:examples` / `e2e:examples:all` |
 
-Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide), **`%pip` / `!pip` preprocessing** (unsupported subcommands → stderr), **Visualisations example Run All** (requires deployed `.tgz` that bundles the matching `Visualisations.ipynb` + kernel), **Cribl Search Lookup Magics Run All** (Search + lookup APIs + `Cribl_Search_Lookup_Magics.ipynb`), **Anomaly Detection PyOD example Run All** (needs **Cribl Search** for `%%cribl_search` / `externaldata` and a `.tgz` that bundles `Anomaly_Detection_PyOD.ipynb`; cold micropip can be very slow).
+Main flows exercised: **Apps catalog → widget iframe**, **Welcome hero & sidebar**, **Open example** (new tab), **New notebook** (Untitled tab, CodeMirror, Run All), **kernel Ready** (Pyodide), **`%pip` / `!pip` preprocessing** (unsupported subcommands → stderr), **Visualisations example Run All** (requires deployed `.tgz` that bundles the matching `Visualisations.ipynb` + kernel), **Cribl Search Lookup Magics Run All** (Search + lookup APIs + `Cribl_Search_Lookup_Magics.ipynb`), **Anomaly Detection PyOD example Run All** (needs **Cribl Search** for `%%cribl_search` / `externaldata` and a `.tgz` that bundles `Anomaly_Detection_PyOD.ipynb`; cold micropip can be very slow). Optionally **`npm run e2e:examples`** runs **Run All** on every entry in `public/Examples/manifest.json` (overlaps those three focused specs when you run it).
 
 ### Keeping E2E current (features & refactors)
 
@@ -84,7 +92,7 @@ When you change **user-visible behavior** (welcome copy, tab rules, toolbar labe
 
 1. Update or add specs under `e2e/specs/` in the same PR when behavior changes (or file a follow-up issue if staging-only verification must wait).
 2. Prefer **stable selectors**: roles and labels (`getByRole`, `aria-label`), existing classes (`.nb-toolbar`), or `data-testid` on stable shells — avoid brittle CSS chains.
-3. Tag focused suites with `@smoke` (minimal CI subset), `@regression` (full staging suite), or `@slow` (Pyodide-heavy); filter with `--grep` / `--grep-invert`.
+3. Tag focused suites with `@smoke` (minimal CI subset), `@regression` (full staging suite), `@slow` (Pyodide-heavy), or `@examples-all` (opt-in full example matrix); filter with `--grep` / `--grep-invert`.
 4. Run `npm run e2e:quick` before merge when full kernel coverage is unnecessary; run full `npm run e2e` for release or risky kernel/editor changes.
 
 See also [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) (Testing + feature recipe).

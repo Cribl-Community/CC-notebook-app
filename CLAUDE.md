@@ -18,6 +18,8 @@ npm run e2e          # Playwright vs staging (needs e2e/.env + saved session)
 npm run e2e:quick    # Same, minus @slow / Pyodide-heavy phase
 npm run e2e:slow     # @slow only (excludes @heavy); pair with e2e:quick via `npm run e2e`
 npm run e2e:slow:all # All @slow specs including @heavy (Anomaly PyOD notebook)
+npm run e2e:examples     # Run All for every manifest example except @heavy (single worker)
+npm run e2e:examples:all # Same including Anomaly PyOD (@heavy)
 npm run e2e:report # Open last Playwright HTML report
 npm run deploy:staging   # PUT .tgz to leader /api/v1/apps (+ preinstall + register); CRIBL_API_TOKEN + CRIBL_E2E_BASE_URL or CRIBL_DEPLOY_BASE_URL
 npm run release:github-notes -- X.Y.Z   # Print GitHub Release Markdown for semver X.Y.Z (from RELEASE_NOTES)
