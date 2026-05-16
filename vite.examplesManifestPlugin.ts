@@ -30,6 +30,14 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '15 min',
     recommendedOrder: 2,
   },
+  'Threat_Hunting_Playbook.ipynb': {
+    summary:
+      'Threat hunt on CICIDS2017 + Sophos IOCs via externaldata, Search lookups ($vt_lookups), pandas pivots, and AI hunt notes.',
+    tags: ['security', 'threat-hunting', 'search', 'externaldata', 'lookups', 'workflow'],
+    level: 'intermediate',
+    estimatedRuntime: '15–20 min',
+    recommendedOrder: 3,
+  },
   'Cribl_Search_Examples.ipynb': {
     summary: 'KQL and English search patterns with templating and follow-up analysis.',
     tags: ['search', 'kql'],
