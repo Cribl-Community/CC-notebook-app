@@ -112,25 +112,50 @@ export async function openBundledExample(nb: Frame, filename: string): Promise<v
  * Micropip, packaging, and PyPI Simple parsers often surface **warnings** as IOPub `error`
  * messages with exception types ending in `Warning`, which should not fail staging regression.
  */
-export function isBenignNotebookCellErrorHeader(header: string): boolean {
+/** Exception type from a cell error header (`{ename}: {evalue}`). */
+export function notebookCellErrorEname(header: string): string {
   const trimmed = header.trim()
   const colon = trimmed.indexOf(':')
   const enamePart = (colon >= 0 ? trimmed.slice(0, colon) : trimmed).trim()
-  const ename = enamePart.includes('.') ? enamePart.replace(/^.*\./, '') : enamePart
+  return enamePart.includes('.') ? enamePart.replace(/^.*\./, '') : enamePart
+}
+
+export function isBenignNotebookCellErrorHeader(header: string): boolean {
+  const ename = notebookCellErrorEname(header)
   return ename === 'Warning' || ename.endsWith('Warning')
 }
 
-/** Fails only when a cell has a structured error whose type is not a Warning subclass. */
-export async function expectNoCriticalNotebookErrors(nb: Frame, timeoutMs = 60_000): Promise<void> {
+function isCriticalNotebookCellErrorHeader(
+  header: string,
+  allowedEnames: ReadonlySet<string>,
+): boolean {
+  if (isBenignNotebookCellErrorHeader(header)) return false
+  if (allowedEnames.has(notebookCellErrorEname(header))) return false
+  return true
+}
+
+export type ExpectNoCriticalNotebookErrorsOptions = {
+  timeoutMs?: number
+  /** Example notebooks may include deliberate failures (e.g. AI debugging demos). */
+  allowedEnames?: readonly string[]
+}
+
+/** Fails only when a cell has a structured error whose type is not allowed or a Warning subclass. */
+export async function expectNoCriticalNotebookErrors(
+  nb: Frame,
+  options: ExpectNoCriticalNotebookErrorsOptions = {},
+): Promise<void> {
+  const timeoutMs = options.timeoutMs ?? 60_000
+  const allowedEnames = new Set(options.allowedEnames ?? [])
   const end = Date.now() + timeoutMs
   while (Date.now() < end) {
     const headers = await nb.locator('.nb-output-error-header').allInnerTexts()
-    const critical = headers.filter((h) => !isBenignNotebookCellErrorHeader(h))
+    const critical = headers.filter((h) => isCriticalNotebookCellErrorHeader(h, allowedEnames))
     if (critical.length === 0) return
     await delay(250)
   }
   const headers = await nb.locator('.nb-output-error-header').allInnerTexts()
-  const critical = headers.filter((h) => !isBenignNotebookCellErrorHeader(h))
+  const critical = headers.filter((h) => isCriticalNotebookCellErrorHeader(h, allowedEnames))
   throw new Error(
     `Expected no critical notebook cell errors; got ${critical.length}: ${critical.map((c) => c.split('\n')[0]?.trim() ?? c).join(' | ')}`,
   )

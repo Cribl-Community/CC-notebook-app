@@ -37,6 +37,11 @@ function loadExamplesManifest(): ManifestNotebook[] {
 
 const HEAVY_EXAMPLE = 'Anomaly_Detection_PyOD.ipynb'
 
+/** Bundled notebooks that deliberately raise errors for teaching (see notebook markdown). */
+const ALLOWED_INTENTIONAL_ERROR_ENAMES: Record<string, readonly string[]> = {
+  'AI_Magic.ipynb': ['ZeroDivisionError', 'KeyError'],
+}
+
 function runAllTimeouts(filename: string): {
   kernelReadyMs: number
   afterRunAllReadyMs: number
@@ -102,7 +107,9 @@ test.describe('@examples-all matrix', () => {
         timeout: afterRunAllReadyMs,
       })
 
-      await expectNoCriticalNotebookErrors(nb)
+      await expectNoCriticalNotebookErrors(nb, {
+        allowedEnames: ALLOWED_INTENTIONAL_ERROR_ENAMES[filename],
+      })
     })
   }
 })
