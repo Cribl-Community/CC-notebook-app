@@ -35,7 +35,7 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
       'Threat hunt on CICIDS2017 + Sophos IOCs via externaldata, Search lookups ($vt_lookups), pandas pivots, and AI hunt notes.',
     tags: ['security', 'threat-hunting', 'search', 'externaldata', 'lookups', 'workflow'],
     level: 'intermediate',
-    estimatedRuntime: '15–20 min',
+    estimatedRuntime: '10–15 min',
     recommendedOrder: 3,
   },
   'Cribl_Search_Examples.ipynb': {

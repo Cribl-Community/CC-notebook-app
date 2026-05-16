@@ -5,7 +5,7 @@
 
 import { getCriblApiBase } from '@platform/cribl/kvstore'
 import { describeFetchError } from '@platform/cribl/fetchFailure'
-import { normalizeSearchQuery } from '@platform/cribl/searchQuery'
+import { applySearchRowCap, normalizeSearchQuery } from '@platform/cribl/searchQuery'
 import { deriveColumnNames } from '@platform/cribl/searchResultModel'
 import { runLocalSearchStub } from '@platform/cribl/searchStub'
 import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
@@ -14,8 +14,11 @@ export { normalizeSearchQuery } from '@platform/cribl/searchQuery'
 
 const SEARCH_GROUP = 'default_search'
 const POLL_MS = 450
-const MAX_POLLS = 200
-const SEARCH_FETCH_TIMEOUT_MS = 30_000
+/** externaldata jobs can run 2–3 min; 400 × 450ms ≈ 3 min of status polling. */
+const MAX_POLLS = 400
+const SEARCH_STATUS_FETCH_TIMEOUT_MS = 30_000
+/** `/results` payloads can be large; platform proxy may still cap near 30s — keep rows small via `limit=`. */
+const SEARCH_RESULTS_FETCH_TIMEOUT_MS = 120_000
 
 /** Default time window when `%%cribl_search` omits `earliest=` / `latest=`. */
 export const DEFAULT_SEARCH_EARLIEST = '-1h'
@@ -440,11 +443,16 @@ function emitProgress(
   onProgress?.({ fraction: Math.min(1, Math.max(0, fraction)), label })
 }
 
-async function fetchSearch(url: string, init: RequestInit | undefined, operation: string): Promise<Response> {
+async function fetchSearch(
+  url: string,
+  init: RequestInit | undefined,
+  operation: string,
+  timeoutMs = SEARCH_STATUS_FETCH_TIMEOUT_MS,
+): Promise<Response> {
   try {
     return await fetch(url, {
       ...init,
-      signal: AbortSignal.timeout(SEARCH_FETCH_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     })
   } catch (e) {
     throw new Error(describeFetchError(e, operation))
@@ -459,8 +467,10 @@ async function fetchSearch(url: string, init: RequestInit | undefined, operation
 export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<CriblSearchJobResult> {
   const base = getCriblApiBase()
   const queryMode = options.queryMode ?? 'normalized'
-  const q = queryMode === 'verbatim' ? options.query.trim() : normalizeSearchQuery(options.query)
   const maxRows = options.maxRows ?? 0
+  const normalized =
+    queryMode === 'verbatim' ? options.query.trim() : normalizeSearchQuery(options.query)
+  const q = applySearchRowCap(normalized, maxRows)
 
   if (!base) {
     return runLocalSearchStub({ ...options, maxRows })
@@ -537,6 +547,15 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
     }
   }
 
+  const phaseAfterPoll = parseJobPhase(lastStatusJson)
+  if (phaseAfterPoll !== 'completed') {
+    const waitedSec = Math.round((MAX_POLLS * POLL_MS) / 1000)
+    throw new Error(
+      `Search job did not complete within ~${waitedSec}s (status still "${phaseAfterPoll}"). ` +
+        'For `externaldata`, use a smaller `limit=` on `%%cribl_search` or add `| limit N` in the query body.',
+    )
+  }
+
   const totalFromStatus = lastStatusJson != null ? parseTotalRecordHint(lastStatusJson) : null
 
   const cap = maxRows === 0 ? Number.MAX_SAFE_INTEGER : maxRows
@@ -573,6 +592,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
       `${root}/jobs/${encodeURIComponent(jobId)}/results?offset=${offset}&limit=${pageLimit}`,
       undefined,
       'Search results',
+      SEARCH_RESULTS_FETCH_TIMEOUT_MS,
     )
     if (!resultsRes.ok) {
       const t = await resultsRes.text().catch(() => '')

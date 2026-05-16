@@ -207,6 +207,30 @@ describe('runCriblSearchJob queryMode', () => {
     expect(body.query).toBe('cribl dataset=x | limit 1')
   })
 
+  it('appends | limit to externaldata when maxRows is set', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'job-3', status: 'completed' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const query = 'externaldata\n[\n"https://example.com/t.csv"\n]\nwith(\n  datatype="CSV Datatypes"\n)'
+    await runCriblSearchJob({ query, maxRows: 200 })
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const body = JSON.parse(String(init.body)) as { query: string }
+    expect(body.query).toContain('| limit 200')
+  })
+
   it('surfaces create fetch failures immediately without retrying polls', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
     globalThis.fetch = fetchMock as unknown as typeof fetch
