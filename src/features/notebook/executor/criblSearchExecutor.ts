@@ -16,6 +16,7 @@ import {
   formatCriblSearchRawRows,
 } from '@features/cribl-search/criblSearchCellRunner'
 import type { IOPubMessage } from '@/domain/kernel'
+import type { SearchProgressEvent } from '@/domain/search'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 
 export interface CriblSearchExecutorDeps {
@@ -104,10 +105,21 @@ async function executeCriblSearchCell(
     dataset,
     template,
     translateOnly,
+    verbose,
   } = magic.value
   const displayId = `cribl-search-${id}`
   let generatedKqlForReport: string | undefined
   const apiBase = deps.criblApiBase.trim()
+
+  const reportSearchProgress = (ev: SearchProgressEvent, update: boolean): void => {
+    emitIOPub(
+      criblSearchIOPub({ kind: 'running', progress: ev.fraction, label: ev.label }, displayId, update),
+    )
+    if (verbose) {
+      emitIOPub({ msg_type: 'stream', name: 'stdout', text: `[cribl_search] ${ev.label}\n` })
+    }
+  }
+
   try {
     emitIOPub(
       criblSearchIOPub(
@@ -121,6 +133,13 @@ async function executeCriblSearchCell(
         false,
       ),
     )
+    if (verbose) {
+      emitIOPub({
+        msg_type: 'stream',
+        name: 'stdout',
+        text: `[cribl_search] ${lang === 'english' && translateOnly ? 'Starting translation…' : 'Starting search…'}\n`,
+      })
+    }
 
     let searchQuery = query
     if (deps.wantsCriblSearchJinjaTemplating(query, template)) {
@@ -213,15 +232,7 @@ async function executeCriblSearchCell(
       earliest,
       latest,
       pollTimeoutMs: timeoutSec * 1000,
-      onProgress: (ev) => {
-        emitIOPub(
-          criblSearchIOPub(
-            { kind: 'running', progress: ev.fraction, label: ev.label },
-            displayId,
-            true,
-          ),
-        )
-      },
+      onProgress: (ev) => reportSearchProgress(ev, true),
     })
     if (isStale()) return 'stale'
 

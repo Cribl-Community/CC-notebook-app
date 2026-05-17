@@ -546,7 +546,11 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
         break
       }
       const pollFrac = 0.22 + (0.62 * (i + 1)) / maxPolls
-      emitProgress(options.onProgress, Math.min(0.85, pollFrac), `Job ${jobId}: running…`)
+      emitProgress(
+        options.onProgress,
+        Math.min(0.85, pollFrac),
+        `Job ${jobId}: running (poll ${i + 1}/${maxPolls})…`,
+      )
       await sleep(POLL_MS)
     }
   }
@@ -593,11 +597,11 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
     } else {
       frac = 0.88 + 0.09 * Math.min(1, 1 - Math.exp(-pageIndex / 5))
     }
-    emitProgress(
-      options.onProgress,
-      frac,
-      `Job ${jobId}: retrieved ${loaded} row(s)${maxRows === 0 ? '' : ` (limit ${maxRows})`}…`,
-    )
+    const pageLabel =
+      pageIndex > 0
+        ? `Job ${jobId}: page ${pageIndex} — ${loaded.toLocaleString()} row(s) loaded${maxRows === 0 ? '' : ` (limit ${maxRows})`}…`
+        : `Job ${jobId}: retrieved ${loaded} row(s)${maxRows === 0 ? '' : ` (limit ${maxRows})`}…`
+    emitProgress(options.onProgress, frac, pageLabel)
   }
 
   while (rows.length < cap) {
