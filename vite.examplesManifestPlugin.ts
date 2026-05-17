@@ -38,12 +38,31 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '8–12 min',
     recommendedOrder: 3,
   },
+  'Malware_Hash_Threat_Hunt.ipynb': {
+    summary:
+      'MalwareBazaar TI lookup + PE import features: Generic HTTP dataset provider, externaldata, MD5 join hunt, and charts (Search-only ingestion).',
+    tags: [
+      'security',
+      'threat-hunting',
+      'malware',
+      'hash',
+      'search',
+      'join',
+      'lookups',
+      'api',
+      'externaldata',
+      'visualization',
+    ],
+    level: 'intermediate',
+    estimatedRuntime: '20–35 min',
+    recommendedOrder: 4,
+  },
   'Cribl_Search_Examples.ipynb': {
     summary: 'KQL and English search patterns with templating and follow-up analysis.',
     tags: ['search', 'kql'],
     level: 'beginner',
     estimatedRuntime: '12 min',
-    recommendedOrder: 3,
+    recommendedOrder: 5,
   },
   'Cribl_Search_Lookup_Magics.ipynb': {
     summary:
@@ -58,7 +77,7 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     tags: ['api', 'magic-cells'],
     level: 'intermediate',
     estimatedRuntime: '12 min',
-    recommendedOrder: 4,
+    recommendedOrder: 6,
   },
   'Cribl_Python_SDK.ipynb': {
     summary: 'SDK walkthrough for inventory insights and plotting with AI prompt helpers.',
