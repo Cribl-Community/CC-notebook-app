@@ -30,6 +30,14 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '15 min',
     recommendedOrder: 2,
   },
+  'Threat_Hunting_Playbook.ipynb': {
+    summary:
+      'Pick six external VPC flow IPs from cribl_search_sample, save a static lookup, join + timestats, and chart the timeline.',
+    tags: ['security', 'threat-hunting', 'search', 'join', 'lookups', 'timestats', 'visualization'],
+    level: 'intermediate',
+    estimatedRuntime: '8–12 min',
+    recommendedOrder: 3,
+  },
   'Cribl_Search_Examples.ipynb': {
     summary: 'KQL and English search patterns with templating and follow-up analysis.',
     tags: ['search', 'kql'],

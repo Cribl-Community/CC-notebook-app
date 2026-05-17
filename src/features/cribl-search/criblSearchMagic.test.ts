@@ -3,6 +3,7 @@ import {
   parseCriblSearchMagic,
   encodeRowsJsonForPythonBase64,
   buildCriblSearchDataframeCode,
+  buildCriblSearchDataframeCodeFromRows,
   wantsCriblSearchJinjaTemplating,
   criblSearchQueryLooksLikeJinjaTemplate,
 } from '@features/cribl-search/criblSearchMagic'
@@ -14,6 +15,8 @@ describe('parseCriblSearchMagic', () => {
 
   it('parses defaults', () => {
     const r = parseCriblSearchMagic('%%cribl_search\ndataset=x | limit 1\n')
+    if (r.kind !== 'cribl_search') throw new Error('expected cribl_search')
+    expect(r.value.timeoutSec).toBe(180)
     expect(r.kind).toBe('cribl_search')
     if (r.kind !== 'cribl_search') return
     expect(r.value.varName).toBe('results_df')
@@ -157,6 +160,21 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.limit).toBe(500)
   })
 
+  it('parses timeout in seconds', () => {
+    const r = parseCriblSearchMagic('%%cribl_search timeout=600\ndataset=x | limit 1\n')
+    expect(r.kind).toBe('cribl_search')
+    if (r.kind === 'cribl_search') expect(r.value.timeoutSec).toBe(600)
+
+    const r2 = parseCriblSearchMagic('%%cribl_search timeout=90s\nq\n')
+    expect(r2.kind).toBe('cribl_search')
+    if (r2.kind === 'cribl_search') expect(r2.value.timeoutSec).toBe(90)
+  })
+
+  it('errors on timeout below minimum', () => {
+    const bad = parseCriblSearchMagic('%%cribl_search timeout=10\nq\n')
+    expect(bad.kind).toBe('error')
+  })
+
   it('errors on non-integer limit', () => {
     const r = parseCriblSearchMagic('%%cribl_search limit=12.5\nq\n')
     expect(r.kind).toBe('error')
@@ -209,5 +227,16 @@ describe('encodeRowsJsonForPythonBase64 + buildCriblSearchDataframeCode', () => 
     const code = buildCriblSearchDataframeCode('results_df', b64, false)
     expect(code).toContain('results_df')
     expect(code).toContain('pd.DataFrame')
+  })
+})
+
+describe('buildCriblSearchDataframeCodeFromRows', () => {
+  it('uses chunked concat for large row sets', () => {
+    const rows = Array.from({ length: 12_000 }, (_, i) => ({ i }))
+    const code = buildCriblSearchDataframeCodeFromRows('big_df', rows, false, 5000)
+    expect(code).toContain('pd.concat')
+    expect(code).toContain('__chunk_0')
+    expect(code).toContain('__chunk_1')
+    expect(code).toContain('__chunk_2')
   })
 })

@@ -125,7 +125,7 @@ export function isBenignNotebookCellErrorHeader(header: string): boolean {
   return ename === 'Warning' || ename.endsWith('Warning')
 }
 
-function isCriticalNotebookCellErrorHeader(
+export function isCriticalNotebookCellErrorHeader(
   header: string,
   allowedEnames: ReadonlySet<string>,
 ): boolean {
@@ -147,14 +147,15 @@ export async function expectNoCriticalNotebookErrors(
 ): Promise<void> {
   const timeoutMs = options.timeoutMs ?? 60_000
   const allowedEnames = new Set(options.allowedEnames ?? [])
+  const errorHeaders = nb.locator('.nb-main .nb-output-error-header')
   const end = Date.now() + timeoutMs
   while (Date.now() < end) {
-    const headers = await nb.locator('.nb-output-error-header').allInnerTexts()
+    const headers = await errorHeaders.allInnerTexts()
     const critical = headers.filter((h) => isCriticalNotebookCellErrorHeader(h, allowedEnames))
     if (critical.length === 0) return
     await delay(250)
   }
-  const headers = await nb.locator('.nb-output-error-header').allInnerTexts()
+  const headers = await errorHeaders.allInnerTexts()
   const critical = headers.filter((h) => isCriticalNotebookCellErrorHeader(h, allowedEnames))
   throw new Error(
     `Expected no critical notebook cell errors; got ${critical.length}: ${critical.map((c) => c.split('\n')[0]?.trim() ?? c).join(' | ')}`,

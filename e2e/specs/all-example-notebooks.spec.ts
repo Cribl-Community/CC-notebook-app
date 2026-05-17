@@ -56,8 +56,9 @@ function runAllTimeouts(filename: string): {
   }
   return {
     kernelReadyMs: 480_000,
-    afterRunAllReadyMs: 600_000,
-    testTimeout: 900_000,
+    // Search-heavy Run All on staging can exceed 10m when the tenant is warm but busy.
+    afterRunAllReadyMs: 900_000,
+    testTimeout: 1_200_000,
   }
 }
 

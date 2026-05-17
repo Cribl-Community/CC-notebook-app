@@ -93,6 +93,11 @@ describe('normalizeSearchQuery', () => {
     const q = 'externaldata\n[\n  "https://example.com/t.csv"\n]\nwith(\n  datatype="CSV Datatypes"\n)'
     expect(normalizeSearchQuery(q)).toBe(q)
   })
+
+  it('does not prefix let pipelines', () => {
+    const q = 'let w = dataset="x" | limit 1;\ndataset=y | limit 1'
+    expect(normalizeSearchQuery(q)).toBe(q)
+  })
 })
 
 describe('parseTotalRecordHint', () => {
@@ -205,6 +210,97 @@ describe('runCriblSearchJob queryMode', () => {
     const init = call?.[1] as RequestInit
     const body = JSON.parse(String(init.body)) as { query: string }
     expect(body.query).toBe('cribl dataset=x | limit 1')
+  })
+
+  it('appends | limit to externaldata when maxRows is set', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ id: 'job-3', status: 'completed' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: [] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const query = 'externaldata\n[\n"https://example.com/t.csv"\n]\nwith(\n  datatype="CSV Datatypes"\n)'
+    await runCriblSearchJob({ query, maxRows: 200 })
+
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const body = JSON.parse(String(init.body)) as { query: string }
+    expect(body.query).toContain('| limit 200')
+  })
+
+  it('paginates /results in small pages until exhausted when maxRows is 0', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: [{ id: 'job-pg', status: 'completed' }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const page1 = Array.from({ length: 1000 }, (_, i) => ({ n: i }))
+    const page2 = Array.from({ length: 500 }, (_, i) => ({ n: i + 1000 }))
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ results: page1, totalEventCount: 1500 }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: page2 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const { rows } = await runCriblSearchJob({ query: 'dataset=x', maxRows: 0 })
+    expect(rows).toHaveLength(1500)
+    const resultCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/results'))
+    expect(resultCalls).toHaveLength(2)
+    expect(String(resultCalls[0]?.[0])).toContain('limit=1000')
+    expect(String(resultCalls[1]?.[0])).toContain('offset=1000')
+  })
+
+  it('honors pollTimeoutMs when polling job status', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+
+    let statusCalls = 0
+    fetchMock.mockImplementation((url: string | URL | Request) => {
+      const u = String(url)
+      if (u.includes('/jobs') && !u.includes('/status') && !u.includes('/results')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [{ id: 'job-slow', status: 'running' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+      if (u.includes('/status')) {
+        statusCalls += 1
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [{ id: 'job-slow', status: 'running' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    })
+
+    await expect(
+      runCriblSearchJob({ query: 'dataset=x | limit 1', pollTimeoutMs: 900 }),
+    ).rejects.toThrow(/did not complete within ~1s/i)
+
+    expect(statusCalls).toBeGreaterThanOrEqual(1)
+    expect(statusCalls).toBeLessThanOrEqual(3)
   })
 
   it('surfaces create fetch failures immediately without retrying polls', async () => {

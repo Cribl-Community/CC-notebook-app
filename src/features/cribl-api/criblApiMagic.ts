@@ -3,7 +3,7 @@
  * Leading empty lines and full-line `#` comments are skipped before the magic line.
  * The YAML body omits full-line `#` lines; blank lines are kept.
  * First line:
- * %%cribl_api <METHOD> <path> [var=name] [preview=true|false] [response=json|raw|text] [template=auto|on|off|true|false]
+ * %%cribl_api <METHOD> <path> [var=name] [preview=true|false] [response=json|raw|text] [template=auto|on|off|true|false] [ignoreFailure=true|false]
  * Following lines: YAML mapping for `headers`, `json` (object → JSON request body), and optional `body` (string,
  * used when `json` is not set; if both are set, `json` takes precedence for the serialized body).
  *
@@ -42,6 +42,8 @@ export type CriblApiMagicOk = {
   /** Raw YAML / template block (lines after the first), trimmed. */
   yamlBlock: string
   template: CriblApiTemplateMode
+  /** When true, HTTP/network failures are printed but the cell still completes successfully. */
+  ignoreFailure: boolean
 }
 
 export type CriblApiMagicParse =
@@ -125,12 +127,20 @@ export function parseCriblApiYamlToRequest(yamlText: string): CriblApiRequestPar
 function parseKeyValueParams(
   paramLine: string,
 ):
-  | { ok: true; varName: string; preview: boolean; response: CriblApiResponseMode; template: CriblApiTemplateMode }
+  | {
+      ok: true
+      varName: string
+      preview: boolean
+      response: CriblApiResponseMode
+      template: CriblApiTemplateMode
+      ignoreFailure: boolean
+    }
   | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_API_VAR
   let preview = true
   let response: CriblApiResponseMode = 'json'
   let template: CriblApiTemplateMode = 'auto'
+  let ignoreFailure = false
   const tokens = paramLine.trim().split(/\s+/).filter(Boolean)
   for (const t of tokens) {
     const eq = t.indexOf('=')
@@ -159,8 +169,11 @@ function parseKeyValueParams(
         return { ok: false, message: `template must be one of auto, on, off; got ${JSON.stringify(val)}` }
       }
     }
+    if (key === 'ignorefailure') {
+      ignoreFailure = val.toLowerCase() !== 'false'
+    }
   }
-  return { ok: true, varName, preview, response, template }
+  return { ok: true, varName, preview, response, template, ignoreFailure }
 }
 
 /**
@@ -200,7 +213,7 @@ export function parseCriblApiMagic(source: string): CriblApiMagicParse {
   if (!parsed.ok) {
     return { kind: 'error', message: parsed.message }
   }
-  const { varName, preview, response, template } = parsed
+  const { varName, preview, response, template, ignoreFailure } = parsed
   if (!IDENT_RE.test(varName)) {
     return { kind: 'error', message: `Invalid Python identifier for var: ${JSON.stringify(varName)}` }
   }
@@ -212,7 +225,7 @@ export function parseCriblApiMagic(source: string): CriblApiMagicParse {
 
   return {
     kind: 'cribl_api',
-    value: { method, path, varName, preview, response, yamlBlock, template },
+    value: { method, path, varName, preview, response, yamlBlock, template, ignoreFailure },
   }
 }
 
@@ -255,4 +268,9 @@ export function buildCriblApiStringValueAssignmentCode(varName: string, utf8Text
 
 __s_b64 = """${utf8TextBase64}"""
 ${varName} = base64.standard_b64decode(__s_b64.encode("ascii")).decode("utf-8")`
+}
+
+/** Assign `None` when a request failed but `ignoreFailure=true`. */
+export function buildCriblApiNoneAssignmentCode(varName: string): string {
+  return `${varName} = None`
 }

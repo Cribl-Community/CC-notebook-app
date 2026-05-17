@@ -4,6 +4,7 @@ import { getCriblApiBase } from '@platform/env/env'
 import { describeFetchError } from '@platform/cribl/fetchFailure'
 import {
   buildCriblApiJsonValueAssignmentCode,
+  buildCriblApiNoneAssignmentCode,
   buildCriblApiStringValueAssignmentCode,
   encodeUtf8TextForPythonBase64,
   encodeValueJsonForPythonBase64,
@@ -34,6 +35,7 @@ export type CriblApiExecutorDeps = {
   encodeValueJsonForPythonBase64: typeof encodeValueJsonForPythonBase64
   encodeUtf8TextForPythonBase64: typeof encodeUtf8TextForPythonBase64
   buildCriblApiJsonValueAssignmentCode: typeof buildCriblApiJsonValueAssignmentCode
+  buildCriblApiNoneAssignmentCode: typeof buildCriblApiNoneAssignmentCode
   buildCriblApiStringValueAssignmentCode: typeof buildCriblApiStringValueAssignmentCode
 }
 
@@ -48,6 +50,7 @@ export const DEFAULT_CRIBL_API_EXECUTOR_DEPS: CriblApiExecutorDeps = {
   encodeValueJsonForPythonBase64,
   encodeUtf8TextForPythonBase64,
   buildCriblApiJsonValueAssignmentCode,
+  buildCriblApiNoneAssignmentCode,
   buildCriblApiStringValueAssignmentCode,
 }
 
@@ -99,7 +102,8 @@ async function executeCriblApiCell(
     dispatchNotebook({ type: 'ERROR_CELL', id })
     return 'error'
   }
-  const { method, path, varName, preview, response: responseMode, yamlBlock, template } = magic.value
+  const { method, path, varName, preview, response: responseMode, yamlBlock, template, ignoreFailure } =
+    magic.value
   if (!deps.getCriblApiBase()) {
     emitIOPub({
       msg_type: 'stream',
@@ -142,11 +146,11 @@ async function executeCriblApiCell(
     const res = await deps.callCriblApi(method, path, part, deps.getCriblApiBase)
     if (isStale()) return 'stale'
     if (!res.ok) {
-      emitIOPub({
-        msg_type: 'stream',
-        name: 'stderr',
-        text: `HTTP ${res.status} ${res.text.slice(0, 2000)}${res.text.length > 2000 ? '…' : ''}\n`,
-      })
+      const failureText = formatCriblApiHttpFailureMessage(res.status, res.text)
+      emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${failureText}\n` })
+      if (ignoreFailure) {
+        return finishIgnoredFailure(ctx, deps, count, varName, isStale, emitIOPub, dispatchNotebook)
+      }
       dispatchNotebook({ type: 'ERROR_CELL', id })
       return 'error'
     }
@@ -184,9 +188,30 @@ async function executeCriblApiCell(
   } catch (e) {
     const msg = describeFetchError(e, `Cribl API ${method} ${path}`)
     emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${msg}\n` })
+    if (ignoreFailure) {
+      return finishIgnoredFailure(ctx, deps, count, varName, isStale, emitIOPub, dispatchNotebook)
+    }
     dispatchNotebook({ type: 'ERROR_CELL', id })
     return 'error'
   }
+}
+
+function formatCriblApiHttpFailureMessage(status: number, text: string): string {
+  const body = text.slice(0, 2000) + (text.length > 2000 ? '…' : '')
+  return `HTTP ${status} ${body}`
+}
+
+async function finishIgnoredFailure(
+  ctx: CellExecutionContext,
+  deps: CriblApiExecutorDeps,
+  count: number,
+  varName: string,
+  isStale: () => boolean,
+  emitIOPub: CellExecutionContext['emitIOPub'],
+  dispatchNotebook: CellExecutionContext['dispatchNotebook'],
+): Promise<CellRunOutcome> {
+  const code = deps.buildCriblApiNoneAssignmentCode(varName)
+  return runKernelAssign(ctx, deps, count, code, isStale, emitIOPub, dispatchNotebook)
 }
 
 function formatPreviewJson(v: unknown): string {

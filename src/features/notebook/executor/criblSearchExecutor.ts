@@ -2,9 +2,8 @@ import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import type { SearchService } from '@ports/SearchService'
 import { describeFetchError } from '@platform/cribl/fetchFailure'
 import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
+import { planCriblSearchDataframeHydration } from '@features/cribl-search/criblSearchDataframeHydration'
 import {
-  buildCriblSearchDataframeCode,
-  encodeRowsJsonForPythonBase64,
   parseCriblSearchMagic,
   wantsCriblSearchJinjaTemplating,
 } from '@features/cribl-search/criblSearchMagic'
@@ -16,12 +15,13 @@ import {
   formatCriblSearchJsonRows,
   formatCriblSearchRawRows,
 } from '@features/cribl-search/criblSearchCellRunner'
+import type { IOPubMessage } from '@/domain/kernel'
+import type { SearchProgressEvent } from '@/domain/search'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 
 export interface CriblSearchExecutorDeps {
   parseCriblSearchMagic: typeof parseCriblSearchMagic
-  buildCriblSearchDataframeCode: typeof buildCriblSearchDataframeCode
-  encodeRowsJsonForPythonBase64: typeof encodeRowsJsonForPythonBase64
+  planCriblSearchDataframeHydration: typeof planCriblSearchDataframeHydration
   filterPyodidePackageChatter: typeof filterPyodidePackageChatter
   searchService: SearchService
   /** Same signal as {@link getCriblApiBase} / {@link EnvService.apiBase}: empty when not hosted in Cribl. */
@@ -33,8 +33,7 @@ export interface CriblSearchExecutorDeps {
 
 const CRIBL_SEARCH_LOCAL_DEFAULTS = {
   parseCriblSearchMagic,
-  buildCriblSearchDataframeCode,
-  encodeRowsJsonForPythonBase64,
+  planCriblSearchDataframeHydration,
   filterPyodidePackageChatter,
   criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS,
   wantsCriblSearchJinjaTemplating,
@@ -93,11 +92,30 @@ async function executeCriblSearchCell(
     return 'error'
   }
 
-  const { varName, query, preview, response, earliest, latest, limit, lang, dataset, template, translateOnly } =
-    magic.value
+  const {
+    varName,
+    query,
+    preview,
+    response,
+    earliest,
+    latest,
+    limit,
+    timeoutSec,
+    lang,
+    dataset,
+    template,
+    translateOnly,
+  } = magic.value
   const displayId = `cribl-search-${id}`
   let generatedKqlForReport: string | undefined
   const apiBase = deps.criblApiBase.trim()
+
+  const reportSearchProgress = (ev: SearchProgressEvent, update: boolean): void => {
+    emitIOPub(
+      criblSearchIOPub({ kind: 'running', progress: ev.fraction, label: ev.label }, displayId, update),
+    )
+  }
+
   try {
     emitIOPub(
       criblSearchIOPub(
@@ -202,15 +220,8 @@ async function executeCriblSearchCell(
       maxRows: limit,
       earliest,
       latest,
-      onProgress: (ev) => {
-        emitIOPub(
-          criblSearchIOPub(
-            { kind: 'running', progress: ev.fraction, label: ev.label },
-            displayId,
-            true,
-          ),
-        )
-      },
+      pollTimeoutMs: timeoutSec * 1000,
+      onProgress: (ev) => reportSearchProgress(ev, true),
     })
     if (isStale()) return 'stale'
 
@@ -230,24 +241,28 @@ async function executeCriblSearchCell(
       ),
     )
     if (response === 'dataframe') {
-      const b64 = deps.encodeRowsJsonForPythonBase64(rows)
-      /** Rich table already shows rows; never add `print(df.head())` (avoids duplicate text). */
-      const code = deps.buildCriblSearchDataframeCode(varName, b64, false)
+      const plan = deps.planCriblSearchDataframeHydration(varName, rows, totalRecords, false)
+      const codeBlocks =
+        plan.kind === 'single'
+          ? [plan.code]
+          : [plan.initCode, ...plan.chunkCodes, plan.footerCode]
+
       let sawError = false
-      await kernel.execute(
-        code,
-        (msg) => {
-          if (msg.msg_type === 'stream') {
-            const filtered = deps.filterPyodidePackageChatter(msg.text)
-            if (filtered.length === 0) return
-            emitIOPub({ ...msg, text: filtered })
-            return
-          }
-          if (msg.msg_type === 'error') sawError = true
-          emitIOPub(msg)
-        },
-        count,
-      )
+      const onMsg = (msg: IOPubMessage) => {
+        if (msg.msg_type === 'stream') {
+          const filtered = deps.filterPyodidePackageChatter(msg.text)
+          if (filtered.length === 0) return
+          emitIOPub({ ...msg, text: filtered })
+          return
+        }
+        if (msg.msg_type === 'error') sawError = true
+        emitIOPub(msg)
+      }
+
+      for (const code of codeBlocks) {
+        if (isStale() || sawError) break
+        await kernel.execute(code, onMsg, count)
+      }
 
       if (isStale()) return 'stale'
 
