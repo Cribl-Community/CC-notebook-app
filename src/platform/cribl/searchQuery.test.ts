@@ -18,9 +18,9 @@ with(
     expect(applySearchRowCap(external, 0)).toBe(external)
   })
 
-  it('does not append for non-externaldata queries', () => {
+  it('appends | limit for dataset pipelines when maxRows > 0', () => {
     const q = normalizeSearchQuery('dataset=x | sort by _time desc')
-    expect(applySearchRowCap(q, 100)).toBe(q)
+    expect(applySearchRowCap(q, 100)).toBe(`${q}\n| limit 100`)
   })
 
   it('does not double-append when query already has | limit', () => {

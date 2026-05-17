@@ -6,7 +6,7 @@ import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
 import { CRIBL_SEARCH_MIME } from '@/domain/criblSearchMime'
 import {
-  buildCriblSearchDataframeCode,
+  buildCriblSearchDataframeCodeFromRows,
   encodeRowsJsonForPythonBase64,
   parseCriblSearchMagic,
 } from '@features/cribl-search/criblSearchMagic'
@@ -43,7 +43,7 @@ function makeSearchService(partial: Partial<SearchService> = {}): SearchService 
 
 const baseDeps = {
   parseCriblSearchMagic,
-  buildCriblSearchDataframeCode,
+  buildCriblSearchDataframeCodeFromRows,
   encodeRowsJsonForPythonBase64,
   filterPyodidePackageChatter,
   searchService: makeSearchService(),

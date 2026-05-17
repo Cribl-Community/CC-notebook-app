@@ -231,6 +231,38 @@ describe('runCriblSearchJob queryMode', () => {
     expect(body.query).toContain('| limit 200')
   })
 
+  it('paginates /results in small pages until exhausted when maxRows is 0', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ items: [{ id: 'job-pg', status: 'completed' }] }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    const page1 = Array.from({ length: 1000 }, (_, i) => ({ n: i }))
+    const page2 = Array.from({ length: 500 }, (_, i) => ({ n: i + 1000 }))
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ results: page1, totalEventCount: 1500 }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ results: page2 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+
+    const { rows } = await runCriblSearchJob({ query: 'dataset=x', maxRows: 0 })
+    expect(rows).toHaveLength(1500)
+    const resultCalls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('/results'))
+    expect(resultCalls).toHaveLength(2)
+    expect(String(resultCalls[0]?.[0])).toContain('limit=1000')
+    expect(String(resultCalls[1]?.[0])).toContain('offset=1000')
+  })
+
   it('surfaces create fetch failures immediately without retrying polls', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
     globalThis.fetch = fetchMock as unknown as typeof fetch

@@ -4,7 +4,13 @@
  */
 
 import { getCriblApiBase } from '@platform/cribl/kvstore'
-import { describeFetchError } from '@platform/cribl/fetchFailure'
+import {
+  CRIBL_SEARCH_RESULTS_PAGE_SIZE,
+  SEARCH_RESULTS_FETCH_TIMEOUT_MS,
+  SEARCH_STATUS_FETCH_TIMEOUT_MS,
+  fetchSearchOnce,
+  fetchSearchWithRetry,
+} from '@platform/cribl/searchFetch'
 import { applySearchRowCap, normalizeSearchQuery } from '@platform/cribl/searchQuery'
 import { deriveColumnNames } from '@platform/cribl/searchResultModel'
 import { runLocalSearchStub } from '@platform/cribl/searchStub'
@@ -16,9 +22,9 @@ const SEARCH_GROUP = 'default_search'
 const POLL_MS = 450
 /** externaldata jobs can run 2–3 min; 400 × 450ms ≈ 3 min of status polling. */
 const MAX_POLLS = 400
-const SEARCH_STATUS_FETCH_TIMEOUT_MS = 30_000
-/** `/results` payloads can be large; platform proxy may still cap near 30s — keep rows small via `limit=`. */
-const SEARCH_RESULTS_FETCH_TIMEOUT_MS = 120_000
+/** Cribl Search jobs often cap persisted rows (status hints); avoid unbounded pagination loops. */
+const PLATFORM_MAX_RESULTS_HINT = 200_000
+const INTER_RESULTS_PAGE_DELAY_MS = 75
 
 /** Default time window when `%%cribl_search` omits `earliest=` / `latest=`. */
 export const DEFAULT_SEARCH_EARLIEST = '-1h'
@@ -27,8 +33,7 @@ export const DEFAULT_SEARCH_LATEST = 'now'
 /** Max rows shown in the interactive result table (full DataFrame may be larger). */
 export const DEFAULT_CRIBL_SEARCH_MAX_ROWS = DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS
 
-/** Rows per `/results` request when paginating (magic `limit=0` loads all pages). */
-export const CRIBL_SEARCH_RESULTS_PAGE_SIZE = 5000
+export { CRIBL_SEARCH_RESULTS_PAGE_SIZE } from '@platform/cribl/searchFetch'
 
 export type SearchProgressEvent = {
   /** 0–1 approximate progress for the job lifecycle */
@@ -443,22 +448,6 @@ function emitProgress(
   onProgress?.({ fraction: Math.min(1, Math.max(0, fraction)), label })
 }
 
-async function fetchSearch(
-  url: string,
-  init: RequestInit | undefined,
-  operation: string,
-  timeoutMs = SEARCH_STATUS_FETCH_TIMEOUT_MS,
-): Promise<Response> {
-  try {
-    return await fetch(url, {
-      ...init,
-      signal: AbortSignal.timeout(timeoutMs),
-    })
-  } catch (e) {
-    throw new Error(describeFetchError(e, operation))
-  }
-}
-
 /**
  * Runs a search job and returns result rows as plain objects (DataFrame-ready).
  * When `maxRows` is `0`, fetches every page of `/results` until exhausted.
@@ -479,19 +468,20 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
   const root = searchBasePath(base)
   emitProgress(options.onProgress, 0.08, 'Submitting search job…')
 
-  const createRes = await fetchSearch(
+  const createRes = await fetchSearchOnce(
     `${root}/jobs`,
     {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: q,
-      earliest: options.earliest ?? DEFAULT_SEARCH_EARLIEST,
-      latest: options.latest ?? DEFAULT_SEARCH_LATEST,
-      sampleRate: 1,
-    }),
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: q,
+        earliest: options.earliest ?? DEFAULT_SEARCH_EARLIEST,
+        latest: options.latest ?? DEFAULT_SEARCH_LATEST,
+        sampleRate: 1,
+      }),
     },
     'Search job create',
+    SEARCH_STATUS_FETCH_TIMEOUT_MS,
   )
 
   if (!createRes.ok) {
@@ -522,10 +512,11 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
     emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
   } else {
     for (let i = 0; i < MAX_POLLS; i++) {
-      const statusRes = await fetchSearch(
+      const statusRes = await fetchSearchOnce(
         `${root}/jobs/${encodeURIComponent(jobId)}/status`,
         undefined,
         'Search job status',
+        SEARCH_STATUS_FETCH_TIMEOUT_MS,
       )
       if (!statusRes.ok) {
         const t = await statusRes.text().catch(() => '')
@@ -558,7 +549,18 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
 
   const totalFromStatus = lastStatusJson != null ? parseTotalRecordHint(lastStatusJson) : null
 
-  const cap = maxRows === 0 ? Number.MAX_SAFE_INTEGER : maxRows
+  let cap = maxRows === 0 ? Number.MAX_SAFE_INTEGER : maxRows
+  if (maxRows === 0 && totalFromStatus != null && totalFromStatus > 0) {
+    cap = Math.min(cap, totalFromStatus)
+  }
+  if (cap > PLATFORM_MAX_RESULTS_HINT) {
+    cap = PLATFORM_MAX_RESULTS_HINT
+    emitProgress(
+      options.onProgress,
+      0.86,
+      `Job ${jobId}: capping retrieval at ${PLATFORM_MAX_RESULTS_HINT.toLocaleString()} rows (platform limit)…`,
+    )
+  }
   const rows: Record<string, unknown>[] = []
   let offset = 0
   let pageIndex = 0
@@ -586,12 +588,14 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
   }
 
   while (rows.length < cap) {
+    if (pageIndex > 0) await sleep(INTER_RESULTS_PAGE_DELAY_MS)
+
     const remaining = cap - rows.length
     const pageLimit = Math.min(CRIBL_SEARCH_RESULTS_PAGE_SIZE, remaining)
-    const resultsRes = await fetchSearch(
+    const resultsRes = await fetchSearchWithRetry(
       `${root}/jobs/${encodeURIComponent(jobId)}/results?offset=${offset}&limit=${pageLimit}`,
       undefined,
-      'Search results',
+      `Search results (offset ${offset})`,
       SEARCH_RESULTS_FETCH_TIMEOUT_MS,
     )
     if (!resultsRes.ok) {
@@ -610,6 +614,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
 
     if (batch.length < pageLimit) break
     if (rows.length >= cap) break
+    if (totalFromResults != null && offset >= totalFromResults) break
   }
 
   const totalRecords = totalFromResults ?? totalFromStatus ?? null

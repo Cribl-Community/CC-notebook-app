@@ -3,7 +3,7 @@ import type { SearchService } from '@ports/SearchService'
 import { describeFetchError } from '@platform/cribl/fetchFailure'
 import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import {
-  buildCriblSearchDataframeCode,
+  buildCriblSearchDataframeCodeFromRows,
   encodeRowsJsonForPythonBase64,
   parseCriblSearchMagic,
   wantsCriblSearchJinjaTemplating,
@@ -20,7 +20,7 @@ import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellE
 
 export interface CriblSearchExecutorDeps {
   parseCriblSearchMagic: typeof parseCriblSearchMagic
-  buildCriblSearchDataframeCode: typeof buildCriblSearchDataframeCode
+  buildCriblSearchDataframeCodeFromRows: typeof buildCriblSearchDataframeCodeFromRows
   encodeRowsJsonForPythonBase64: typeof encodeRowsJsonForPythonBase64
   filterPyodidePackageChatter: typeof filterPyodidePackageChatter
   searchService: SearchService
@@ -33,7 +33,7 @@ export interface CriblSearchExecutorDeps {
 
 const CRIBL_SEARCH_LOCAL_DEFAULTS = {
   parseCriblSearchMagic,
-  buildCriblSearchDataframeCode,
+  buildCriblSearchDataframeCodeFromRows,
   encodeRowsJsonForPythonBase64,
   filterPyodidePackageChatter,
   criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS,
@@ -230,9 +230,8 @@ async function executeCriblSearchCell(
       ),
     )
     if (response === 'dataframe') {
-      const b64 = deps.encodeRowsJsonForPythonBase64(rows)
       /** Rich table already shows rows; never add `print(df.head())` (avoids duplicate text). */
-      const code = deps.buildCriblSearchDataframeCode(varName, b64, false)
+      const code = deps.buildCriblSearchDataframeCodeFromRows(varName, rows, false)
       let sawError = false
       await kernel.execute(
         code,

@@ -9,13 +9,12 @@ export function normalizeSearchQuery(query: string): string {
 }
 
 /**
- * When `%%cribl_search` sets `limit=N`, push `| limit N` into externaldata pipelines so Search
- * materializes fewer rows server-side (faster jobs, smaller `/results` under platform fetch timeouts).
+ * When `%%cribl_search` sets `limit=N`, append `| limit N` so Search materializes fewer rows
+ * server-side (faster jobs, smaller `/results` payloads under platform fetch timeouts).
  */
 export function applySearchRowCap(query: string, maxRows: number): string {
   const q = query.trim()
   if (maxRows <= 0 || !q) return q
-  if (!/^externaldata\b/i.test(q)) return q
   if (/\|\s*limit\s+\d+/i.test(q)) return q
   return `${q}\n| limit ${maxRows}`
 }

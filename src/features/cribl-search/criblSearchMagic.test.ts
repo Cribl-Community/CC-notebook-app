@@ -3,6 +3,7 @@ import {
   parseCriblSearchMagic,
   encodeRowsJsonForPythonBase64,
   buildCriblSearchDataframeCode,
+  buildCriblSearchDataframeCodeFromRows,
   wantsCriblSearchJinjaTemplating,
   criblSearchQueryLooksLikeJinjaTemplate,
 } from '@features/cribl-search/criblSearchMagic'
@@ -209,5 +210,16 @@ describe('encodeRowsJsonForPythonBase64 + buildCriblSearchDataframeCode', () => 
     const code = buildCriblSearchDataframeCode('results_df', b64, false)
     expect(code).toContain('results_df')
     expect(code).toContain('pd.DataFrame')
+  })
+})
+
+describe('buildCriblSearchDataframeCodeFromRows', () => {
+  it('uses chunked concat for large row sets', () => {
+    const rows = Array.from({ length: 12_000 }, (_, i) => ({ i }))
+    const code = buildCriblSearchDataframeCodeFromRows('big_df', rows, false, 5000)
+    expect(code).toContain('pd.concat')
+    expect(code).toContain('__chunk_0')
+    expect(code).toContain('__chunk_1')
+    expect(code).toContain('__chunk_2')
   })
 })

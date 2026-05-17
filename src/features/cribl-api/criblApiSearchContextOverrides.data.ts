@@ -39,7 +39,62 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
   },
   {
     method: 'GET',
-    path: '/m/{groupId}/cribl/search/datasets',
+    path: '/m/{groupId}/search/datasets',
     summary: 'List Cribl Search datasets in a config group (contextual)',
+  },
+  {
+    method: 'POST',
+    path: '/m/{groupId}/search/datasets',
+    summary: 'Create a Cribl Search dataset',
+    description:
+      'Registers a federated dataset (for example api_http with breakerRulesets for CSV). Use groupId `default_search` for Search.',
+    jsonBody: {
+      type: 'api_http',
+      id: 'my_http_dataset',
+      description: 'Example HTTP API dataset',
+      provider: 'my_http_provider',
+      enabledEndpoints: ['my_endpoint'],
+      filter: 'true',
+      searchVersion: 'v1',
+      breakerRulesets: ['CSV Datatypes', 'Cribl Search'],
+      metadata: { enableAcceleration: false },
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/m/{groupId}/search/datasets/{id}',
+    summary: 'Delete a Cribl Search dataset by id',
+  },
+  {
+    method: 'GET',
+    path: '/m/{groupId}/search/dataset-providers',
+    summary: 'List Cribl Search dataset providers in a config group',
+  },
+  {
+    method: 'POST',
+    path: '/m/{groupId}/search/dataset-providers',
+    summary: 'Create a Cribl Search dataset provider',
+    description:
+      'For CSV/JSON over HTTP, use type `api_http` (Generic HTTP API). See Threat_Hunting_Playbook.ipynb.',
+    jsonBody: {
+      type: 'api_http',
+      id: 'my_http_provider',
+      description: 'Generic HTTP API provider',
+      authenticationMethod: 'none',
+      availableEndpoints: [
+        {
+          name: 'my_endpoint',
+          method: 'GET',
+          url: 'https://example.com/data.csv',
+          headers: [],
+          dataField: '',
+        },
+      ],
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/m/{groupId}/search/dataset-providers/{id}',
+    summary: 'Delete a Cribl Search dataset provider by id',
   },
 ]

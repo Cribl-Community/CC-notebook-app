@@ -276,6 +276,9 @@ export function encodeRowsJsonForPythonBase64(rows: Record<string, unknown>[]): 
   return btoa(unescape(encodeURIComponent(JSON.stringify(rows))))
 }
 
+/** Rows per chunk when hydrating large Search results into Pyodide (avoids huge single base64 literals). */
+export const CRIBL_SEARCH_DATAFRAME_CHUNK_ROWS = 5_000
+
 /** Base64 JSON rows → pandas DataFrame assignment + optional preview print. */
 export function buildCriblSearchDataframeCode(
   varName: string,
@@ -294,4 +297,45 @@ import pandas as pd
 
 __rows_b64 = """${rowsJsonBase64}"""
 ${varName} = pd.DataFrame(json.loads(base64.standard_b64decode(__rows_b64.encode("ascii")).decode("utf-8")))${previewBlock}`
+}
+
+/** Build Pyodide code for small or large row sets (chunked concat for large). */
+export function buildCriblSearchDataframeCodeFromRows(
+  varName: string,
+  rows: Record<string, unknown>[],
+  preview: boolean,
+  chunkSize = CRIBL_SEARCH_DATAFRAME_CHUNK_ROWS,
+): string {
+  if (rows.length <= chunkSize) {
+    return buildCriblSearchDataframeCode(varName, encodeRowsJsonForPythonBase64(rows), preview)
+  }
+
+  const parts: string[] = []
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    parts.push(encodeRowsJsonForPythonBase64(rows.slice(i, i + chunkSize)))
+  }
+
+  const chunkVars = parts.map((_, i) => `__chunk_${i}`)
+  const decodeBlocks = parts
+    .map(
+      (b64, i) => `__chunk_${i} = pd.DataFrame(json.loads(base64.standard_b64decode("""${b64}""".encode("ascii")).decode("utf-8")))`,
+    )
+    .join('\n')
+
+  const previewBlock = preview
+    ? `
+
+print(${varName}.head(20).to_string())
+print(f"({len(${varName}):,} rows loaded in ${parts.length} chunk(s))")
+`
+    : `
+print(f"Loaded {len(${varName}):,} rows into ${varName} (${parts.length} chunk(s))")
+`
+
+  return `import base64
+import json
+import pandas as pd
+
+${decodeBlocks}
+${varName} = pd.concat([${chunkVars.join(', ')}], ignore_index=True)${previewBlock}`
 }
