@@ -75,7 +75,7 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
     path: '/m/{groupId}/search/dataset-providers',
     summary: 'Create a Cribl Search dataset provider',
     description:
-      'For CSV/JSON over HTTP, use type `api_http` (Generic HTTP API). See Threat_Hunting_Playbook.ipynb.',
+      'For CSV/JSON over HTTP, use type `api_http` (Generic HTTP API). See Threat_Hunting_Playbook.ipynb (NERD ip_rep.csv).',
     jsonBody: {
       type: 'api_http',
       id: 'my_http_provider',

@@ -32,8 +32,8 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
   },
   'Threat_Hunting_Playbook.ipynb': {
     summary:
-      'Register CICIDS2017 as a Search dataset (HTTP API provider + REST), join dataset with IOC lookup, interpret findings, cleanup.',
-    tags: ['security', 'threat-hunting', 'search', 'dataset-provider', 'join', 'lookups', 'workflow'],
+      'NERD IP reputation via Generic HTTP dataset provider; malicious enrichment lookup from externaldata; KQL join hunt and charts.',
+    tags: ['security', 'threat-hunting', 'search', 'api', 'dataset-provider', 'join', 'lookups', 'externaldata'],
     level: 'intermediate',
     estimatedRuntime: '10–15 min',
     recommendedOrder: 3,
