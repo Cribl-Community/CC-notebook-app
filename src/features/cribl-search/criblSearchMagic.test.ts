@@ -27,13 +27,6 @@ describe('parseCriblSearchMagic', () => {
     expect(r.value.query).toBe('dataset=x | limit 1')
     expect(r.value.template).toBe('auto')
     expect(r.value.translateOnly).toBe(false)
-    expect(r.value.verbose).toBe(false)
-  })
-
-  it('parses verbose=true', () => {
-    const r = parseCriblSearchMagic('%%cribl_search verbose=true\ndataset=x | limit 1\n')
-    expect(r.kind).toBe('cribl_search')
-    if (r.kind === 'cribl_search') expect(r.value.verbose).toBe(true)
   })
 
   it('parses var and preview', () => {

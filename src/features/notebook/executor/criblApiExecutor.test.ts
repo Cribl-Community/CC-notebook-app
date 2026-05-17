@@ -3,6 +3,7 @@ import { callCriblApi } from '@platform/cribl/criblApiFetch'
 import { getCriblApiBase } from '@platform/cribl/kvstore'
 import {
   buildCriblApiJsonValueAssignmentCode,
+  buildCriblApiNoneAssignmentCode,
   buildCriblApiStringValueAssignmentCode,
   encodeUtf8TextForPythonBase64,
   encodeValueJsonForPythonBase64,
@@ -53,6 +54,7 @@ const baseDeps = {
   encodeValueJsonForPythonBase64,
   encodeUtf8TextForPythonBase64,
   buildCriblApiJsonValueAssignmentCode,
+  buildCriblApiNoneAssignmentCode,
   buildCriblApiStringValueAssignmentCode,
 } satisfies Parameters<typeof createCriblApiExecutor>[0]
 
@@ -116,6 +118,32 @@ describe('createCriblApiExecutor', () => {
       kernel: makeKernel(vi.fn()),
     })
     expect(r).toBe('error')
+  })
+
+  it('completes ok with stderr when ignoreFailure=true on HTTP error', async () => {
+    const emitIOPub = vi.fn()
+    const dispatchNotebook = vi.fn()
+    const api = vi.fn<typeof callCriblApi>().mockResolvedValue({
+      status: 500,
+      ok: false,
+      text: '{"status":"error","message":"Entity missing"}',
+      jsonValue: { status: 'error', message: 'Entity missing' },
+    } as Awaited<ReturnType<typeof callCriblApi>>)
+    const execute = vi.fn().mockResolvedValue({ outputs: [] })
+    const ex = createCriblApiExecutor({ ...baseDeps, callCriblApi: api })
+    const r = await ex.execute({
+      ...ctx,
+      emitIOPub,
+      dispatchNotebook,
+      source: '%%cribl_api DELETE /m/x var=o ignoreFailure=true\n',
+      kernel: makeKernel(execute),
+    })
+    expect(r).toBe('ok')
+    const stderr = emitIOPub.mock.calls.find((call) => call[0]?.msg_type === 'stream' && call[0]?.name === 'stderr')?.[0]
+    expect(stderr?.text).toContain('HTTP 500')
+    expect(execute.mock.calls[0]![0]).toContain('o = None')
+    expect(dispatchNotebook).toHaveBeenCalledWith(expect.objectContaining({ type: 'FINISH_CELL' }))
+    expect(dispatchNotebook).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'ERROR_CELL' }))
   })
 
   it('surfaces cors/network failures in stderr without retry', async () => {

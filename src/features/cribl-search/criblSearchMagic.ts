@@ -15,7 +15,7 @@ import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristi
  * The query body omits full-line `#` lines; blank lines are kept.
  * First line:
  * %%cribl_search [var=name] [preview=true|false] [response=dataframe|json|raw] [limit=N] [earliest=…] [latest=…]
- * [timeout=SEC] [verbose=true|false] [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false] [translate_only=true|false]
+ * [timeout=SEC] [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false] [translate_only=true|false]
  * Following lines: query body (KQL when `lang=kql|kusto`, natural language when `lang=english`).
  *
  * `translate_only=true` (with `lang=english`): translate the body to KQL and print it; do not run Search.
@@ -28,8 +28,6 @@ import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristi
  *
  * `timeout`: seconds to wait for the Search job to finish while polling (default 180). Use a larger
  * value for heavy joins or `externaldata`.
- *
- * `verbose`: when true, mirror Search progress lines to cell stdout (in addition to the progress UI).
  *
  * Search rows are always loaded into a pandas DataFrame in the kernel. Use `var=` to set the name;
  * otherwise `DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR` (`results_df`) is used.
@@ -85,8 +83,6 @@ export type CriblSearchMagicOk = {
    * When true with `lang=english`, only translate to KQL (stdout + summary UI); skip Search execution.
    */
   translateOnly: boolean
-  /** Mirror job progress to stdout (default false). */
-  verbose: boolean
 }
 
 export type CriblSearchMagicParse =
@@ -108,7 +104,6 @@ function parseKeyValueParams(paramLine: string):
       dataset?: string
       template: CriblSearchTemplateMode
       translateOnly: boolean
-      verbose: boolean
     }
   | { ok: false; message: string } {
   let varName = DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR
@@ -122,7 +117,6 @@ function parseKeyValueParams(paramLine: string):
   let dataset: string | undefined
   let template: CriblSearchTemplateMode = 'auto'
   let translateOnly = false
-  let verbose = false
   const tokens = paramLine.trim().split(/\s+/).filter(Boolean)
   for (const t of tokens) {
     const eq = t.indexOf('=')
@@ -210,19 +204,6 @@ function parseKeyValueParams(paramLine: string):
         }
       }
     }
-    if (key === 'verbose') {
-      const v = val.toLowerCase()
-      if (v === 'true' || v === '1' || v === 'yes') {
-        verbose = true
-      } else if (v === 'false' || v === '0' || v === 'no') {
-        verbose = false
-      } else {
-        return {
-          ok: false,
-          message: `verbose must be true or false; got ${JSON.stringify(val)}`,
-        }
-      }
-    }
   }
   return {
     ok: true,
@@ -237,7 +218,6 @@ function parseKeyValueParams(paramLine: string):
     dataset,
     template,
     translateOnly,
-    verbose,
   }
 }
 
@@ -272,7 +252,6 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
     dataset,
     template,
     translateOnly,
-    verbose,
   } = parsed
 
   if (translateOnly && lang !== 'english') {
@@ -315,7 +294,6 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
       dataset,
       template,
       translateOnly,
-      verbose,
     },
   }
 }

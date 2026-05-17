@@ -5,6 +5,8 @@ export function normalizeSearchQuery(query: string): string {
   if (/^cribl\b/i.test(q)) return q
   /** `externaldata` is a standalone pipeline head; a leading `cribl` breaks these queries (see bundled Anomaly PyOD example). */
   if (/^externaldata\b/i.test(q)) return q
+  /** Multi-statement `let` pipelines must not be prefixed (invalid: `cribl let …`). */
+  if (/^let\b/i.test(q)) return q
   return `cribl ${q}`
 }
 

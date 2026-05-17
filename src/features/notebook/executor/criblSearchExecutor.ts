@@ -105,7 +105,6 @@ async function executeCriblSearchCell(
     dataset,
     template,
     translateOnly,
-    verbose,
   } = magic.value
   const displayId = `cribl-search-${id}`
   let generatedKqlForReport: string | undefined
@@ -115,9 +114,6 @@ async function executeCriblSearchCell(
     emitIOPub(
       criblSearchIOPub({ kind: 'running', progress: ev.fraction, label: ev.label }, displayId, update),
     )
-    if (verbose) {
-      emitIOPub({ msg_type: 'stream', name: 'stdout', text: `[cribl_search] ${ev.label}\n` })
-    }
   }
 
   try {
@@ -133,13 +129,6 @@ async function executeCriblSearchCell(
         false,
       ),
     )
-    if (verbose) {
-      emitIOPub({
-        msg_type: 'stream',
-        name: 'stdout',
-        text: `[cribl_search] ${lang === 'english' && translateOnly ? 'Starting translation…' : 'Starting search…'}\n`,
-      })
-    }
 
     let searchQuery = query
     if (deps.wantsCriblSearchJinjaTemplating(query, template)) {

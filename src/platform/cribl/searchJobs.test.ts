@@ -93,6 +93,11 @@ describe('normalizeSearchQuery', () => {
     const q = 'externaldata\n[\n  "https://example.com/t.csv"\n]\nwith(\n  datatype="CSV Datatypes"\n)'
     expect(normalizeSearchQuery(q)).toBe(q)
   })
+
+  it('does not prefix let pipelines', () => {
+    const q = 'let w = dataset="x" | limit 1;\ndataset=y | limit 1'
+    expect(normalizeSearchQuery(q)).toBe(q)
+  })
 })
 
 describe('parseTotalRecordHint', () => {

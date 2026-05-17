@@ -47,6 +47,20 @@ json:
     expect(p.kind).toBe('error')
   })
 
+  it('parses ignoreFailure=true (default false)', () => {
+    const off = parseCriblApiMagic('%%cribl_api DELETE /m/x var=o\n')
+    expect(off.kind).toBe('cribl_api')
+    if (off.kind === 'cribl_api') expect(off.value.ignoreFailure).toBe(false)
+
+    const on = parseCriblApiMagic('%%cribl_api DELETE /m/x var=o ignoreFailure=true\n')
+    expect(on.kind).toBe('cribl_api')
+    if (on.kind === 'cribl_api') expect(on.value.ignoreFailure).toBe(true)
+
+    const explicitOff = parseCriblApiMagic('%%cribl_api DELETE /m/x ignoreFailure=false\n')
+    expect(explicitOff.kind).toBe('cribl_api')
+    if (explicitOff.kind === 'cribl_api') expect(explicitOff.value.ignoreFailure).toBe(false)
+  })
+
   it('parses YAML with json: body', () => {
     const src = `%%cribl_api POST /m/default_search/search/jobs var=job
 json:

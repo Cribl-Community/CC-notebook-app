@@ -47,7 +47,7 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
     path: '/m/{groupId}/search/datasets',
     summary: 'Create a Cribl Search dataset',
     description:
-      'Registers a federated dataset (for example api_http with breakerRulesets for CSV). Use groupId `default_search` for Search.',
+      'Registers a federated dataset (for example api_http with Cribl Search line breaking). See Threat_Hunting_Playbook.ipynb for lookup + join patterns. Use groupId `default_search` for Search.',
     jsonBody: {
       type: 'api_http',
       id: 'my_http_dataset',
@@ -56,7 +56,7 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
       enabledEndpoints: ['my_endpoint'],
       filter: 'true',
       searchVersion: 'v1',
-      breakerRulesets: ['CSV Datatypes', 'Cribl Search'],
+      breakerRulesets: ['Cribl Search'],
       metadata: { enableAcceleration: false },
     },
   },
@@ -75,7 +75,7 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
     path: '/m/{groupId}/search/dataset-providers',
     summary: 'Create a Cribl Search dataset provider',
     description:
-      'For CSV/JSON over HTTP, use type `api_http` (Generic HTTP API). See Threat_Hunting_Playbook.ipynb (NERD ip_rep.csv).',
+      'For CSV/JSON over HTTP, use type `api_http` (Generic HTTP API). See Threat_Hunting_Playbook.ipynb.',
     jsonBody: {
       type: 'api_http',
       id: 'my_http_provider',

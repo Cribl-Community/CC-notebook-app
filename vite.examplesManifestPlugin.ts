@@ -32,10 +32,10 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
   },
   'Threat_Hunting_Playbook.ipynb': {
     summary:
-      'NERD IP reputation via Generic HTTP dataset provider; malicious enrichment lookup from externaldata; KQL join hunt and charts.',
-    tags: ['security', 'threat-hunting', 'search', 'api', 'dataset-provider', 'join', 'lookups', 'externaldata'],
+      'Pick six external VPC flow IPs from cribl_search_sample, save a static lookup, join + timestats, and chart the timeline.',
+    tags: ['security', 'threat-hunting', 'search', 'join', 'lookups', 'timestats', 'visualization'],
     level: 'intermediate',
-    estimatedRuntime: '10–15 min',
+    estimatedRuntime: '8–12 min',
     recommendedOrder: 3,
   },
   'Cribl_Search_Examples.ipynb': {
