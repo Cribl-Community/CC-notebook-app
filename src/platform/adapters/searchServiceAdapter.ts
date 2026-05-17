@@ -25,6 +25,7 @@ export const criblSearchService: SearchService = {
       maxRows: opts.maxRows,
       earliest: opts.earliest,
       latest: opts.latest,
+      pollTimeoutMs: opts.pollTimeoutMs,
       onProgress: opts.onProgress,
     })
     return mapSearchResultToDomain(result)

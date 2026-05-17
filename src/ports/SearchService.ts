@@ -13,6 +13,8 @@ export interface SearchRunOptions {
   maxRows?: number
   earliest?: string
   latest?: string
+  /** Max time to wait for job completion while polling status (ms). */
+  pollTimeoutMs?: number
   onProgress?: (ev: SearchProgressEvent) => void
 }
 

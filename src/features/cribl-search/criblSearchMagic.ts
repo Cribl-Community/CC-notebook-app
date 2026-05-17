@@ -1,4 +1,9 @@
 import {
+  DEFAULT_CRIBL_SEARCH_JOB_TIMEOUT_SEC,
+  MAX_CRIBL_SEARCH_JOB_TIMEOUT_SEC,
+  MIN_CRIBL_SEARCH_JOB_TIMEOUT_SEC,
+} from '@/domain/search'
+import {
   findFirstMagicHeaderLineIndex,
   lineExcludedFromMagicBody,
 } from '@features/notebook/magicCellLines'
@@ -10,7 +15,7 @@ import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristi
  * The query body omits full-line `#` lines; blank lines are kept.
  * First line:
  * %%cribl_search [var=name] [preview=true|false] [response=dataframe|json|raw] [limit=N] [earliest=…] [latest=…]
- * [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false] [translate_only=true|false]
+ * [timeout=SEC] [lang=kql|kusto|english] [dataset=name] [template=auto|on|off|true|false] [translate_only=true|false]
  * Following lines: query body (KQL when `lang=kql|kusto`, natural language when `lang=english`).
  *
  * `translate_only=true` (with `lang=english`): translate the body to KQL and print it; do not run Search.
@@ -20,6 +25,9 @@ import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristi
  *
  * `limit`: max rows to load into the DataFrame (`0` = all rows returned by the job, paginating the
  * results API as needed). Defaults to `0`.
+ *
+ * `timeout`: seconds to wait for the Search job to finish while polling (default 180). Use a larger
+ * value for heavy joins or `externaldata`.
  *
  * Search rows are always loaded into a pandas DataFrame in the kernel. Use `var=` to set the name;
  * otherwise `DEFAULT_CRIBL_SEARCH_DATAFRAME_VAR` (`results_df`) is used.
@@ -57,6 +65,8 @@ export type CriblSearchMagicOk = {
    * (iterate `/results` pages until exhausted).
    */
   limit: number
+  /** Seconds to poll for job completion (default {@link DEFAULT_CRIBL_SEARCH_JOB_TIMEOUT_SEC}). */
+  timeoutSec: number
   query: string
   /** Passed to search job `earliest` when set (e.g. `-1h`, epoch, or ISO). */
   earliest?: string
@@ -88,6 +98,7 @@ function parseKeyValueParams(paramLine: string):
       response: 'dataframe' | 'json' | 'raw'
       lang: 'kql' | 'english'
       limit: number
+      timeoutSec: number
       earliest?: string
       latest?: string
       dataset?: string
@@ -100,6 +111,7 @@ function parseKeyValueParams(paramLine: string):
   let response: 'dataframe' | 'json' | 'raw' = 'dataframe'
   let lang: 'kql' | 'english' = 'kql'
   let limit = 0
+  let timeoutSec = DEFAULT_CRIBL_SEARCH_JOB_TIMEOUT_SEC
   let earliest: string | undefined
   let latest: string | undefined
   let dataset: string | undefined
@@ -147,6 +159,23 @@ function parseKeyValueParams(paramLine: string):
       const n = parseInt(val.trim(), 10)
       limit = n
     }
+    if (key === 'timeout' || key === 'timeout_sec' || key === 'timeout_s') {
+      const raw = val.trim().toLowerCase().replace(/s$/, '')
+      if (!/^\d+$/.test(raw)) {
+        return {
+          ok: false,
+          message: `timeout must be a positive integer (seconds), got ${JSON.stringify(val)}`,
+        }
+      }
+      const n = parseInt(raw, 10)
+      if (n < MIN_CRIBL_SEARCH_JOB_TIMEOUT_SEC || n > MAX_CRIBL_SEARCH_JOB_TIMEOUT_SEC) {
+        return {
+          ok: false,
+          message: `timeout must be between ${MIN_CRIBL_SEARCH_JOB_TIMEOUT_SEC} and ${MAX_CRIBL_SEARCH_JOB_TIMEOUT_SEC} seconds`,
+        }
+      }
+      timeoutSec = n
+    }
     if (key === 'template') {
       const v = val.toLowerCase()
       if (v === 'auto') {
@@ -183,6 +212,7 @@ function parseKeyValueParams(paramLine: string):
     response,
     lang,
     limit,
+    timeoutSec,
     earliest,
     latest,
     dataset,
@@ -210,8 +240,19 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
   if (!parsed.ok) {
     return { kind: 'error', message: parsed.message }
   }
-  const { varName, preview, response, lang, limit, earliest, latest, dataset, template, translateOnly } =
-    parsed
+  const {
+    varName,
+    preview,
+    response,
+    lang,
+    limit,
+    timeoutSec,
+    earliest,
+    latest,
+    dataset,
+    template,
+    translateOnly,
+  } = parsed
 
   if (translateOnly && lang !== 'english') {
     return {
@@ -246,6 +287,7 @@ export function parseCriblSearchMagic(source: string): CriblSearchMagicParse {
       response,
       lang,
       limit,
+      timeoutSec,
       query,
       earliest,
       latest,

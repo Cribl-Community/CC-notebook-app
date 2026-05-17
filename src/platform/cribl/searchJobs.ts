@@ -14,14 +14,15 @@ import {
 import { applySearchRowCap, normalizeSearchQuery } from '@platform/cribl/searchQuery'
 import { deriveColumnNames } from '@platform/cribl/searchResultModel'
 import { runLocalSearchStub } from '@platform/cribl/searchStub'
-import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
+import {
+  DEFAULT_CRIBL_SEARCH_JOB_TIMEOUT_SEC,
+  DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS,
+} from '@/domain/search'
 
 export { normalizeSearchQuery } from '@platform/cribl/searchQuery'
 
 const SEARCH_GROUP = 'default_search'
 const POLL_MS = 450
-/** externaldata jobs can run 2–3 min; 400 × 450ms ≈ 3 min of status polling. */
-const MAX_POLLS = 400
 /** Cribl Search jobs often cap persisted rows (status hints); avoid unbounded pagination loops. */
 const PLATFORM_MAX_RESULTS_HINT = 200_000
 const INTER_RESULTS_PAGE_DELAY_MS = 75
@@ -434,6 +435,11 @@ export type RunSearchJobOptions = {
    * paginating `/results` until no more rows. Values greater than `0` cap the loaded set.
    */
   maxRows?: number
+  /**
+   * Max time to poll job status before failing (ms). Default
+   * {@link DEFAULT_CRIBL_SEARCH_JOB_TIMEOUT_SEC} × 1000.
+   */
+  pollTimeoutMs?: number
   onProgress?: (ev: SearchProgressEvent) => void
   /** Search job time window; defaults applied below when unset. */
   earliest?: string
@@ -453,10 +459,17 @@ function emitProgress(
  * When `maxRows` is `0`, fetches every page of `/results` until exhausted.
  * In dev (no CRIBL_API_URL), returns mock rows without calling the network.
  */
+function maxPollsForTimeout(pollTimeoutMs: number): number {
+  return Math.max(1, Math.ceil(pollTimeoutMs / POLL_MS))
+}
+
 export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<CriblSearchJobResult> {
   const base = getCriblApiBase()
   const queryMode = options.queryMode ?? 'normalized'
   const maxRows = options.maxRows ?? 0
+  const pollTimeoutMs =
+    options.pollTimeoutMs ?? DEFAULT_CRIBL_SEARCH_JOB_TIMEOUT_SEC * 1000
+  const maxPolls = maxPollsForTimeout(pollTimeoutMs)
   const normalized =
     queryMode === 'verbatim' ? options.query.trim() : normalizeSearchQuery(options.query)
   const q = applySearchRowCap(normalized, maxRows)
@@ -511,7 +524,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
   if (initialPhase === 'completed') {
     emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
   } else {
-    for (let i = 0; i < MAX_POLLS; i++) {
+    for (let i = 0; i < maxPolls; i++) {
       const statusRes = await fetchSearchOnce(
         `${root}/jobs/${encodeURIComponent(jobId)}/status`,
         undefined,
@@ -532,7 +545,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
         emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)
         break
       }
-      const pollFrac = 0.22 + (0.62 * (i + 1)) / MAX_POLLS
+      const pollFrac = 0.22 + (0.62 * (i + 1)) / maxPolls
       emitProgress(options.onProgress, Math.min(0.85, pollFrac), `Job ${jobId}: running…`)
       await sleep(POLL_MS)
     }
@@ -540,10 +553,10 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
 
   const phaseAfterPoll = parseJobPhase(lastStatusJson)
   if (phaseAfterPoll !== 'completed') {
-    const waitedSec = Math.round((MAX_POLLS * POLL_MS) / 1000)
+    const waitedSec = Math.round((maxPolls * POLL_MS) / 1000)
     throw new Error(
       `Search job did not complete within ~${waitedSec}s (status still "${phaseAfterPoll}"). ` +
-        'For `externaldata`, use a smaller `limit=` on `%%cribl_search` or add `| limit N` in the query body.',
+        'Increase `timeout=` on `%%cribl_search` (default 180s), or narrow the query with `limit=` / `| limit N`.',
     )
   }
 

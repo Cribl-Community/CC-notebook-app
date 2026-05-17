@@ -263,6 +263,41 @@ describe('runCriblSearchJob queryMode', () => {
     expect(String(resultCalls[1]?.[0])).toContain('offset=1000')
   })
 
+  it('honors pollTimeoutMs when polling job status', async () => {
+    const fetchMock = vi.fn()
+    globalThis.fetch = fetchMock as unknown as typeof fetch
+
+    let statusCalls = 0
+    fetchMock.mockImplementation((url: string | URL | Request) => {
+      const u = String(url)
+      if (u.includes('/jobs') && !u.includes('/status') && !u.includes('/results')) {
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [{ id: 'job-slow', status: 'running' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+      if (u.includes('/status')) {
+        statusCalls += 1
+        return Promise.resolve(
+          new Response(JSON.stringify({ items: [{ id: 'job-slow', status: 'running' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        )
+      }
+      return Promise.resolve(new Response('{}', { status: 404 }))
+    })
+
+    await expect(
+      runCriblSearchJob({ query: 'dataset=x | limit 1', pollTimeoutMs: 900 }),
+    ).rejects.toThrow(/did not complete within ~1s/i)
+
+    expect(statusCalls).toBeGreaterThanOrEqual(1)
+    expect(statusCalls).toBeLessThanOrEqual(3)
+  })
+
   it('surfaces create fetch failures immediately without retrying polls', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
     globalThis.fetch = fetchMock as unknown as typeof fetch

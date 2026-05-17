@@ -36,6 +36,8 @@ function loadExamplesManifest(): ManifestNotebook[] {
 }
 
 const HEAVY_EXAMPLE = 'Anomaly_Detection_PyOD.ipynb'
+/** Join cell uses `timeout=900`; dataset ingest + 12k-row hydration need headroom beyond default 10m Run All. */
+const THREAT_HUNT_EXAMPLE = 'Threat_Hunting_Playbook.ipynb'
 
 /** Bundled notebooks that deliberately raise errors for teaching (see notebook markdown). */
 const ALLOWED_INTENTIONAL_ERROR_ENAMES: Record<string, readonly string[]> = {
@@ -54,10 +56,18 @@ function runAllTimeouts(filename: string): {
       testTimeout: 2_400_000,
     }
   }
+  if (filename === THREAT_HUNT_EXAMPLE) {
+    return {
+      kernelReadyMs: 480_000,
+      afterRunAllReadyMs: 1_500_000,
+      testTimeout: 1_800_000,
+    }
+  }
   return {
     kernelReadyMs: 480_000,
-    afterRunAllReadyMs: 600_000,
-    testTimeout: 900_000,
+    // Search-heavy Run All on staging can exceed 10m when the tenant is warm but busy.
+    afterRunAllReadyMs: 900_000,
+    testTimeout: 1_200_000,
   }
 }
 
