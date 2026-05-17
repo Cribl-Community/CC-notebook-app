@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import {
   normalizeSearchQuery,
   extractFirstJsonValue,
+  formatSearchJobFailureMessage,
   parseJobPhase,
   parseLenientJsonResponseBody,
   parseNdjsonSearchResultsBody,
@@ -31,6 +32,33 @@ describe('parseSearchJobCreateId', () => {
 
   it('coerces numeric id', () => {
     expect(parseSearchJobCreateId({ id: 42 })).toBe('42')
+  })
+})
+
+describe('formatSearchJobFailureMessage', () => {
+  it('reads nested messages from Cribl-style status', () => {
+    const msg = formatSearchJobFailureMessage(
+      {
+        entry: [
+          {
+            content: {
+              isFailed: true,
+              messages: [{ type: 'ERROR', text: 'HTTP 404: dataset provider fetch failed' }],
+            },
+          },
+        ],
+      },
+      { jobId: 'job-1', query: 'cribl dataset="x" | limit 1' },
+    )
+    expect(msg).toContain('HTTP 404')
+    expect(msg).toContain('job-1')
+    expect(msg).toContain('dataset="x"')
+  })
+
+  it('falls back to status JSON preview when no message fields', () => {
+    const msg = formatSearchJobFailureMessage({ dispatchState: 'FAILED', foo: 'bar' })
+    expect(msg).toContain('Status JSON preview')
+    expect(msg).toContain('FAILED')
   })
 })
 

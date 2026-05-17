@@ -253,6 +253,101 @@ export function parseJobPhase(data: unknown): 'running' | 'completed' | 'failed'
   return 'running'
 }
 
+const FAILURE_MESSAGE_KEYS = [
+  'messages',
+  'message',
+  'error',
+  'errorMessage',
+  'error_message',
+  'failureReason',
+  'failure_reason',
+  'reason',
+  'fatalError',
+  'fatal_error',
+  'description',
+  'detail',
+] as const
+
+function collectRecordLayers(data: unknown): Record<string, unknown>[] {
+  if (!data || typeof data !== 'object') return []
+  const o = data as Record<string, unknown>
+  const recordLayers: Record<string, unknown>[] = [o]
+  const entry = o.entry
+  if (Array.isArray(entry) && entry[0] && typeof entry[0] === 'object') {
+    const e0 = entry[0] as Record<string, unknown>
+    recordLayers.push(e0)
+    const c = e0.content
+    if (c && typeof c === 'object') recordLayers.push(c as Record<string, unknown>)
+  }
+  const topContent = o.content
+  if (topContent && typeof topContent === 'object') {
+    recordLayers.push(topContent as Record<string, unknown>)
+  }
+  const items = o.items
+  if (Array.isArray(items) && items[0] && typeof items[0] === 'object') {
+    recordLayers.push(items[0] as Record<string, unknown>)
+    const it0 = items[0] as Record<string, unknown>
+    const ic = it0.content
+    if (ic && typeof ic === 'object') recordLayers.push(ic as Record<string, unknown>)
+  }
+  return recordLayers
+}
+
+function flattenFailureText(value: unknown, depth = 0): string[] {
+  if (depth > 4 || value == null) return []
+  if (typeof value === 'string') {
+    const t = value.trim()
+    return t.length > 0 ? [t] : []
+  }
+  if (typeof value === 'number' || typeof value === 'boolean') return [String(value)]
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => flattenFailureText(item, depth + 1))
+  }
+  if (typeof value === 'object') {
+    const o = value as Record<string, unknown>
+    const fromKnown = FAILURE_MESSAGE_KEYS.flatMap((k) => flattenFailureText(o[k], depth + 1))
+    if (fromKnown.length > 0) return fromKnown
+    if (typeof o.text === 'string') return flattenFailureText(o.text, depth + 1)
+    if (typeof o.message === 'string') return flattenFailureText(o.message, depth + 1)
+  }
+  return []
+}
+
+/**
+ * Best-effort extraction of human-readable failure text from a Search job status payload.
+ */
+export function formatSearchJobFailureMessage(
+  statusJson: unknown,
+  extras?: { jobId?: string; query?: string },
+): string {
+  const lines: string[] = []
+  const chunks: string[] = []
+  for (const rec of collectRecordLayers(statusJson)) {
+    for (const key of FAILURE_MESSAGE_KEYS) {
+      chunks.push(...flattenFailureText(rec[key]))
+    }
+  }
+  const unique = [...new Set(chunks.map((c) => c.trim()).filter(Boolean))]
+  if (unique.length > 0) {
+    lines.push(unique.slice(0, 8).join('\n'))
+  } else if (statusJson != null) {
+    let preview = ''
+    try {
+      preview = JSON.stringify(statusJson, null, 2)
+    } catch {
+      preview = String(statusJson)
+    }
+    lines.push(
+      `Search job failed (no message field in status). Status JSON preview:\n${preview.slice(0, 2000)}`,
+    )
+  } else {
+    lines.push('Search job failed.')
+  }
+  if (extras?.jobId) lines.push(`Job id: ${extras.jobId}`)
+  if (extras?.query?.trim()) lines.push(`Query:\n${extras.query.trim()}`)
+  return lines.join('\n\n')
+}
+
 const TOTAL_HINT_KEYS = [
   'total',
   'totalCount',
@@ -518,7 +613,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
   const initialPhase = parseJobPhase(created)
 
   if (initialPhase === 'failed') {
-    throw new Error('Search job failed.')
+    throw new Error(formatSearchJobFailureMessage(created, { jobId, query: q }))
   }
 
   if (initialPhase === 'completed') {
@@ -539,7 +634,7 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
       lastStatusJson = statusJson
       const phase = parseJobPhase(statusJson)
       if (phase === 'failed') {
-        throw new Error('Search job failed.')
+        throw new Error(formatSearchJobFailureMessage(statusJson, { jobId, query: q }))
       }
       if (phase === 'completed') {
         emitProgress(options.onProgress, 0.88, `Job ${jobId}: fetching results…`)

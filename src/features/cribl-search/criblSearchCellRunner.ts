@@ -49,6 +49,16 @@ export function formatCriblSearchError(raw: string, generatedQuery?: string): st
     }
     return parts.join('\n\n')
   }
+  if (/Search job failed/i.test(msg) && /404|not found|dataset.*not exist|unknown dataset/i.test(msg)) {
+    const parts = [
+      'Search could not load the dataset or CSV URL.',
+      'On a hosted app, re-run the URL cell so PE/TI point at your pack (`{origin}{CRIBL_BASE_PATH}/data/malware-hunt/…`).',
+      'If you use GitHub raw URLs, merge `public/data/malware-hunt/` to `main` on the remote first.',
+    ]
+    parts.push(msg)
+    if (generatedQuery?.trim()) parts.push(`Query:\n${generatedQuery}`)
+    return parts.join('\n\n')
+  }
   if (/AI translation/i.test(msg) || /did not return a valid KQL/i.test(msg)) {
     const parts = ['Natural-language to KQL translation failed.']
     if (generatedQuery && generatedQuery.trim().length > 0) {

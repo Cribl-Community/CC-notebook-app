@@ -108,6 +108,8 @@ async function executeCriblSearchCell(
   } = magic.value
   const displayId = `cribl-search-${id}`
   let generatedKqlForReport: string | undefined
+  /** Query text sent to Search (after Jinja); included in failure output. */
+  let executedQuery = query
   const apiBase = deps.criblApiBase.trim()
 
   const reportSearchProgress = (ev: SearchProgressEvent, update: boolean): void => {
@@ -131,6 +133,7 @@ async function executeCriblSearchCell(
     )
 
     let searchQuery = query
+    executedQuery = searchQuery
     if (deps.wantsCriblSearchJinjaTemplating(query, template)) {
       emitIOPub(
         criblSearchIOPub(
@@ -146,6 +149,7 @@ async function executeCriblSearchCell(
       })
       if (jinja.ok) {
         searchQuery = jinja.text
+        executedQuery = searchQuery
       } else {
         emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${jinja.errorMessage}\n` })
         dispatchNotebook({ type: 'ERROR_CELL', id })
@@ -168,6 +172,7 @@ async function executeCriblSearchCell(
           ),
         )
         generatedKqlForReport = searchQuery
+        executedQuery = searchQuery
         emitIOPub({
           msg_type: 'stream',
           name: 'stdout',
@@ -185,6 +190,7 @@ async function executeCriblSearchCell(
           datasetHint: dataset,
         })
         generatedKqlForReport = searchQuery
+        executedQuery = searchQuery
         emitIOPub({
           msg_type: 'stream',
           name: 'stdout',
@@ -293,7 +299,7 @@ async function executeCriblSearchCell(
     const errMsg = describeFetchError(e, 'Cribl Search request')
     const pretty = formatCriblSearchError(
       errMsg,
-      lang === 'english' || translateOnly ? generatedKqlForReport : undefined,
+      generatedKqlForReport ?? executedQuery,
     )
     emitIOPub(criblSearchIOPub({ kind: 'failed', message: pretty }, displayId, true))
     dispatchNotebook({ type: 'ERROR_CELL', id })
