@@ -146,14 +146,25 @@ export class PyodideKernel {
     const pyodideLockFileUrl = getSameOriginPyodideLockFileUrl()
     const criblApiUrl =
       typeof window !== 'undefined' ? (window.CRIBL_API_URL?.trim() ?? '') : ''
+    const criblBasePath =
+      typeof window !== 'undefined' ? (window.CRIBL_BASE_PATH?.trim() ?? '') : ''
+    let appOrigin = typeof window !== 'undefined' ? window.location.origin : ''
+    if ((!appOrigin || appOrigin === 'null') && criblApiUrl) {
+      try {
+        appOrigin = new URL(criblApiUrl).origin
+      } catch {
+        appOrigin = ''
+      }
+    }
 
     const initMsg: WorkerInbound = {
       type: 'init',
       pyodideBaseUrl,
       pyodidePackageBaseUrl: PYODIDE_PACKAGE_BASE_URL,
       pyodideLockFileUrl,
-      appOrigin: window.location.origin,
+      appOrigin,
       criblApiUrl,
+      criblBasePath,
       ...(this.interruptSignal
         ? { interruptSharedArrayBuffer: this.interruptSignal.buffer as SharedArrayBuffer }
         : {}),

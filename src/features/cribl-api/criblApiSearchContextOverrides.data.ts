@@ -47,13 +47,13 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
     path: '/m/{groupId}/search/datasets',
     summary: 'Create a Cribl Search dataset',
     description:
-      'Registers a federated dataset (for example api_http with Cribl Search line breaking). See Threat_Hunting_Playbook.ipynb for lookup + join patterns. Use groupId `default_search` for Search.',
+      'Registers a federated dataset (for example api_http with Cribl Search line breaking). See Malware_Hash_Threat_Hunt.ipynb and Threat_Hunting_Playbook.ipynb for lookup + join patterns. Use groupId `default_search` for Search.',
     jsonBody: {
       type: 'api_http',
-      id: 'my_http_dataset',
-      description: 'Example HTTP API dataset',
-      provider: 'my_http_provider',
-      enabledEndpoints: ['my_endpoint'],
+      id: 'notebook_pe_imports',
+      description: 'PE imports federated dataset (malware hash hunt)',
+      provider: 'notebook_pe_http',
+      enabledEndpoints: ['pe_imports'],
       filter: 'true',
       searchVersion: 'v1',
       breakerRulesets: ['Cribl Search'],
@@ -75,17 +75,17 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
     path: '/m/{groupId}/search/dataset-providers',
     summary: 'Create a Cribl Search dataset provider',
     description:
-      'For CSV/JSON over HTTP, use type `api_http` (Generic HTTP API). See Threat_Hunting_Playbook.ipynb.',
+      'For CSV/JSON over HTTP, use type `api_http` (Generic HTTP API). See Malware_Hash_Threat_Hunt.ipynb.',
     jsonBody: {
       type: 'api_http',
-      id: 'my_http_provider',
-      description: 'Generic HTTP API provider',
+      id: 'notebook_pe_http',
+      description: 'PE import CSV for malware hash hunt example',
       authenticationMethod: 'none',
       availableEndpoints: [
         {
-          name: 'my_endpoint',
+          name: 'pe_imports',
           method: 'GET',
-          url: 'https://example.com/data.csv',
+          url: 'https://your-host.example/top_1000_pe_imports.csv',
           headers: [],
           dataField: '',
         },
