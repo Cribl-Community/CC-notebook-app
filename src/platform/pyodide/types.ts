@@ -54,6 +54,8 @@ export type WorkerInbound =
       appOrigin: string
       /** Mirrors `window.CRIBL_API_URL` (empty when unset); copied into `os.environ["CRIBL_API_URL"]`. */
       criblApiUrl: string
+      /** Mirrors `window.CRIBL_BASE_PATH`; copied into `os.environ["CRIBL_BASE_PATH"]`. */
+      criblBasePath: string
       /**
        * Optional 1-byte SharedArrayBuffer for Pyodide keyboard interrupts (SIGINT).
        * Created on the main thread and registered with `pyodide.setInterruptBuffer` in the worker.

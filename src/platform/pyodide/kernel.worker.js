@@ -300,6 +300,7 @@ self.onmessage = async function (e) {
     _appOrigin = msg.appOrigin || ''
     _appPyodideBaseUrl = (msg.pyodideBaseUrl && String(msg.pyodideBaseUrl)) || ''
     var criblApiUrl = (msg.criblApiUrl && String(msg.criblApiUrl).trim()) || ''
+    var criblBasePath = (msg.criblBasePath && String(msg.criblBasePath).trim()) || ''
     var initPhase = 'boot'
     try {
       postInitProgress('boot', 'Starting kernel worker', 5)
@@ -327,7 +328,15 @@ self.onmessage = async function (e) {
       initPhase = 'env'
       postInitProgress('env', 'Configuring environment', 65)
       await pyodide.runPythonAsync(
-        'import os\nos.environ["CRIBL_API_URL"] = ' + JSON.stringify(criblApiUrl),
+        'import os\n' +
+          'os.environ["CRIBL_API_URL"] = ' +
+          JSON.stringify(criblApiUrl) +
+          '\n' +
+          'os.environ["CRIBL_BASE_PATH"] = ' +
+          JSON.stringify(criblBasePath) +
+          '\n' +
+          'os.environ["CRIBL_APP_ORIGIN"] = ' +
+          JSON.stringify(_appOrigin),
       )
       // Preload from the lockfile in sequence: `loadPyodide({ packages: [...] })` can race transitive
       // installs (e.g. IPython without traitlets). Lazy-loading matplotlib mid-notebook also spikes

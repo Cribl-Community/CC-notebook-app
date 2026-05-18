@@ -40,7 +40,7 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
   },
   'Malware_Hash_Threat_Hunt.ipynb': {
     summary:
-      'MalwareBazaar TI lookup + PE import features: Generic HTTP dataset provider, externaldata, MD5 join hunt, and charts (Search-only ingestion).',
+      'MalwareBazaar public recent CSV via Search HTTP dataset + demo PE flags; MD5 lookup join and charts (no Auth-Key). Run All from Welcome.',
     tags: [
       'security',
       'threat-hunting',

@@ -85,7 +85,7 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
         {
           name: 'pe_imports',
           method: 'GET',
-          url: 'https://raw.githubusercontent.com/michaelhyatt/notebook-app/main/public/data/malware-hunt/pe_imports_hunt.csv',
+          url: 'https://your-host.example/top_1000_pe_imports.csv',
           headers: [],
           dataField: '',
         },
