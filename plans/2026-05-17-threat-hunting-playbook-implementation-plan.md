@@ -1,9 +1,13 @@
 # Implementation Plan: Threat Hunting Playbook (IP reputation + enrichment join)
 
-**Status:** In progress (branch `feature/threat-hunting-playbook`)  
-**Chosen approach:** Bundled example notebook + platform enhancements to `%%cribl_search` (`timeout=`, verbose retrieval progress).  
-**Primary data source:** [NERD (Network Entity Reputation Database)](https://nerd.liberouter.org/nerd/data/) — IP-only observations with separate malicious-IP enrichment.  
-**Ingest:** **Main** → Generic HTTP **REST API dataset provider** + federated dataset (`%%cribl_api`). **Enrichment** → Cribl Search [`externaldata`](https://docs.cribl.io/search/externaldata/) + `%%cribl_save_search_lookup`. **No `config/proxies.yml` changes.**
+> **Superseded (2026-05):** Shipped examples use a different split than this NERD-centric plan.
+> - **`Threat_Hunting_Playbook.ipynb`** — VPC watchlist + join + `timestats` on `cribl_search_sample` only.
+> - **`Malware_Hash_Threat_Hunt.ipynb`** — hosted CSVs + HTTP dataset provider + lookup join (`plans/2026-05-18-malware-hash-threat-hunt-implementation-plan.md`).
+> Keep this file for historical NERD/provider spike notes only; do not implement as the primary playbook path.
+
+**Status:** Superseded  
+**Chosen approach (original):** Bundled example notebook + platform enhancements to `%%cribl_search` (`timeout=`, verbose retrieval progress).  
+**Primary data source (original):** [NERD](https://nerd.liberouter.org/nerd/data/).
 
 ---
 

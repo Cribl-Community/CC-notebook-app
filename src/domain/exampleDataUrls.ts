@@ -24,3 +24,10 @@ export const EXAMPLE_DATA_URLS = {
   malwareBazaarRecentSample: exampleDataRawUrl(EXAMPLE_DATA_PATHS.malwareBazaarRecentSample),
   malwareHuntPeImports: exampleDataRawUrl(EXAMPLE_DATA_PATHS.malwareHuntPeImports),
 } as const
+
+/** All registered raw GitHub URLs (for contract tests and error hints). */
+export const ALL_EXAMPLE_DATA_URLS: readonly string[] = Object.values(EXAMPLE_DATA_URLS)
+
+/** Matches `raw.githubusercontent.com/.../notebook-app-example-data/main/<path>`. */
+export const EXAMPLE_DATA_RAW_URL_PATTERN =
+  /https:\/\/raw\.githubusercontent\.com\/michaelhyatt\/notebook-app-example-data\/main\/[a-zA-Z0-9_./-]+/g

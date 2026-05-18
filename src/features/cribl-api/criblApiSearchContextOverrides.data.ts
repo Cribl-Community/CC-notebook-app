@@ -1,3 +1,4 @@
+import { EXAMPLE_DATA_URLS } from '@domain/exampleDataUrls'
 import type { CriblApiCatalogEntry } from '@features/cribl-api/criblApiCatalogTypes'
 
 /**
@@ -85,7 +86,7 @@ export const searchContextRouteAdditions: readonly CriblApiCatalogEntry[] = [
         {
           name: 'pe_imports',
           method: 'GET',
-          url: 'https://your-host.example/top_1000_pe_imports.csv',
+          url: EXAMPLE_DATA_URLS.malwareHuntPeImports,
           headers: [],
           dataField: '',
         },
