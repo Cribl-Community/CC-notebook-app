@@ -1,3 +1,4 @@
+import { EXAMPLE_DATA_BASE } from '@/domain/exampleDataUrls'
 import { CRIBL_SEARCH_MIME, type CriblSearchPayload } from '@/domain/criblSearchMime'
 import type { IOPubMessage } from '@ports/KernelPort'
 
@@ -52,8 +53,8 @@ export function formatCriblSearchError(raw: string, generatedQuery?: string): st
   if (/Search job failed/i.test(msg) && /404|not found|dataset.*not exist|unknown dataset/i.test(msg)) {
     const parts = [
       'Search could not load the dataset or CSV URL.',
-      'Re-run the URL cell: default TI/PE URLs are on `raw.githubusercontent.com/michaelhyatt/notebook-app-example-data` (Search HTTP GET).',
-      'Do not use app-pack `/data/` paths — Search workers cannot reach them. Override with `MALWARE_HUNT_*_CSV_URL` if needed.',
+      `Re-run the notebook URL or dataset setup cell. Example CSVs are hosted at ${EXAMPLE_DATA_BASE}/ (Search HTTP GET via externaldata or a dataset provider).`,
+      'Do not use app-pack `/data/` paths — Search workers cannot reach them. Use env overrides documented in the example if you need a different URL.',
     ]
     parts.push(msg)
     if (generatedQuery?.trim()) parts.push(`Query:\n${generatedQuery}`)

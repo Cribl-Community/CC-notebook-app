@@ -10,6 +10,12 @@ describe('criblSearchCellRunner', () => {
     expect(out).toContain('dataset=_raw | bad')
   })
 
+  it('formatCriblSearchError hints at example-data base for dataset/URL failures', () => {
+    const out = formatCriblSearchError('Search job failed: dataset not found')
+    expect(out).toContain('notebook-app-example-data')
+    expect(out).not.toMatch(/MALWARE_HUNT/)
+  })
+
   it('criblSearchPlainSummary formats completed totals', () => {
     const s = criblSearchPlainSummary({
       kind: 'completed',
