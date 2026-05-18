@@ -52,8 +52,8 @@ export function formatCriblSearchError(raw: string, generatedQuery?: string): st
   if (/Search job failed/i.test(msg) && /404|not found|dataset.*not exist|unknown dataset/i.test(msg)) {
     const parts = [
       'Search could not load the dataset or CSV URL.',
-      'Re-run the URL cell: default TI is `https://bazaar.abuse.ch/export/csv/recent/` (no Auth-Key). Search workers must HTTP GET that URL.',
-      'Optional Annex needs `MALWARE_HUNT_PE_CSV_URL` for IEEE/Kaggle PE CSV; app-pack static paths are not reachable.',
+      'Re-run the URL cell: default TI/PE URLs are on `raw.githubusercontent.com/michaelhyatt/notebook-app-example-data` (Search HTTP GET).',
+      'Do not use app-pack `/data/` paths — Search workers cannot reach them. Override with `MALWARE_HUNT_*_CSV_URL` if needed.',
     ]
     parts.push(msg)
     if (generatedQuery?.trim()) parts.push(`Query:\n${generatedQuery}`)
