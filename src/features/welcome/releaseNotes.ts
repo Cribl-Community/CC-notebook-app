@@ -11,6 +11,18 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.4',
+    date: '2026-05-18',
+    highlights: [
+      'Examples: **`Malware_Hash_Threat_Hunt.ipynb`** — MD5 threat hunt with hosted TI + PE CSVs (Search `externaldata` + HTTP dataset provider + lookup join + charts); default data on `notebook-app-example-data` (no MalwareBazaar Auth-Key required for Run All).',
+      'Examples: **`Threat_Hunting_Playbook.ipynb`** — VPC external-IP watchlist on `cribl_search_sample` with lookup save, inner join, `timestats`, and timeline visualization.',
+      'Example data: `src/domain/exampleDataUrls.ts` is the single source of truth for hosted CSV URLs; contract tests keep bundled notebooks aligned; `%%cribl_api` provider samples use the PE teaching CSV URL.',
+      'Cribl Search: `%%cribl_search` supports `timeout=` (seconds) for slow jobs; optional verbose progress mirroring during result retrieval; clearer generic errors when datasets or external CSV URLs fail.',
+      'Staging E2E: `e2e:examples` / `e2e:examples:all` Run All across the examples manifest (`@examples-all`).',
+      'Packaging: build 1.2.4 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.3',
     date: '2026-05-16',
     highlights: [
