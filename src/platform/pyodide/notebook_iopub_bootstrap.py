@@ -639,19 +639,21 @@ async def _nb_run(code: str, execution_count: int) -> None:
         except SyntaxError:
             raise
 
+        # Plotly may already be in sys.modules from a prior cell (e.g. micropip setup).
+        # Statement-only cells only hit this path (not the trailing-expr branch below),
+        # so we must patch before exec so ``fig.show()`` inside ``run_detector()`` works.
+        _configure_plotly_renderer()
+        _ensure_altair_mimetype_renderer()
+
         if _cell_needs_eval_code_async(tree):
             # Prefer Pyodide's async runner (handles TL-await reliably in WASM; exec() return varies).
             try:
                 from pyodide.code import eval_code_async
 
-                # Best-effort early patch: if plotly/altair were imported in a
-                # prior cell they are already in sys.modules and will be patched
-                # before this cell's body runs.  If they are being imported for
-                # the first time inside this cell the patch is a no-op here but
-                # will be applied when _format_object() is called later.
+                await eval_code_async(code, user_ns)
+                # Setup cells often ``await micropip.install('plotly')`` — patch after import.
                 _configure_plotly_renderer()
                 _ensure_altair_mimetype_renderer()
-                await eval_code_async(code, user_ns)
                 _displayhook_last_expr_after_async(tree, user_ns, hook)
             except ImportError:
                 co = compile(code, "<cell>", "exec", ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
@@ -660,6 +662,8 @@ async def _nb_run(code: str, execution_count: int) -> None:
                     inspect.isawaitable(result) or asyncio.iscoroutine(result)
                 ):
                     await result
+                _configure_plotly_renderer()
+                _ensure_altair_mimetype_renderer()
                 _displayhook_last_expr_after_async(tree, user_ns, hook)
         elif tree.body and isinstance(tree.body[-1], ast.Expr):
             exec_part = ast.Module(body=tree.body[:-1], type_ignores=[])
