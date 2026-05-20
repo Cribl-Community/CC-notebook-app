@@ -4,12 +4,18 @@ import { describeFetchError } from '@platform/cribl/fetchFailure'
 export const AI_INTERNAL_TRANSLATE_PATH = '/ai/q/agents/kql' as const
 export const AI_TRANSLATE_TIMEOUT_MS = 20_000
 
+/** Verbs after `|` that indicate a Kusto/Cribl-style pipeline (models often use `top` vs `take`/`limit`). */
+const KQL_PIPE_HEAD =
+  /\|\s*(where|limit|sort|project|project-away|summarize|extend|join|take|top|distinct|count|union|parse|mv-expand|sample|search|evaluate|make-series)\b/i
+
 function looksLikeKql(text: string): boolean {
   const t = text.trim()
   if (!t) return false
   if (/^cribl\b/i.test(t)) return true
+  if (/^let\b/i.test(t)) return true
+  if (/^externaldata\b/i.test(t)) return true
   if (/\bdataset\s*=/i.test(t)) return true
-  if (/\|\s*(where|limit|sort|project|summarize|extend|join|take)\b/i.test(t)) return true
+  if (KQL_PIPE_HEAD.test(t)) return true
   return false
 }
 
@@ -27,7 +33,9 @@ function sanitizeKqlCandidate(text: string): string {
     const line = raw.trimEnd()
     const t = line.trim()
     if (STOP_MARKERS.some((rx) => rx.test(t))) {
-      const queryish = /\||=|\b(where|limit|sort|project|summarize|extend|take|join)\b/i.test(t)
+      const queryish = /\||=|\b(where|limit|sort|project|project-away|summarize|extend|take|join|top|distinct|count|union|parse|mv-expand|sample|search|evaluate)\b/i.test(
+        t,
+      )
       if (!queryish) break
     }
     if (/^```/.test(t)) continue
@@ -47,7 +55,12 @@ function scoreKqlCandidate(text: string): number {
   let score = 0
   if (/^dataset\s*=/i.test(t) || /^cribl\b/i.test(t)) score += 60
   score += Math.min(5, (t.match(/\|/g) ?? []).length) * 10
-  if (/\b(where|limit|sort|project|summarize|extend|take|join)\b/i.test(t)) score += 25
+  if (
+    /\b(where|limit|sort|project|project-away|summarize|extend|take|join|top|distinct|count|union|parse|mv-expand|sample|search|evaluate)\b/i.test(
+      t,
+    )
+  )
+    score += 25
   if (/query_modification|CollectionDescription|DatasetDescription/i.test(t)) score -= 500
   score -= Math.floor(Math.max(0, t.length - 500) / 20)
   return score
@@ -112,6 +125,14 @@ function collectKqlCandidates(raw: unknown, out: Set<string>, depth = 0): void {
   }
 }
 
+function stripSseLinePayload(line: string): string {
+  const t = line.trim()
+  if (!t.length) return ''
+  if (t === '[DONE]' || t.startsWith(':')) return ''
+  if (/^data:\s*/i.test(t)) return t.replace(/^data:\s*/i, '').trim()
+  return t
+}
+
 function parseKqlFromAiResponseBody(body: string): string | null {
   const text = body.trim()
   if (!text) return null
@@ -122,7 +143,7 @@ function parseKqlFromAiResponseBody(body: string): string | null {
     // Expected for NDJSON; parse line-by-line below.
   }
   for (const line of text.split(/\r?\n/)) {
-    const t = line.trim()
+    const t = stripSseLinePayload(line)
     if (!t) continue
     try {
       collectKqlCandidates(JSON.parse(t), candidates)

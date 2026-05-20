@@ -104,4 +104,26 @@ describe('translateEnglishToKql', () => {
       'cribl dataset=cribl_search_sample | sort by _time desc | limit 2000',
     )
   })
+
+  it('accepts Kusto-style | top N (common for “most recent” translations)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          kql: 'dataset=cribl_search_sample | top 80 by _time desc',
+        }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(translateEnglishToKql('80 most recent')).resolves.toBe(
+      'dataset=cribl_search_sample | top 80 by _time desc',
+    )
+  })
+
+  it('parses SSE-style lines with data: prefix', async () => {
+    const sse = ['data: {"kql":"dataset=x | top 10 by _time desc"}', '', 'data: [DONE]', ''].join('\n')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(translateEnglishToKql('recent')).resolves.toBe('dataset=x | top 10 by _time desc')
+  })
 })
