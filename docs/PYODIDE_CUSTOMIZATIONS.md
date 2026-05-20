@@ -109,7 +109,7 @@ Upgrade check:
   Cribl Search MIME, etc.).
 - Patches Altair and Plotly display/show behavior to work in Pyodide notebook
   context.
-- **Plotly 6+** on PyPI depends on **narwhals**; unpinned ``micropip.install('plotly')`` can fail or break ``plotly.express`` with pandas in WASM. Pin **Plotly 5.24.x** when you need Express + pandas (``public/Examples/Visualisations.ipynb`` installs ``altair==5.5.0`` + ``plotly==5.24.1`` only and lets micropip resolve transitive wheels—avoid long hand-pinned transitive lists that fight the solver).
+- **Plotly 6+** on PyPI depends on **narwhals**; unpinned ``micropip.install('plotly')`` can fail or break ``plotly.express`` with pandas in WASM. Pin **Plotly 5.24.x** when micropip installs from PyPI on a cold kernel; **newer Pyodide builds may bundle Plotly 6.x**, so bundled examples use ``importlib.util.find_spec('plotly')`` and **skip** the pin when Plotly is already importable (avoids ``Requested 'plotly==5.24.1', but plotly==6.x is already installed`` from micropip).
 - **``cribl-control-plane``** (``public/Examples/Cribl_Python_SDK.ipynb``) depends on **pydantic** / **httpx** with native extensions; pin those to the **Pyodide built-in** versions (WASM wheels) before the SDK so micropip does not pull manylinux ``pydantic-core`` from PyPI. Refresh pins when bumping ``PYODIDE_RELEASE`` (see [packages built in Pyodide](https://pyodide.org/en/stable/usage/packages-in-pyodide.html)).
 - Converts Python exceptions to structured error payloads.
 
