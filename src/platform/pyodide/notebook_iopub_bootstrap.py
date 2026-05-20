@@ -119,6 +119,37 @@ def _ensure_altair_mimetype_renderer() -> None:
         pass
 
 
+def _patch_plotly_io_show() -> None:
+    """Replace ``plotly.io.show`` so it never requires ``nbformat`` (not in Pyodide).
+
+    Plotly's stock ``show()`` builds a mime bundle then refuses to display it unless
+    ``nbformat>=4.2.0`` is installed. We emit the same bundle through this
+    kernel's ``display(..., raw=True)`` bridge instead.
+    """
+    try:
+        import plotly.io._renderers as rmod
+    except Exception:
+        return
+    if getattr(rmod, "_nb_io_show_patched", False):
+        return
+    orig_show = rmod.show
+
+    def _nb_plotly_io_show(fig: Any, renderer: Any = None, validate: bool = True, **kwargs: Any) -> None:
+        from plotly.io._utils import validate_coerce_fig_to_dict
+
+        fig_dict = validate_coerce_fig_to_dict(fig, validate)
+        bundle = rmod.renderers._build_mime_bundle(fig_dict, renderers_string=renderer, **kwargs)
+        if bundle:
+            display(bundle, raw=True)
+        rmod.renderers._perform_external_rendering(fig_dict, renderers_string=renderer, **kwargs)
+
+    rmod.show = _nb_plotly_io_show  # type: ignore[assignment]
+    rmod._nb_io_show_patched = True  # type: ignore[attr-defined]
+    pio = sys.modules.get("plotly.io")
+    if pio is not None and getattr(pio, "show", None) is orig_show:
+        pio.show = _nb_plotly_io_show  # type: ignore[assignment]
+
+
 def _configure_plotly_renderer() -> None:
     """Patch Plotly's BaseFigure so that both IPython display and fig.show() work.
 
@@ -137,13 +168,18 @@ def _configure_plotly_renderer() -> None:
     Additionally, ``BaseFigure.show()`` is patched to route through ``display()``
     so that ``fig.show()`` in user code emits the correct MIME bundle rather than
     raising ``ValueError: Mime type rendering requires nbformat>=4.2.0``.
+
+    Finally, ``plotly.io.show`` is patched so any direct ``pio.show(fig)`` path
+    skips Plotly's nbformat gate (see :func:`_patch_plotly_io_show`).
     """
     try:
         basedatatypes = sys.modules.get("plotly.basedatatypes")
         if basedatatypes is None:
+            _patch_plotly_io_show()
             return
         BaseFigure = getattr(basedatatypes, "BaseFigure", None)
         if BaseFigure is None or getattr(BaseFigure, "_nb_ipython_display_patched", False):
+            _patch_plotly_io_show()
             return
 
         def _nb_ipython_display_(self) -> None:  # noqa: ANN001
@@ -157,6 +193,7 @@ def _configure_plotly_renderer() -> None:
         BaseFigure._nb_ipython_display_patched = True  # type: ignore[attr-defined]
     except Exception:
         pass
+    _patch_plotly_io_show()
 
 
 def _format_object(obj: Any) -> tuple[dict, dict]:
@@ -639,19 +676,21 @@ async def _nb_run(code: str, execution_count: int) -> None:
         except SyntaxError:
             raise
 
+        # Plotly may already be in sys.modules from a prior cell (e.g. micropip setup).
+        # Statement-only cells only hit this path (not the trailing-expr branch below),
+        # so we must patch before exec so ``fig.show()`` inside ``run_detector()`` works.
+        _configure_plotly_renderer()
+        _ensure_altair_mimetype_renderer()
+
         if _cell_needs_eval_code_async(tree):
             # Prefer Pyodide's async runner (handles TL-await reliably in WASM; exec() return varies).
             try:
                 from pyodide.code import eval_code_async
 
-                # Best-effort early patch: if plotly/altair were imported in a
-                # prior cell they are already in sys.modules and will be patched
-                # before this cell's body runs.  If they are being imported for
-                # the first time inside this cell the patch is a no-op here but
-                # will be applied when _format_object() is called later.
+                await eval_code_async(code, user_ns)
+                # Setup cells often ``await micropip.install('plotly')`` — patch after import.
                 _configure_plotly_renderer()
                 _ensure_altair_mimetype_renderer()
-                await eval_code_async(code, user_ns)
                 _displayhook_last_expr_after_async(tree, user_ns, hook)
             except ImportError:
                 co = compile(code, "<cell>", "exec", ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
@@ -660,6 +699,8 @@ async def _nb_run(code: str, execution_count: int) -> None:
                     inspect.isawaitable(result) or asyncio.iscoroutine(result)
                 ):
                     await result
+                _configure_plotly_renderer()
+                _ensure_altair_mimetype_renderer()
                 _displayhook_last_expr_after_async(tree, user_ns, hook)
         elif tree.body and isinstance(tree.body[-1], ast.Expr):
             exec_part = ast.Module(body=tree.body[:-1], type_ignores=[])
