@@ -287,6 +287,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
             title,
             cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
             kvNotebookId: null,
+            collapseLongCodeCellsOnOpen: true,
           })
           runtime.restartKernelForTab(tab.id)
         } catch (e) {

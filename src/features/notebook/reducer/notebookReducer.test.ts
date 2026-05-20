@@ -123,6 +123,47 @@ describe('notebookReducer DUPLICATE_CELL', () => {
     const same = notebookReducer(state, { type: 'DUPLICATE_CELL', id: 'missing' })
     expect(same).toEqual(state)
   })
+
+  it('copies codeFolded onto duplicate', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    const long = [...Array(11)].map((_, i) => `x(${i})`).join('\n')
+    const withFold = cells.map((c) =>
+      c.id === id && c.cell_type === 'code' ? { ...c, source: long, codeFolded: true as const } : c,
+    )
+    let state = readyStateFromCells(withFold)
+    state = notebookReducer(state, { type: 'DUPLICATE_CELL', id })
+    const clone = state.cells[1]
+    expect(clone?.cell_type === 'code' && clone.codeFolded).toBe(true)
+  })
+})
+
+describe('notebookReducer SET_CODE_FOLDED', () => {
+  it('sets codeFolded on the targeted code cell', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    let state = readyStateFromCells(cells)
+    state = notebookReducer(state, { type: 'SET_CODE_FOLDED', id, folded: true })
+    const c = state.cells[0]
+    expect(c?.cell_type === 'code' && c.codeFolded).toBe(true)
+    state = notebookReducer(state, { type: 'SET_CODE_FOLDED', id, folded: false })
+    expect(state.cells[0]?.cell_type === 'code' && state.cells[0].codeFolded).toBe(false)
+  })
+})
+
+describe('notebookReducer UPDATE_SOURCE', () => {
+  it('clears codeFolded when source becomes short', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    const long = [...Array(11)].map((_, i) => `x(${i})`).join('\n')
+    const withFold = cells.map((c) =>
+      c.id === id && c.cell_type === 'code' ? { ...c, source: long, codeFolded: true as const } : c,
+    )
+    let state = readyStateFromCells(withFold)
+    state = notebookReducer(state, { type: 'UPDATE_SOURCE', id, source: 'short' })
+    const c = state.cells[0]
+    expect(c?.cell_type === 'code' && c.codeFolded).toBe(false)
+  })
 })
 
 describe('notebookReducer ADD_CELL', () => {

@@ -1,4 +1,8 @@
 import type { Cell, CodeCell, MarkdownCell, NotebookState } from '@features/notebook/model/types'
+import {
+  codeCellMetadataForIpynb,
+  parseCodeFoldedFromCellMetadata,
+} from '@features/notebook/codeCellFold'
 import type { MimeBundle, MimeMetadata, OutputRecord } from '@/domain/kernel'
 
 const NBFORMAT = 4
@@ -130,6 +134,8 @@ function parseCodeCell(cell: Record<string, unknown>): CodeCell {
     }
   }
 
+  const codeFolded = parseCodeFoldedFromCellMetadata(cell.metadata)
+
   return {
     id: crypto.randomUUID(),
     cell_type: 'code',
@@ -137,6 +143,7 @@ function parseCodeCell(cell: Record<string, unknown>): CodeCell {
     outputs,
     execution_count: parseExecutionCount(cell.execution_count),
     execution_state: 'idle',
+    ...(codeFolded !== undefined ? { codeFolded } : {}),
   }
 }
 
@@ -303,7 +310,7 @@ export function serializeNotebookToIpynbJson(state: NotebookState): string {
       cells.push({
         cell_type: 'code',
         execution_count: cell.execution_count,
-        metadata: {},
+        metadata: codeCellMetadataForIpynb(cell.codeFolded),
         outputs: outputsToNbformat(cell.outputs),
         source: cell.source,
       })

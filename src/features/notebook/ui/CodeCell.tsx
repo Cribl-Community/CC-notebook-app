@@ -6,6 +6,7 @@ import { CellOutput } from '@features/notebook/ui/CellOutput'
 import { createPythonCellExtensions } from '@ui/editor/pythonCodeMirror'
 import type { CompletionItem } from '@ports/KernelPort'
 import { DEFAULT_RIPTIDE_PROMPT_PREFIX, parseRiptidePromptFromCellSource } from '@features/ai-riptide/riptideService'
+import { codeCellCanToggleFold } from '@features/notebook/codeCellFold'
 
 interface CodeCellProps {
   cell: CellData
@@ -20,6 +21,7 @@ interface CodeCellProps {
   onMoveUp?: () => void
   onMoveDown?: () => void
   onClone?: () => void
+  onSetCodeFolded: (folded: boolean) => void
   /** Namespace-aware completion from the active tab's Pyodide kernel (Tab). */
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
   /**
@@ -49,6 +51,7 @@ export function CodeCell({
   onMoveUp,
   onMoveDown,
   onClone,
+  onSetCodeFolded,
   completeCode,
   onAiGenerateFromPrompt,
   aiGenerateBusy = false,
@@ -197,6 +200,8 @@ export function CodeCell({
   const isBusy = cell.execution_state === 'running' || cell.execution_state === 'pending'
   const isRunning = cell.execution_state === 'running'
   const canClearOutput = cell.outputs.length > 0 || cell.execution_count !== null
+  const canFold = codeCellCanToggleFold(cell)
+  const folded = cell.codeFolded === true
 
   return (
     <div
@@ -351,11 +356,35 @@ export function CodeCell({
             </p>
           </div>
         )}
+        {canFold && (
+          <div
+            className="nb-cell-code-fold-row"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="nb-btn nb-btn-code-fold"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSetCodeFolded(!folded)
+              }}
+              aria-expanded={!folded}
+              title={folded ? 'Show full code editor' : 'Collapse code to about ten lines'}
+            >
+              {folded ? 'Show code' : 'Collapse code'}
+            </button>
+          </div>
+        )}
         <div
-          ref={hostRef}
-          className="nb-cell-editor nb-cell-editor-cm"
-          onMouseDown={onEditorMouseDown}
-        />
+          className={`nb-cell-editor-clip${folded && canFold ? ' nb-cell-editor-clip--folded' : ''}`}
+        >
+          <div
+            ref={hostRef}
+            className="nb-cell-editor nb-cell-editor-cm"
+            onMouseDown={onEditorMouseDown}
+          />
+        </div>
         {cell.outputs.length > 0 && (
           <div className="nb-cell-outputs">
             {cell.outputs.map((output, i) => (

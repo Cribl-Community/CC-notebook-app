@@ -83,6 +83,26 @@ describe('parseIpynbJson', () => {
     if (c?.cell_type !== 'markdown') return
     expect(c.source).toBe('Line one\nLine two')
   })
+  it('reads code_folded from cell.metadata.notebook_app', () => {
+    const json = JSON.stringify({
+      nbformat: 4,
+      nbformat_minor: 5,
+      metadata: { title: 'T' },
+      cells: [
+        {
+          cell_type: 'code',
+          source: 'x',
+          outputs: [],
+          metadata: { notebook_app: { code_folded: true } },
+        },
+      ],
+    })
+    const r = parseIpynbJson(json)
+    const c = r.cells[0]
+    expect(c?.cell_type).toBe('code')
+    if (c?.cell_type !== 'code') return
+    expect(c.codeFolded).toBe(true)
+  })
   it('parses stream text as string array', () => {
     const json = JSON.stringify({
       nbformat: 4,
@@ -330,5 +350,30 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
     const c = cells[0]
     if (c?.cell_type !== 'code') throw new Error('expected code cell')
     expect(c.outputs).toEqual(state.cells[0]!.cell_type === 'code' ? state.cells[0]!.outputs : [])
+  })
+
+  it('preserves code_folded in cell metadata round trip', () => {
+    const state: NotebookState = {
+      title: 'Fold',
+      cells: [
+        {
+          id: 'c1',
+          cell_type: 'code',
+          source: `${[...Array(11)].map((_, i) => i).join('\n')}\n`,
+          outputs: [],
+          execution_count: null,
+          execution_state: 'idle',
+          codeFolded: true,
+        },
+      ],
+      selectedId: 'c1',
+      executionCounter: 0,
+      kernelStatus: 'ready',
+      kernelInit: readyKernelInit,
+    }
+    const json = serializeNotebookToIpynbJson(state)
+    const { cells } = parseIpynbJson(json)
+    const c = cells[0]
+    expect(c?.cell_type === 'code' && c.codeFolded).toBe(true)
   })
 })
