@@ -20,6 +20,26 @@ import type { IOPubMessage } from '@/domain/kernel'
 import type { SearchProgressEvent } from '@/domain/search'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 
+/**
+ * When the hosted AI translator is unavailable or returns unusable output, fall back to
+ * {@link stubEnglishToKqlLocalDev} so bundled examples still produce runnable KQL.
+ */
+function shouldFallbackToEnglishKqlStubAfterTranslateFailure(err: unknown): boolean {
+  if (isCorsOrNetworkFetchError(err)) return true
+  if (!(err instanceof Error)) return false
+  const m = err.message
+  if (
+    /failed immediately\./i.test(m) &&
+    /failed to fetch|networkerror|load failed|network request failed|fetch failed|cors/i.test(m)
+  ) {
+    return true
+  }
+  if (/AI translation failed \((?:502|503|504|429)\)/i.test(m)) return true
+  if (/AI translation response did not include KQL text/i.test(m)) return true
+  if (/AI translation did not return a valid KQL statement/i.test(m)) return true
+  return false
+}
+
 export interface CriblSearchExecutorDeps {
   parseCriblSearchMagic: typeof parseCriblSearchMagic
   planCriblSearchDataframeHydration: typeof planCriblSearchDataframeHydration
@@ -178,12 +198,12 @@ async function executeCriblSearchCell(
           datasetHint: dataset,
         })
       } catch (e) {
-        if (apiBase && isCorsOrNetworkFetchError(e)) {
+        if (apiBase && shouldFallbackToEnglishKqlStubAfterTranslateFailure(e)) {
           emitIOPub({
             msg_type: 'stream',
             name: 'stderr',
             text:
-              'English→KQL AI request failed (network or blocked route). Using the built-in preview translator for this cell. If this persists, confirm the app can reach the leader AI path (e.g. CRIBL_API_URL + /ai/q/agents/kql) and that config/proxies.yml allowlists it.\n',
+              'English→KQL via leader AI failed; using built-in preview heuristics for this cell. Update the app or fix `/ai/q/agents/kql` on the tenant if you need live translation.\n',
           })
           searchQuery = stubEnglishToKqlLocalDev(searchQuery, { datasetHint: dataset })
         } else {
