@@ -60,6 +60,12 @@ npm run e2e:examples       # all except @heavy (Anomaly PyOD)
 npm run e2e:examples:all    # includes Anomaly PyOD
 ```
 
+Run **`@examples-all` from “Cribl Search Examples” onward** in manifest order (same sort as `all-example-notebooks.spec.ts`: `recommendedOrder`, then filename). Omits notebooks earlier in the list (e.g. Getting Started, Incident Triage) and omits `@heavy` Anomaly PyOD:
+
+```bash
+npm run e2e:examples:from-cribl-search
+```
+
 ### Parallelism and host load
 
 | Variable | Purpose |
