@@ -1,5 +1,5 @@
 import type { AiCodeService } from '@ports/AiCodeService'
-import { getCriblApiBase } from '@platform/cribl/kvstore'
+import { getCriblApiBase } from '@platform/env/env'
 import {
   generatePythonFromPrompt,
   suggestErrorFix,
@@ -15,9 +15,9 @@ export const riptideAiCodeService: AiCodeService = {
     return Boolean(getCriblApiBase())
   },
   generatePythonFromPrompt(userText, options) {
-    return generatePythonFromPrompt(userText, options)
+    return generatePythonFromPrompt(getCriblApiBase(), userText, options)
   },
   suggestErrorFix(cellSource, ename, evalue, traceback, options) {
-    return suggestErrorFix(cellSource, ename, evalue, traceback, options)
+    return suggestErrorFix(getCriblApiBase(), cellSource, ename, evalue, traceback, options)
   },
 }

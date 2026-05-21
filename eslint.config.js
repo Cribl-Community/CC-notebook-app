@@ -53,16 +53,22 @@ export default defineConfig([
           patterns: [
             {
               group: ['@app/*'],
-              message: 'Feature code should not import from app composition root.',
+              message: 'Feature code should not import from app composition root (exceptions: @app/providers for port context, inline eslint-disable with rationale).',
             },
             {
-              group: ['@platform/pyodide/types'],
+              group: ['@platform/*'],
               message:
-                'Notebook/kernel DTOs live in @/domain/kernel and @/domain/criblSearchMime — use @ports/KernelPort for kernel-facing types.',
+                'Features should depend on ports/domain and composition-root providers — not platform I/O directly (see docs/ARCHITECTURE.md). Kernel DTOs belong in @/domain/kernel.',
             },
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['src/features/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
 ])

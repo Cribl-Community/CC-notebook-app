@@ -1,6 +1,25 @@
 import { describe, it, expect, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { EnvProvider } from '@app/providers'
 import { useExamples } from './useExamples'
+
+function wrapperForExamples(staticPrefix = '/x/') {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <EnvProvider
+        value={{
+          apiBase: '',
+          isCriblHosted: false,
+          isKvMock: true,
+          staticAssetPrefix: staticPrefix,
+        }}
+      >
+        {children}
+      </EnvProvider>
+    )
+  }
+}
 
 function fakeResponse(status: number, body: unknown): Response {
   return {
@@ -22,8 +41,9 @@ describe('useExamples', () => {
       }),
     )
 
-    const { result } = renderHook(() =>
-      useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+    const { result } = renderHook(
+      () => useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+      { wrapper: wrapperForExamples() },
     )
 
     expect(result.current.state.kind).toBe('loading')
@@ -36,8 +56,9 @@ describe('useExamples', () => {
 
   it('reports parse failures as error state', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(fakeResponse(200, { nope: true }))
-    const { result } = renderHook(() =>
-      useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+    const { result } = renderHook(
+      () => useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+      { wrapper: wrapperForExamples() },
     )
 
     await waitFor(() => expect(result.current.state.kind).toBe('error'))
@@ -49,8 +70,9 @@ describe('useExamples', () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       fakeResponse(200, { version: 1, notebooks: ['a.ipynb', 'b.ipynb'] }),
     )
-    const { result } = renderHook(() =>
-      useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+    const { result } = renderHook(
+      () => useExamples({ fetchImpl: fetchImpl as unknown as typeof fetch, staticPrefix: '/x/' }),
+      { wrapper: wrapperForExamples() },
     )
     await waitFor(() => expect(result.current.state.kind).toBe('ready'))
 

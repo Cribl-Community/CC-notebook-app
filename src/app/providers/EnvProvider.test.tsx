@@ -10,7 +10,7 @@ function Reveal() {
 describe('EnvProvider', () => {
   it('supplies the injected env snapshot', () => {
     render(
-      <EnvProvider value={{ apiBase: 'https://example', isCriblHosted: true, isKvMock: false }}>
+      <EnvProvider value={{ apiBase: 'https://example', isCriblHosted: true, isKvMock: false, staticAssetPrefix: '/' }}>
         <Reveal />
       </EnvProvider>,
     )

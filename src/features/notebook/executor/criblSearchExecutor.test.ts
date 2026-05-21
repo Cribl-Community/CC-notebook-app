@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { SearchService } from '@ports/SearchService'
+import { describeFetchError, isCorsOrNetworkFetchError } from '@platform/cribl/fetchFailure'
+import { stubEnglishToKqlLocalDev } from '@platform/cribl/aiTranslate'
 import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import { createCriblSearchExecutor } from './criblSearchExecutor'
 import type { CellId } from '@features/notebook/model/types'
@@ -47,6 +49,9 @@ const baseDeps = {
   criblSearchMaxRows: DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS,
   wantsCriblSearchJinjaTemplating,
   runCriblSearchJinjaInKernel: vi.fn<typeof runCriblSearchJinjaInKernel>(),
+  describeFetchError,
+  isCorsOrNetworkFetchError,
+  stubEnglishToKqlLocalDev,
 } satisfies Parameters<typeof createCriblSearchExecutor>[0]
 
 describe('createCriblSearchExecutor', () => {

@@ -124,9 +124,9 @@ flowchart LR
   - `reducer/` — pure reducers:
     - `notebookReducer` — single cell/notebook reducer.
     - `tabWorkspace` — multi-tab workspace reducer wrapping it.
-    - `outputArea` — shared IOPub-message folding (used by the reducer
-      **and** by `PyodideKernel`, so there is exactly one
-      implementation of `clear_output { wait: true }`).
+    - IOPub output folding lives in `@/domain/iopubOutputArea` (used by the reducer
+      **and** by `PyodideKernel`, so there is exactly one implementation of
+      `clear_output { wait: true }`).
   - `codec/ipynb.ts` — nbformat 4 read/write (round-trips to
     `.ipynb`).
   - `executor/` — cell execution strategies.
@@ -168,7 +168,7 @@ flowchart LR
   HTTP execution, and integration with notebook Jinja helpers.
 - `ai-riptide/` — Cribl Riptide integration.
   - `riptideService.ts` — raw request/response helpers.
-  - `aiCodeAdapter.ts` — `riptideAiCodeService` implementing the
+  - `app/riptideAiCodeAdapter.ts` — `riptideAiCodeService` implementing the
     `AiCodeService` port (and reporting `isAvailable()` based on the
     Cribl API base).
 - `examples/` — bundled notebook examples.
@@ -216,6 +216,10 @@ This avoids `ports/*` importing from `platform/*` or feature internals.
 
 - `domain/kernel.ts` — Jupyter-shaped IOPub messages, MIME bundles, and cell
   output records (single source for notebook reducer + kernel port).
+- `domain/iopubOutputArea.ts` — pure IOPub → output-record folding (shared by
+  `notebookReducer` and `PyodideKernel`).
+- `domain/criblCellMagicSource.ts` — line/offset helpers for `%%cribl_*` cell magics
+  (shared by notebook executors and cribl-search / cribl-api parsers).
 - `domain/criblSearchMime.ts` — `%%cribl_search` structured display MIME key +
   payload union.
 - `domain/notebookManifest.ts` — library manifest model helpers, KV key paths,
@@ -231,10 +235,10 @@ no coupling to a specific adapter.
 |---|---|---|
 | `KernelPort` | Python kernel lifecycle + execute/complete | `PyodideKernelAdapter` |
 | `NotebookRepo` | Save/load notebooks (+ manifest) | `kvNotebookRepo` (`platform/adapters/notebookRepoAdapter.ts`) |
-| `AiCodeService` | Natural-language → Python, error-fix suggestions | `riptideAiCodeService` |
+| `AiCodeService` | Natural-language → Python, error-fix suggestions | `riptideAiCodeService` (`app/riptideAiCodeAdapter.ts`) |
 | `SearchService` | Cribl Search job orchestration | `criblSearchService` (`platform/adapters/searchServiceAdapter.ts`) |
 | `DialogService` | alert / confirm / prompt | `DialogProvider` |
-| `EnvService` | Env snapshot (API base, KV mock, hosted flag) | `readEnv()` |
+| `EnvService` | Env snapshot (API base, KV mock, hosted flag, static asset prefix) | `readEnv()` |
 
 ### `src/ui/`
 
@@ -273,11 +277,13 @@ could be reused outside this feature pie should land here.
 
 ### Known layering drift (intentional / in progress)
 
-- Many feature modules still import `@platform/*` (especially Pyodide MIME
-  types and KV helpers). Prefer `ports/` + `domain/` + providers when
-  touching those call sites.
-- `platform/pyodide/PyodideKernel.ts` imports `outputArea` from the notebook
-  feature so IOPub folding stays single-sourced (see notebook reducer above).
+- Some feature modules still import `@platform/*` (for example `notebookLibrary.ts`
+  → `notebookKv`, welcome proxy checks → `pyodideVersion`, and executor unit tests
+  → fetch helpers). Prefer `ports/` + `domain/` + providers when adding new call
+  sites; ESLint warns on `@platform/*` under `src/features/**` (tests are exempt).
+- `features/notebook/executor/executorRegistry.ts` is the **composition point** that
+  imports `@platform/adapters/cellExecutorFetchHelpers` so individual executors stay
+  free of direct `@platform/cribl/*` imports.
 - `features/library/notebookLibrary.ts` imports `@platform/adapters/notebookKv`
   for raw KV I/O while keeping manifest mutation + `.ipynb` orchestration in
   the library slice.

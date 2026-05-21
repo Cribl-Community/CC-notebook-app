@@ -8,8 +8,8 @@ import type {
 } from '@/domain/kernel'
 import { MimeBundleView } from '@features/notebook/ui/MimeBundleView'
 import { stripAnsi, extractCellLineRefs } from '@features/notebook/ui/ansiUtils'
-import { suggestErrorFix } from '@features/ai-riptide/riptideService'
-import { getCriblApiBase } from '@platform/cribl/kvstore'
+// eslint-disable-next-line no-restricted-imports -- shell reads AiCodeService port from composition root
+import { useAiCodeService } from '@app/providers'
 
 type SourceSnippetLine = {
   lineNumber: number
@@ -101,17 +101,23 @@ function ErrorOutputView({
   const [fixError, setFixError] = useState('')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const copyTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
+  const aiCode = useAiCodeService()
   const cleanedTraceback = output.traceback.map((line) => stripAnsi(line))
   const refs = extractCellLineRefs(cleanedTraceback)
   const snippet = cellSource ? buildSourceSnippet(cellSource, refs) : []
-  const canSuggestFix = Boolean(cellSource && getCriblApiBase())
+  const canSuggestFix = Boolean(cellSource && aiCode.isAvailable())
 
   const handleSuggestFix = async () => {
     if (!cellSource || fixState === 'loading') return
     setFixError('')
     setFixState('loading')
     try {
-      const suggested = await suggestErrorFix(cellSource, output.ename, output.evalue, cleanedTraceback)
+      const suggested = await aiCode.suggestErrorFix(
+        cellSource,
+        output.ename,
+        output.evalue,
+        cleanedTraceback,
+      )
       setFixText(suggested)
       setFixState('shown')
     } catch (e) {

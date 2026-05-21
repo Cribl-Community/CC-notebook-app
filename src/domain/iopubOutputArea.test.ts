@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyIOPub, createOutputArea } from '@features/notebook/reducer/outputArea'
+import { applyIOPub, createOutputArea } from '@/domain/iopubOutputArea'
 import type { IOPubMessage } from '@/domain/kernel'
 
 function feed(msgs: IOPubMessage[]) {

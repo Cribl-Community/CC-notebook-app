@@ -1,6 +1,6 @@
 import type { NotebookState, NotebookAction, CodeCell, MarkdownCell, Cell } from '@features/notebook/model/types'
 import { isLongCodeCellForDefaultFold } from '@features/notebook/codeCellFold'
-import { applyIOPub } from '@features/notebook/reducer/outputArea'
+import { applyIOPub } from '@/domain/iopubOutputArea'
 
 function makeCodeCell(): CodeCell {
   return {

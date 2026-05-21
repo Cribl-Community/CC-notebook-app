@@ -30,7 +30,7 @@ const MAP = {
   // notebook model / reducer / codec
   'notebook/types': '@features/notebook/model/types',
   'notebook/notebookReducer': '@features/notebook/reducer/notebookReducer',
-  'notebook/outputArea': '@features/notebook/reducer/outputArea',
+  'notebook/outputArea': '@/domain/iopubOutputArea',
   'notebook/notebookOutputAreaSideState': '@features/notebook/reducer/notebookOutputAreaSideState',
   'notebook/ipynb': '@features/notebook/codec/ipynb',
   'notebook/tabWorkspace': '@features/notebook/reducer/tabWorkspace',

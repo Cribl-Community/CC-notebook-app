@@ -9,7 +9,7 @@ import {
   findFirstMagicHeaderLineIndex,
   offsetAfterLineWithNewline,
   offsetOfLineStart,
-} from '@features/notebook/magicCellLines'
+} from '@/domain/criblCellMagicSource'
 
 export type CriblSearchCellInfo =
   | { kind: 'none' }

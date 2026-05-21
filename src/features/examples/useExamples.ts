@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { parseExamplesManifest, type ExampleNotebook } from '@features/examples/examplesManifest'
-import { notebookStaticPrefix } from '@platform/staticAssets'
+// eslint-disable-next-line no-restricted-imports -- reads static asset prefix from EnvService port
+import { useEnv } from '@app/providers'
 
 /**
  * Discriminated union describing the lifecycle of loading the Examples
@@ -15,7 +16,7 @@ export type ExamplesLoadState =
 export interface UseExamplesOptions {
   /** Override for tests. Defaults to the browser `fetch`. */
   fetchImpl?: typeof fetch
-  /** Override for tests. Defaults to {@link notebookStaticPrefix}. */
+  /** Override for tests. Defaults to {@link EnvService.staticAssetPrefix}. */
   staticPrefix?: string
 }
 
@@ -28,10 +29,11 @@ export function useExamples(options: UseExamplesOptions = {}): {
   state: ExamplesLoadState
   setSelected: (filename: string) => void
 } {
+  const { staticAssetPrefix } = useEnv()
   const fetchImpl = options.fetchImpl ?? fetch
   const staticPrefix = useMemo(
-    () => options.staticPrefix ?? notebookStaticPrefix(),
-    [options.staticPrefix],
+    () => options.staticPrefix ?? staticAssetPrefix,
+    [options.staticPrefix, staticAssetPrefix],
   )
   const [state, setState] = useState<ExamplesLoadState>({ kind: 'loading' })
 

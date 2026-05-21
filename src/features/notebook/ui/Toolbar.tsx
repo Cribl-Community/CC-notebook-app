@@ -1,5 +1,6 @@
 import { useRef } from 'react'
-import { NOTEBOOK_STYLES, type AppStyleId } from '@app/styles/nbStyles'
+// eslint-disable-next-line no-restricted-imports -- style metadata re-exported from providers barrel
+import { NOTEBOOK_STYLES, type AppStyleId } from '@app/providers'
 import type { KernelStatus } from '@features/notebook/model/types'
 
 interface ToolbarProps {

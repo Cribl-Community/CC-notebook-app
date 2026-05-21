@@ -1,3 +1,4 @@
+// eslint-disable-next-line no-restricted-imports -- PYODIDE_RELEASE must match packaged worker; see docs/ARCHITECTURE.md
 import { PYODIDE_RELEASE } from '@platform/pyodide/pyodideVersion'
 
 /**

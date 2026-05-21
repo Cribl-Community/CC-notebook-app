@@ -1,8 +1,6 @@
 import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
+import { lineSkipsMagicScan } from '@/domain/criblCellMagicSource'
 import type { SearchService } from '@ports/SearchService'
-import { describeFetchError, isCorsOrNetworkFetchError } from '@platform/cribl/fetchFailure'
-import { stubEnglishToKqlLocalDev } from '@platform/cribl/aiTranslate'
-import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import { planCriblSearchDataframeHydration } from '@features/cribl-search/criblSearchDataframeHydration'
 import {
   parseCriblSearchMagic,
@@ -17,14 +15,17 @@ import {
   formatCriblSearchRawRows,
 } from '@features/cribl-search/criblSearchCellRunner'
 import type { IOPubMessage } from '@/domain/kernel'
-import type { SearchProgressEvent } from '@/domain/search'
+import type { SearchProgressEvent, TranslateEnglishToKqlOptions } from '@/domain/search'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 
 /**
  * When the hosted AI translator is unavailable or returns unusable output, fall back to
  * {@link stubEnglishToKqlLocalDev} so bundled examples still produce runnable KQL.
  */
-function shouldFallbackToEnglishKqlStubAfterTranslateFailure(err: unknown): boolean {
+function shouldFallbackToEnglishKqlStubAfterTranslateFailure(
+  err: unknown,
+  isCorsOrNetworkFetchError: (e: unknown) => boolean,
+): boolean {
   if (isCorsOrNetworkFetchError(err)) return true
   if (!(err instanceof Error)) return false
   const m = err.message
@@ -45,11 +46,14 @@ export interface CriblSearchExecutorDeps {
   planCriblSearchDataframeHydration: typeof planCriblSearchDataframeHydration
   filterPyodidePackageChatter: typeof filterPyodidePackageChatter
   searchService: SearchService
-  /** Same signal as {@link getCriblApiBase} / {@link EnvService.apiBase}: empty when not hosted in Cribl. */
+  /** Same signal as {@link EnvService.apiBase}: empty when not hosted in Cribl. */
   criblApiBase: string
   criblSearchMaxRows: number
   wantsCriblSearchJinjaTemplating: typeof wantsCriblSearchJinjaTemplating
   runCriblSearchJinjaInKernel: typeof runCriblSearchJinjaInKernel
+  describeFetchError: (err: unknown, operation?: string) => string
+  isCorsOrNetworkFetchError: (err: unknown) => boolean
+  stubEnglishToKqlLocalDev: (englishQuery: string, options?: TranslateEnglishToKqlOptions) => string
 }
 
 const CRIBL_SEARCH_LOCAL_DEFAULTS = {
@@ -62,8 +66,24 @@ const CRIBL_SEARCH_LOCAL_DEFAULTS = {
 } as const
 
 export function createCriblSearchExecutor(
-  required: Pick<CriblSearchExecutorDeps, 'searchService' | 'criblApiBase'> &
-    Partial<Omit<CriblSearchExecutorDeps, 'searchService' | 'criblApiBase'>>,
+  required: Pick<
+    CriblSearchExecutorDeps,
+    | 'searchService'
+    | 'criblApiBase'
+    | 'describeFetchError'
+    | 'isCorsOrNetworkFetchError'
+    | 'stubEnglishToKqlLocalDev'
+  > &
+    Partial<
+      Omit<
+        CriblSearchExecutorDeps,
+        | 'searchService'
+        | 'criblApiBase'
+        | 'describeFetchError'
+        | 'isCorsOrNetworkFetchError'
+        | 'stubEnglishToKqlLocalDev'
+      >
+    >,
 ): CellExecutor {
   const deps: CriblSearchExecutorDeps = {
     ...CRIBL_SEARCH_LOCAL_DEFAULTS,
@@ -198,14 +218,14 @@ async function executeCriblSearchCell(
           datasetHint: dataset,
         })
       } catch (e) {
-        if (apiBase && shouldFallbackToEnglishKqlStubAfterTranslateFailure(e)) {
+        if (apiBase && shouldFallbackToEnglishKqlStubAfterTranslateFailure(e, deps.isCorsOrNetworkFetchError)) {
           emitIOPub({
             msg_type: 'stream',
             name: 'stderr',
             text:
               'English→KQL via leader AI failed; using built-in preview heuristics for this cell. Update the app or fix `/ai/q/agents/kql` on the tenant if you need live translation.\n',
           })
-          searchQuery = stubEnglishToKqlLocalDev(searchQuery, { datasetHint: dataset })
+          searchQuery = deps.stubEnglishToKqlLocalDev(searchQuery, { datasetHint: dataset })
         } else {
           throw e
         }
@@ -316,7 +336,7 @@ async function executeCriblSearchCell(
     dispatchNotebook({ type: 'FINISH_CELL', id, execution_count: count })
     return 'ok'
   } catch (e) {
-    const errMsg = describeFetchError(e, 'Cribl Search request')
+    const errMsg = deps.describeFetchError(e, 'Cribl Search request')
     const pretty = formatCriblSearchError(
       errMsg,
       generatedKqlForReport ?? executedQuery,

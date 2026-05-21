@@ -6,7 +6,7 @@ import {
 import {
   findFirstMagicHeaderLineIndex,
   lineExcludedFromMagicBody,
-} from '@features/notebook/magicCellLines'
+} from '@/domain/criblCellMagicSource'
 import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristic'
 
 /**

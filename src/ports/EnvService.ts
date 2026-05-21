@@ -10,4 +10,9 @@ export interface EnvService {
   isCriblHosted: boolean
   /** True when the KV store is simulated (no `CRIBL_API_URL`). */
   isKvMock: boolean
+  /**
+   * Base URL prefix for static assets under `public/` (respects Vite `base` /
+   * `CRIBL_BASE_PATH`). Trailing slash included.
+   */
+  staticAssetPrefix: string
 }

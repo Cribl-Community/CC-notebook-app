@@ -1,6 +1,5 @@
 import type { LookupService } from '@ports/LookupService'
-import { describeFetchError } from '@platform/cribl/fetchFailure'
-import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
+import { lineSkipsMagicScan } from '@/domain/criblCellMagicSource'
 import type {
   CriblDeleteSearchLookupMagicOk,
   CriblLoadSearchLookupMagicOk,
@@ -26,6 +25,7 @@ export interface CriblSearchLookupExecutorDeps {
   filterPyodidePackageChatter: typeof filterPyodidePackageChatter
   lookupService: LookupService
   criblApiBase: string
+  describeFetchError: (err: unknown, operation?: string) => string
 }
 
 const LOCAL_DEFAULTS = {
@@ -49,8 +49,8 @@ export function looksLikeCriblSearchLookupMagic(source: string): boolean {
 }
 
 export function createCriblSearchLookupExecutor(
-  required: Pick<CriblSearchLookupExecutorDeps, 'lookupService' | 'criblApiBase'> &
-    Partial<Omit<CriblSearchLookupExecutorDeps, 'lookupService' | 'criblApiBase'>>,
+  required: Pick<CriblSearchLookupExecutorDeps, 'lookupService' | 'criblApiBase' | 'describeFetchError'> &
+    Partial<Omit<CriblSearchLookupExecutorDeps, 'lookupService' | 'criblApiBase' | 'describeFetchError'>>,
 ): CellExecutor {
   const deps: CriblSearchLookupExecutorDeps = {
     ...LOCAL_DEFAULTS,
@@ -101,7 +101,7 @@ async function executeCriblSearchLookupCell(
     }
     return await runDelete(ctx, deps, magic.value)
   } catch (e) {
-    const errMsg = describeFetchError(e, 'Cribl lookup request')
+    const errMsg = deps.describeFetchError(e, 'Cribl lookup request')
     emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${errMsg}\n` })
     dispatchNotebook({ type: 'ERROR_CELL', id })
     return 'error'

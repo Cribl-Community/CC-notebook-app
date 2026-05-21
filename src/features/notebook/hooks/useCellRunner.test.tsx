@@ -3,7 +3,6 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import type { LookupService } from '@ports/LookupService'
 import type { SearchService } from '@ports/SearchService'
-// eslint-disable-next-line no-restricted-imports -- test wrapper mirrors App providers
 import { EnvProvider, LookupProvider, SearchProvider } from '@app/providers'
 import { useCellRunner } from './useCellRunner'
 import type { NotebookState } from '@features/notebook/model/types'
@@ -140,7 +139,7 @@ const stubLookupService: LookupService = {
 
 function cellRunnerProvidersWrapper({ children }: { children: ReactNode }) {
   return (
-    <EnvProvider value={{ apiBase: '', isCriblHosted: false, isKvMock: true }}>
+    <EnvProvider value={{ apiBase: '', isCriblHosted: false, isKvMock: true, staticAssetPrefix: '/' }}>
       <SearchProvider value={stubSearchService}>
         <LookupProvider value={stubLookupService}>{children}</LookupProvider>
       </SearchProvider>

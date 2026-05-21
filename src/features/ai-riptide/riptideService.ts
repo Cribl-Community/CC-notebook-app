@@ -1,5 +1,3 @@
-import { getCriblApiBase } from '@platform/cribl/kvstore'
-
 export const AI_RIPTIDE_AGENT_PATH = '/ai/q/agents/riptide' as const
 export const AI_RIPTIDE_TIMEOUT_MS = 28_000
 export const AI_RIPTIDE_FIX_TIMEOUT_MS = 20_000
@@ -106,13 +104,14 @@ export function parseRiptidePromptFromCellSource(source: string): string | null 
  * See `docs/riptide-api.md`.
  */
 export async function generatePythonFromPrompt(
+  apiBase: string,
   userText: string,
   options?: { signal?: AbortSignal },
 ): Promise<string> {
   const prompt = userText.trim()
   if (!prompt) throw new Error('Description cannot be empty.')
 
-  const base = getCriblApiBase() || '/api/v1'
+  const base = apiBase.trim() || '/api/v1'
   const url = `${base}${AI_RIPTIDE_AGENT_PATH}`
   const ac = new AbortController()
   const external = options?.signal
@@ -170,6 +169,7 @@ export async function generatePythonFromPrompt(
  * Ask Riptide for a brief explanation and fix suggestion for a Python cell error.
  */
 export async function suggestErrorFix(
+  apiBase: string,
   cellSource: string,
   ename: string,
   evalue: string,
@@ -178,7 +178,7 @@ export async function suggestErrorFix(
 ): Promise<string> {
   const source = cellSource.trim()
   if (!source) throw new Error('Cell source cannot be empty.')
-  const base = getCriblApiBase() || '/api/v1'
+  const base = apiBase.trim() || '/api/v1'
   const url = `${base}${AI_RIPTIDE_AGENT_PATH}`
   const ac = new AbortController()
   const external = options?.signal
