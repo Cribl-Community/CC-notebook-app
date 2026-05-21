@@ -1,6 +1,7 @@
 import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import type { SearchService } from '@ports/SearchService'
-import { describeFetchError } from '@platform/cribl/fetchFailure'
+import { describeFetchError, isCorsOrNetworkFetchError } from '@platform/cribl/fetchFailure'
+import { stubEnglishToKqlLocalDev } from '@platform/cribl/aiTranslate'
 import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import { planCriblSearchDataframeHydration } from '@features/cribl-search/criblSearchDataframeHydration'
 import {
@@ -172,9 +173,23 @@ async function executeCriblSearchCell(
           true,
         ),
       )
-      searchQuery = await deps.searchService.translateEnglishToKql(searchQuery, {
-        datasetHint: dataset,
-      })
+      try {
+        searchQuery = await deps.searchService.translateEnglishToKql(searchQuery, {
+          datasetHint: dataset,
+        })
+      } catch (e) {
+        if (apiBase && isCorsOrNetworkFetchError(e)) {
+          emitIOPub({
+            msg_type: 'stream',
+            name: 'stderr',
+            text:
+              'English→KQL AI request failed (network or blocked route). Using the built-in preview translator for this cell. If this persists, confirm the app can reach the leader AI path (e.g. CRIBL_API_URL + /ai/q/agents/kql) and that config/proxies.yml allowlists it.\n',
+          })
+          searchQuery = stubEnglishToKqlLocalDev(searchQuery, { datasetHint: dataset })
+        } else {
+          throw e
+        }
+      }
       generatedKqlForReport = searchQuery
       executedQuery = searchQuery
       emitIOPub({
