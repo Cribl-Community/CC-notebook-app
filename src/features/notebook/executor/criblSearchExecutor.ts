@@ -159,44 +159,29 @@ async function executeCriblSearchCell(
     if (isStale()) return 'stale'
 
     if (lang === 'english') {
-      if (!apiBase) {
-        emitIOPub(
-          criblSearchIOPub(
-            {
-              kind: 'running',
-              progress: 0.14,
-              label: 'Local dev mode: skipping AI translation (using query as-is)…',
-            },
-            displayId,
-            true,
-          ),
-        )
-        generatedKqlForReport = searchQuery
-        executedQuery = searchQuery
-        emitIOPub({
-          msg_type: 'stream',
-          name: 'stdout',
-          text: `Generated KQL:\n${searchQuery}\n`,
-        })
-      } else {
-        emitIOPub(
-          criblSearchIOPub(
-            { kind: 'running', progress: 0.14, label: 'Translating query to KQL…' },
-            displayId,
-            true,
-          ),
-        )
-        searchQuery = await deps.searchService.translateEnglishToKql(searchQuery, {
-          datasetHint: dataset,
-        })
-        generatedKqlForReport = searchQuery
-        executedQuery = searchQuery
-        emitIOPub({
-          msg_type: 'stream',
-          name: 'stdout',
-          text: `Generated KQL:\n${searchQuery}\n`,
-        })
-      }
+      emitIOPub(
+        criblSearchIOPub(
+          {
+            kind: 'running',
+            progress: 0.14,
+            label: apiBase
+              ? 'Translating query to KQL…'
+              : 'Local preview: English→KQL (no CRIBL_API_URL; built-in stub)…',
+          },
+          displayId,
+          true,
+        ),
+      )
+      searchQuery = await deps.searchService.translateEnglishToKql(searchQuery, {
+        datasetHint: dataset,
+      })
+      generatedKqlForReport = searchQuery
+      executedQuery = searchQuery
+      emitIOPub({
+        msg_type: 'stream',
+        name: 'stdout',
+        text: `Generated KQL:\n${searchQuery}\n`,
+      })
 
       if (translateOnly) {
         emitIOPub(

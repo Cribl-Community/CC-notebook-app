@@ -23,6 +23,8 @@ export function isCorsOrNetworkFetchError(err: unknown): boolean {
 export function describeFetchError(err: unknown, operation?: string): string {
   const raw = errorMessage(err).trim() || 'Unknown error.'
   if (!isCorsOrNetworkFetchError(err)) return raw
+  /** Avoid stacking “X failed immediately…” when an inner layer already formatted the message. */
+  if (/failed immediately\./i.test(raw)) return raw
   const prefix = operation ? `${operation} failed immediately.` : 'Request failed immediately.'
   return `${prefix} This is usually a browser network/CORS failure and is not retried. ${raw}`
 }

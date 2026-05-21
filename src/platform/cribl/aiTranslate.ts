@@ -169,6 +169,29 @@ function randomId(): string {
 }
 
 /**
+ * When `CRIBL_API_URL` is unset (local Vite / tests), avoid posting to `/api/v1` on the dev origin
+ * (which always fails with "Failed to fetch"). Produces valid sample KQL for example notebooks.
+ */
+export function stubEnglishToKqlLocalDev(
+  englishQuery: string,
+  options?: { datasetHint?: string },
+): string {
+  const prompt = englishQuery.trim()
+  if (!prompt) throw new Error('English query cannot be empty.')
+  if (looksLikeKql(prompt)) return prompt
+  const ds = options?.datasetHint?.trim() || 'cribl_search_sample'
+  const nRecent = prompt.match(/\b(\d{1,7})\s+most\s+recent\b/i)
+  if (nRecent) {
+    const n = parseInt(nRecent[1]!, 10)
+    return `dataset=${ds} | sort by _time desc | limit ${n}`
+  }
+  if (/most\s+recent|recent\s+entries|\brecent\b/i.test(prompt)) {
+    return `dataset=${ds} | sort by _time desc | limit 100`
+  }
+  return `dataset=${ds} | sort by _time desc | limit 500`
+}
+
+/**
  * Translate a natural-language query to KQL using Cribl's internal AI endpoint.
  */
 export async function translateEnglishToKql(
@@ -179,7 +202,10 @@ export async function translateEnglishToKql(
   if (!prompt) throw new Error('English query cannot be empty.')
   const datasetHint = options?.datasetHint?.trim()
 
-  const base = getCriblApiBase() || '/api/v1'
+  const base = getCriblApiBase()
+  if (!base) {
+    return stubEnglishToKqlLocalDev(prompt, options)
+  }
   const url = `${base}${AI_INTERNAL_TRANSLATE_PATH}`
   const ac = new AbortController()
   const timer = globalThis.setTimeout(() => ac.abort(), AI_TRANSLATE_TIMEOUT_MS)
