@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { parseExamplesManifest, type ExampleNotebook } from '@features/examples/examplesManifest'
-// eslint-disable-next-line no-restricted-imports -- reads static asset prefix from EnvService port
 import { useEnv } from '@app/providers'
 
 /**

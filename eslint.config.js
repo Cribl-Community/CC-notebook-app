@@ -52,8 +52,12 @@ export default defineConfig([
         {
           patterns: [
             {
-              group: ['@app/*'],
-              message: 'Feature code should not import from app composition root (exceptions: @app/providers for port context, inline eslint-disable with rationale).',
+              group: ['@app/styles/*'],
+              message: 'Import notebook style metadata via @app/providers (re-exported from ThemeProvider barrel).',
+            },
+            {
+              group: ['@app/riptideAiCodeAdapter'],
+              message: 'Use AiCodeProvider / useAiCodeService — do not import the Riptide adapter directly from features.',
             },
             {
               group: ['@platform/*'],

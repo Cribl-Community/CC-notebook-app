@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { buildTreeRows, type TreeRow } from '@features/library/manifest'
 import type { ManifestItem } from '@features/library/manifest'
-// eslint-disable-next-line no-restricted-imports -- reads KV mock flag from EnvService port
 import { useEnv } from '@app/providers'
 interface NotebookSidebarProps {
   items: ManifestItem[]

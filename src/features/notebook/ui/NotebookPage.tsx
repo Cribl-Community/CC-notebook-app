@@ -14,7 +14,6 @@ import { formatGeneratedPythonSource } from '@features/ai-riptide/riptideService
 import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
 import { runRiptidePromptJinjaInKernel } from '@features/notebook/jinjaInKernel'
 import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristic'
-// eslint-disable-next-line no-restricted-imports -- shell reads ports from composition root
 import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useCellRunner } from '@features/notebook/hooks/useCellRunner'
@@ -81,7 +80,7 @@ export function NotebookPage() {
       }
       return kernel.complete(code, cursor)
     },
-    [],
+    [activeTabIdRef, workspaceRef, runtime],
   )
 
   const aiCode = useAiCodeService()
@@ -180,20 +179,20 @@ export function NotebookPage() {
       }
       dispatch({ type: 'CLOSE_TAB', tabId })
     },
-    [showConfirm],
+    [showConfirm, workspaceRef, dispatch],
   )
 
   const handleNewTab = useCallback(() => {
     dispatch({ type: 'ADD_TAB' })
-  }, [])
+  }, [dispatch])
 
   const handleSelectTab = useCallback((tabId: string) => {
     dispatch({ type: 'SELECT_TAB', tabId })
-  }, [])
+  }, [dispatch])
 
   const handleNewNotebook = useCallback(() => {
     dispatch({ type: 'ADD_TAB' })
-  }, [])
+  }, [dispatch])
 
   const {
     handleSave,

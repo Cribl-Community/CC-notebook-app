@@ -8,7 +8,6 @@ import type {
 } from '@/domain/kernel'
 import { MimeBundleView } from '@features/notebook/ui/MimeBundleView'
 import { stripAnsi, extractCellLineRefs } from '@features/notebook/ui/ansiUtils'
-// eslint-disable-next-line no-restricted-imports -- shell reads AiCodeService port from composition root
 import { useAiCodeService } from '@app/providers'
 
 type SourceSnippetLine = {

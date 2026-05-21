@@ -1,5 +1,4 @@
-// eslint-disable-next-line no-restricted-imports -- PYODIDE_RELEASE must match packaged worker; see docs/ARCHITECTURE.md
-import { PYODIDE_RELEASE } from '@platform/pyodide/pyodideVersion'
+import { PYODIDE_RELEASE } from '@app/providers'
 
 /**
  * Probe URLs aligned with `config/proxies.yml` allowlists. Used on the Welcome

@@ -10,7 +10,6 @@
 // Two Python bootstrap sources are injected at load time by replacing the
 // quoted string placeholders defined below. They live as `?raw` imports in
 // PyodideKernel.ts so they are type-checked and bundled with the worker source.
-/* eslint-disable no-var */
 
 let pyodide = null
 /** @type {Uint8Array | null} Shared with main thread for Pyodide keyboard interrupts */

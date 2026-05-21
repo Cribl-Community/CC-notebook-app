@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { PYODIDE_RELEASE } from '@platform/pyodide/pyodideVersion'
+import { PYODIDE_RELEASE } from '@app/providers'
 import {
   getProxySmokeCheckDefinitions,
   resolvePythonHostedWheelProbeUrl,

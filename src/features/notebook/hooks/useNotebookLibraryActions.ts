@@ -16,7 +16,6 @@ import {
   storeManifest,
 } from '@features/library/notebookLibrary'
 import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
-// eslint-disable-next-line no-restricted-imports -- reads static asset prefix from EnvService port
 import { useEnv } from '@app/providers'
 import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'

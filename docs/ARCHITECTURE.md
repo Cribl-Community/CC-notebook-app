@@ -278,9 +278,11 @@ could be reused outside this feature pie should land here.
 ### Known layering drift (intentional / in progress)
 
 - Some feature modules still import `@platform/*` (for example `notebookLibrary.ts`
-  → `notebookKv`, welcome proxy checks → `pyodideVersion`, and executor unit tests
-  → fetch helpers). Prefer `ports/` + `domain/` + providers when adding new call
-  sites; ESLint warns on `@platform/*` under `src/features/**` (tests are exempt).
+  → `notebookKv`, and executor unit tests → fetch helpers). Prefer `ports/` +
+  `domain/` + `@app/providers` re-exports when adding new call sites; ESLint warns
+  on `@platform/*` under `src/features/**` (tests are exempt). The bundled Pyodide
+  release string is re-exported from `@app/providers` so welcome code need not
+  import `platform/pyodide` directly.
 - `features/notebook/executor/executorRegistry.ts` is the **composition point** that
   imports `@platform/adapters/cellExecutorFetchHelpers` so individual executors stay
   free of direct `@platform/cribl/*` imports.
@@ -290,10 +292,11 @@ could be reused outside this feature pie should land here.
 
 ### Notebook hooks and `app/providers`
 
-`NotebookPage`, `useCellRunner`, and `useTabNotebookRuntime` import
-`@app/providers` to read port implementations from React context. ESLint may
-warn on these imports; they are an explicit exception so features stay free of
-direct `platform/*` wiring for search and kernel defaults.
+`NotebookPage`, `useCellRunner`, `useTabNotebookRuntime`, and related UI import
+`@app/providers` to read port implementations from React context. ESLint allows
+`@app/providers` from features; it still warns on other `@app/*` paths (for example
+`@app/styles/*` — use the theme re-exports on the providers barrel — and
+`@app/riptideAiCodeAdapter`, which is only for `AiCodeProvider` wiring).
 
 ## Execution pipeline (mental model)
 
