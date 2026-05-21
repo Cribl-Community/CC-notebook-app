@@ -19,6 +19,11 @@ export interface CodeCell {
    * Not serialised to .ipynb — stripped by the codec on save/load.
    */
   pendingClear?: boolean
+  /**
+   * When true, the code editor is shown collapsed (outputs stay visible).
+   * Serialised under `cell.metadata.notebook_app.code_folded` in .ipynb.
+   */
+  codeFolded?: boolean
 }
 
 export interface MarkdownCell {
@@ -71,6 +76,7 @@ export type CellStructureAction =
   | { type: 'DUPLICATE_CELL'; id: CellId }
   | { type: 'MOVE_CELL'; id: CellId; direction: 'up' | 'down' }
   | { type: 'UPDATE_SOURCE'; id: CellId; source: string }
+  | { type: 'SET_CODE_FOLDED'; id: CellId; folded: boolean }
   | { type: 'SELECT_CELL'; id: CellId }
   | { type: 'TOGGLE_MARKDOWN_EDIT'; id: CellId }
 

@@ -8,6 +8,7 @@ import {
   parseRiptideNdjsonBody,
   parseRiptidePromptFromCellSource,
   RIPTIDE_CELL_PROMPT_HEADER,
+  isRiptidePromptCell,
 } from '@features/ai-riptide/riptideService'
 
 describe('parseRiptideNdjsonBody', () => {
@@ -38,6 +39,14 @@ describe('formatGeneratedPythonSource', () => {
 
   it('exports default prefix for UI', () => {
     expect(DEFAULT_RIPTIDE_PROMPT_PREFIX).toBe('Generate Python code that ')
+  })
+})
+
+describe('isRiptidePromptCell', () => {
+  it('is true when parseRiptidePromptFromCellSource succeeds', () => {
+    const src = `# ${RIPTIDE_CELL_PROMPT_HEADER}\n# Hi\n\npass\n`
+    expect(isRiptidePromptCell(src)).toBe(true)
+    expect(isRiptidePromptCell('x = 1')).toBe(false)
   })
 })
 

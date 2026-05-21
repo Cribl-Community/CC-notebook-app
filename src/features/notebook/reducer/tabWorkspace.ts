@@ -1,6 +1,7 @@
 import { notebookReducer, initialState, createEmptyNotebookCells } from '@features/notebook/reducer/notebookReducer'
 import type { Cell, NotebookAction, NotebookState } from '@features/notebook/model/types'
 import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
+import { applyExampleDefaultCodeFold } from '@features/notebook/codeCellFold'
 
 export type TabKind = 'welcome' | 'notebook'
 
@@ -60,6 +61,8 @@ export type WorkspaceAction =
       title: string
       cells: Cell[]
       kvNotebookId: string | null
+      /** When true, long non–Riptide-prompt code cells default to folded (unless .ipynb metadata already set). */
+      collapseLongCodeCellsOnOpen?: boolean
     }
   | {
       type: 'SET_TAB_META'
@@ -134,7 +137,10 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
       const idx = state.tabs.findIndex((t) => t.id === action.tabId)
       if (idx === -1) return state
       if (state.tabs[idx].kind === 'welcome') return state
-      const cells = action.cells.length > 0 ? action.cells : createEmptyNotebookCells()
+      let cells = action.cells.length > 0 ? action.cells : createEmptyNotebookCells()
+      if (action.collapseLongCodeCellsOnOpen) {
+        cells = applyExampleDefaultCodeFold(cells)
+      }
       const title = action.title.trim()
       const notebook = notebookReducer(state.tabs[idx].notebook, {
         type: 'LOAD_NOTEBOOK',

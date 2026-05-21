@@ -1,6 +1,7 @@
 import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import type { SearchService } from '@ports/SearchService'
-import { describeFetchError } from '@platform/cribl/fetchFailure'
+import { describeFetchError, isCorsOrNetworkFetchError } from '@platform/cribl/fetchFailure'
+import { stubEnglishToKqlLocalDev } from '@platform/cribl/aiTranslate'
 import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
 import { planCriblSearchDataframeHydration } from '@features/cribl-search/criblSearchDataframeHydration'
 import {
@@ -18,6 +19,26 @@ import {
 import type { IOPubMessage } from '@/domain/kernel'
 import type { SearchProgressEvent } from '@/domain/search'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
+
+/**
+ * When the hosted AI translator is unavailable or returns unusable output, fall back to
+ * {@link stubEnglishToKqlLocalDev} so bundled examples still produce runnable KQL.
+ */
+function shouldFallbackToEnglishKqlStubAfterTranslateFailure(err: unknown): boolean {
+  if (isCorsOrNetworkFetchError(err)) return true
+  if (!(err instanceof Error)) return false
+  const m = err.message
+  if (
+    /failed immediately\./i.test(m) &&
+    /failed to fetch|networkerror|load failed|network request failed|fetch failed|cors/i.test(m)
+  ) {
+    return true
+  }
+  if (/AI translation failed \((?:502|503|504|429)\)/i.test(m)) return true
+  if (/AI translation response did not include KQL text/i.test(m)) return true
+  if (/AI translation did not return a valid KQL statement/i.test(m)) return true
+  return false
+}
 
 export interface CriblSearchExecutorDeps {
   parseCriblSearchMagic: typeof parseCriblSearchMagic
@@ -159,44 +180,43 @@ async function executeCriblSearchCell(
     if (isStale()) return 'stale'
 
     if (lang === 'english') {
-      if (!apiBase) {
-        emitIOPub(
-          criblSearchIOPub(
-            {
-              kind: 'running',
-              progress: 0.14,
-              label: 'Local dev mode: skipping AI translation (using query as-is)…',
-            },
-            displayId,
-            true,
-          ),
-        )
-        generatedKqlForReport = searchQuery
-        executedQuery = searchQuery
-        emitIOPub({
-          msg_type: 'stream',
-          name: 'stdout',
-          text: `Generated KQL:\n${searchQuery}\n`,
-        })
-      } else {
-        emitIOPub(
-          criblSearchIOPub(
-            { kind: 'running', progress: 0.14, label: 'Translating query to KQL…' },
-            displayId,
-            true,
-          ),
-        )
+      emitIOPub(
+        criblSearchIOPub(
+          {
+            kind: 'running',
+            progress: 0.14,
+            label: apiBase
+              ? 'Translating query to KQL…'
+              : 'Local preview: English→KQL (no CRIBL_API_URL; built-in stub)…',
+          },
+          displayId,
+          true,
+        ),
+      )
+      try {
         searchQuery = await deps.searchService.translateEnglishToKql(searchQuery, {
           datasetHint: dataset,
         })
-        generatedKqlForReport = searchQuery
-        executedQuery = searchQuery
-        emitIOPub({
-          msg_type: 'stream',
-          name: 'stdout',
-          text: `Generated KQL:\n${searchQuery}\n`,
-        })
+      } catch (e) {
+        if (apiBase && shouldFallbackToEnglishKqlStubAfterTranslateFailure(e)) {
+          emitIOPub({
+            msg_type: 'stream',
+            name: 'stderr',
+            text:
+              'English→KQL via leader AI failed; using built-in preview heuristics for this cell. Update the app or fix `/ai/q/agents/kql` on the tenant if you need live translation.\n',
+          })
+          searchQuery = stubEnglishToKqlLocalDev(searchQuery, { datasetHint: dataset })
+        } else {
+          throw e
+        }
       }
+      generatedKqlForReport = searchQuery
+      executedQuery = searchQuery
+      emitIOPub({
+        msg_type: 'stream',
+        name: 'stdout',
+        text: `Generated KQL:\n${searchQuery}\n`,
+      })
 
       if (translateOnly) {
         emitIOPub(

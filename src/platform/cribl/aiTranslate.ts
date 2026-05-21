@@ -1,8 +1,10 @@
+import type { TranslateEnglishToKqlOptions } from '@/domain/search'
 import { getCriblApiBase } from '@platform/cribl/kvstore'
 import { describeFetchError } from '@platform/cribl/fetchFailure'
 
 export const AI_INTERNAL_TRANSLATE_PATH = '/ai/q/agents/kql' as const
-export const AI_TRANSLATE_TIMEOUT_MS = 20_000
+/** KQL agent streams can include tool rounds; keep below typical platform fetch proxy limits. */
+export const AI_TRANSLATE_TIMEOUT_MS = 60_000
 
 /** Verbs after `|` that indicate a Kusto/Cribl-style pipeline (models often use `top` vs `take`/`limit`). */
 const KQL_PIPE_HEAD =
@@ -118,10 +120,13 @@ function collectKqlCandidates(raw: unknown, out: Set<string>, depth = 0): void {
     const v = rec[key]
     if (typeof v === 'string') {
       for (const c of normalizeCandidate(v)) out.add(c)
+    } else if (v != null && typeof v === 'object') {
+      collectKqlCandidates(v, out, depth + 1)
     }
   }
-  for (const v of Object.values(rec)) {
-    collectKqlCandidates(v, out, depth + 1)
+  for (const key of Object.keys(rec)) {
+    if (direct.includes(key)) continue
+    collectKqlCandidates(rec[key], out, depth + 1)
   }
 }
 
@@ -131,6 +136,43 @@ function stripSseLinePayload(line: string): string {
   if (t === '[DONE]' || t.startsWith(':')) return ''
   if (/^data:\s*/i.test(t)) return t.replace(/^data:\s*/i, '').trim()
   return t
+}
+
+/**
+ * Last-resort extraction when NDJSON lines embed KQL inside strings the recursive JSON walk misses
+ * (e.g. huge single-line payloads or odd key shapes).
+ */
+function extractKqlHeuristicFromRawBody(body: string): string | null {
+  let best: string | null = null
+  let bestScore = -Infinity
+  for (const rawLine of body.split(/\r?\n/)) {
+    const line = stripSseLinePayload(rawLine)
+    if (!line) continue
+    try {
+      JSON.parse(line)
+      continue
+    } catch {
+      /* non-JSON line (or truncated): try substring KQL extraction */
+    }
+    const lower = line.toLowerCase()
+    for (let pos = 0; ; ) {
+      const idx = lower.indexOf('dataset=', pos)
+      if (idx < 0) break
+      let frag = line.slice(idx)
+      frag = frag.replace(/(\blimit\s+\d+)\s+(?!\|).+$/i, '$1')
+      frag = frag.replace(/\s*[,}\]]+\s*$/g, '').trim()
+      const sanitized = sanitizeKqlCandidate(frag)
+      if (sanitized && looksLikeKql(sanitized)) {
+        const sc = scoreKqlCandidate(sanitized)
+        if (sc > bestScore) {
+          bestScore = sc
+          best = sanitized
+        }
+      }
+      pos = idx + 8
+    }
+  }
+  return best
 }
 
 function parseKqlFromAiResponseBody(body: string): string | null {
@@ -151,6 +193,8 @@ function parseKqlFromAiResponseBody(body: string): string | null {
       for (const c of normalizeCandidate(t)) candidates.add(c)
     }
   }
+  const heuristic = extractKqlHeuristicFromRawBody(text)
+  if (heuristic) candidates.add(heuristic)
   if (candidates.size === 0) return null
   const best = [...candidates].sort((a, b) => scoreKqlCandidate(b) - scoreKqlCandidate(a))[0]
   if (!best) return null
@@ -168,18 +212,99 @@ function randomId(): string {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+const KNOWN_DATASET_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  cribl_search_sample: 'Search Cribl provided public sample data',
+}
+
+function defaultDatasetDescription(id: string): string {
+  return KNOWN_DATASET_DESCRIPTIONS[id] ?? ''
+}
+
+function buildDatasetsInfo(
+  options?: TranslateEnglishToKqlOptions,
+): ReadonlyArray<{ dataset: { id: string; description: string } }> {
+  if (options?.datasetsInfo && options.datasetsInfo.length > 0) {
+    return options.datasetsInfo.map((e) => ({
+      dataset: {
+        id: e.dataset.id,
+        description: e.dataset.description ?? defaultDatasetDescription(e.dataset.id),
+      },
+    }))
+  }
+  const hint = options?.datasetHint?.trim()
+  if (!hint) return []
+  return [{ dataset: { id: hint, description: defaultDatasetDescription(hint) } }]
+}
+
+/** `context.currentKqlQuery` shape used by Cribl Search when a dataset is selected. */
+function searchStyleCurrentKqlQuery(datasetHint?: string): string {
+  const id = datasetHint?.trim()
+  if (!id) return ''
+  return `dataset="${id}" | limit 1000 `
+}
+
+/**
+ * JSON body for `POST /ai/q/agents/kql`, aligned with Cribl Search context (`datasetsInfo`,
+ * `currentKqlQuery`). We intentionally omit `tools` (e.g. `sample_events`): Search runs a
+ * multi-step client that executes tool calls; this app uses one `fetch` + `response.text()` and
+ * cannot complete agent/tool loops, which caused empty parses and stub fallback on staging.
+ */
+export function buildTranslateEnglishToKqlRequestBody(
+  englishQuery: string,
+  options?: TranslateEnglishToKqlOptions,
+) {
+  const hint = options?.datasetHint?.trim()
+  return {
+    messages: [{ id: randomId(), role: 'user' as const, content: englishQuery.trim(), reqId: 0 }],
+    stream: true,
+    context: {
+      resources: {} as Record<string, never>,
+      files: {} as Record<string, never>,
+      datasetsInfo: buildDatasetsInfo(options),
+      currentKqlQuery: searchStyleCurrentKqlQuery(hint),
+    },
+    sessionId: randomId(),
+  }
+}
+
+/**
+ * When `CRIBL_API_URL` is unset (local Vite / tests), avoid posting to `/api/v1` on the dev origin
+ * (which always fails with "Failed to fetch"). Produces valid sample KQL for example notebooks.
+ */
+export function stubEnglishToKqlLocalDev(
+  englishQuery: string,
+  options?: TranslateEnglishToKqlOptions,
+): string {
+  const prompt = englishQuery.trim()
+  if (!prompt) throw new Error('English query cannot be empty.')
+  if (looksLikeKql(prompt)) return prompt
+  const ds = options?.datasetHint?.trim() || 'cribl_search_sample'
+  const nRecent = prompt.match(/\b(\d{1,7})\s+most\s+recent\b/i)
+  if (nRecent) {
+    const n = parseInt(nRecent[1]!, 10)
+    return `dataset=${ds} | sort by _time desc | limit ${n}`
+  }
+  if (/most\s+recent|recent\s+entries|\brecent\b/i.test(prompt)) {
+    return `dataset=${ds} | sort by _time desc | limit 100`
+  }
+  return `dataset=${ds} | sort by _time desc | limit 500`
+}
+
 /**
  * Translate a natural-language query to KQL using Cribl's internal AI endpoint.
  */
 export async function translateEnglishToKql(
   englishQuery: string,
-  options?: { datasetHint?: string },
+  options?: TranslateEnglishToKqlOptions,
 ): Promise<string> {
   const prompt = englishQuery.trim()
   if (!prompt) throw new Error('English query cannot be empty.')
   const datasetHint = options?.datasetHint?.trim()
 
-  const base = getCriblApiBase() || '/api/v1'
+  const base = getCriblApiBase()
+  if (!base) {
+    return stubEnglishToKqlLocalDev(prompt, options)
+  }
   const url = `${base}${AI_INTERNAL_TRANSLATE_PATH}`
   const ac = new AbortController()
   const timer = globalThis.setTimeout(() => ac.abort(), AI_TRANSLATE_TIMEOUT_MS)
@@ -188,16 +313,7 @@ export async function translateEnglishToKql(
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ id: randomId(), role: 'user', content: prompt, reqId: 0 }],
-        stream: true,
-        context: {
-          resources: {},
-          files: {},
-          currentKqlQuery: datasetHint ? `dataset=${datasetHint}` : '',
-        },
-        sessionId: randomId(),
-      }),
+      body: JSON.stringify(buildTranslateEnglishToKqlRequestBody(prompt, options)),
       signal: ac.signal,
     })
 

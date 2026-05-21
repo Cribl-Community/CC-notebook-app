@@ -16,6 +16,7 @@
     "e2e:quick": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging --grep-invert '@slow|@examples-all'",
     "e2e:examples": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging --grep '@examples-all' --grep-invert '@heavy' --workers=1",
     "e2e:examples:all": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging --grep '@examples-all' --workers=1",
+    "e2e:examples:from-cribl-search": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging --grep '(Cribl Search Examples|AI Magic|Cribl API Examples|Visualisations|Cribl Search Lookup Magics):' --workers=1",
     "e2e:slow": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging --grep '@slow' --grep-invert '@heavy' --workers=1",
     "e2e:slow:all": "playwright test --config=e2e/playwright.config.ts --project=chromium-staging --grep '@slow' --workers=1",
     "e2e:auth": "playwright test --config=e2e/playwright.setup.config.ts --project=setup",

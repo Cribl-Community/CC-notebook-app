@@ -1,4 +1,5 @@
 import type { NotebookState, NotebookAction, CodeCell, MarkdownCell, Cell } from '@features/notebook/model/types'
+import { isLongCodeCellForDefaultFold } from '@features/notebook/codeCellFold'
 import { applyIOPub } from '@features/notebook/reducer/outputArea'
 
 function makeCodeCell(): CodeCell {
@@ -98,8 +99,24 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
     case 'UPDATE_SOURCE':
       return {
         ...state,
+        cells: state.cells.map((c): Cell => {
+          if (c.id !== action.id) return c
+          if (c.cell_type === 'markdown') {
+            return { ...c, source: action.source }
+          }
+          const next: CodeCell = { ...c, source: action.source }
+          if (!isLongCodeCellForDefaultFold(action.source) && c.codeFolded) {
+            next.codeFolded = false
+          }
+          return next
+        }),
+      }
+
+    case 'SET_CODE_FOLDED':
+      return {
+        ...state,
         cells: state.cells.map((c): Cell =>
-          c.id === action.id ? { ...c, source: action.source } : c,
+          c.id === action.id && c.cell_type === 'code' ? { ...c, codeFolded: action.folded } : c,
         ),
       }
 

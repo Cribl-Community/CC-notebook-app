@@ -8,6 +8,7 @@ import {
   tabWorkspaceReducer,
 } from '@features/notebook/reducer/tabWorkspace'
 import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
+import type { Cell } from '@features/notebook/model/types'
 
 describe('tabWorkspaceReducer', () => {
   it('ADD_TAB appends and selects new tab', () => {
@@ -72,6 +73,63 @@ describe('tabWorkspaceReducer', () => {
     expect(t.kvNotebookId).toBe('kv-1')
     expect(t.lastSavedJson).toBe(serializeNotebookToIpynbJson(t.notebook))
     expect(tabIsDirty(t)).toBe(false)
+  })
+
+  it('REPLACE_TAB_CONTENT with collapseLongCodeCellsOnOpen folds long non-Riptide cells', () => {
+    const s0 = createInitialWorkspace()
+    const t2 = createEmptyTab()
+    const s0b = tabWorkspaceReducer(s0, { type: 'ADD_TAB', tab: t2 })
+    const tabId = s0b.tabs[1].id
+    const long = [...Array(11)].map((_, i) => `print(${i})`).join('\n')
+    const cells: Cell[] = [
+      {
+        id: 'c1',
+        cell_type: 'code',
+        source: long,
+        outputs: [],
+        execution_count: null,
+        execution_state: 'idle',
+      },
+    ]
+    const s1 = tabWorkspaceReducer(s0b, {
+      type: 'REPLACE_TAB_CONTENT',
+      tabId,
+      title: 'Ex',
+      cells,
+      kvNotebookId: null,
+      collapseLongCodeCellsOnOpen: true,
+    })
+    const c = s1.tabs[1].notebook.cells[0]
+    expect(c?.cell_type === 'code' && c.codeFolded).toBe(true)
+  })
+
+  it('REPLACE_TAB_CONTENT example defaults do not override explicit codeFolded from file', () => {
+    const s0 = createInitialWorkspace()
+    const t2 = createEmptyTab()
+    const s0b = tabWorkspaceReducer(s0, { type: 'ADD_TAB', tab: t2 })
+    const tabId = s0b.tabs[1].id
+    const long = [...Array(11)].map((_, i) => `print(${i})`).join('\n')
+    const cells: Cell[] = [
+      {
+        id: 'c1',
+        cell_type: 'code',
+        source: long,
+        outputs: [],
+        execution_count: null,
+        execution_state: 'idle',
+        codeFolded: false,
+      },
+    ]
+    const s1 = tabWorkspaceReducer(s0b, {
+      type: 'REPLACE_TAB_CONTENT',
+      tabId,
+      title: 'Ex',
+      cells,
+      kvNotebookId: null,
+      collapseLongCodeCellsOnOpen: true,
+    })
+    const c = s1.tabs[1].notebook.cells[0]
+    expect(c?.cell_type === 'code' && c.codeFolded).toBe(false)
   })
 })
 

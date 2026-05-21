@@ -26,4 +26,9 @@ describe('describeFetchError', () => {
   it('passes through non-fetch errors unchanged', () => {
     expect(describeFetchError(new Error('HTTP 500 bad'))).toBe('HTTP 500 bad')
   })
+
+  it('does not stack a second “failed immediately” prefix', () => {
+    const inner = describeFetchError(new TypeError('Failed to fetch'), 'AI translation request')
+    expect(describeFetchError(new Error(inner), 'Cribl Search request')).toBe(inner)
+  })
 })

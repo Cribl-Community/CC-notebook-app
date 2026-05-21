@@ -67,6 +67,11 @@ export function formatGeneratedPythonSource(userPrompt: string, generatedCode: s
   return `${headerLine}\n${body}\n\n${code}\n`
 }
 
+/** True when the cell uses the saved Riptide `# ### Prompt:` comment block (see {@link formatGeneratedPythonSource}). */
+export function isRiptidePromptCell(source: string): boolean {
+  return parseRiptidePromptFromCellSource(source) !== null
+}
+
 /**
  * If the cell starts with the Riptide `### Prompt:` comment block, return the saved full prompt text.
  * Supports the format produced by {@link formatGeneratedPythonSource}. Otherwise returns `null`.

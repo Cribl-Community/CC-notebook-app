@@ -207,4 +207,97 @@ describe('createCriblSearchExecutor', () => {
     expect(translate).toHaveBeenCalled()
     expect(runSearch).toHaveBeenCalledWith(expect.objectContaining({ query: 'dataset=x | limit 2' }))
   })
+
+  it('falls back to built-in English→KQL when AI translate fails with a network error', async () => {
+    const translate = vi.fn<SearchService['translateEnglishToKql']>().mockRejectedValue(new TypeError('Failed to fetch'))
+    const runSearch = vi.fn<SearchService['runSearch']>().mockResolvedValue({
+      rows: [],
+      columns: [],
+      totalRecords: 0,
+    })
+    const emitIOPub = vi.fn()
+    const ex = createCriblSearchExecutor({
+      ...baseDeps,
+      searchService: makeSearchService({ translateEnglishToKql: translate, runSearch }),
+      criblApiBase: 'https://api.example/v1',
+    })
+    const source =
+      '%%cribl_search lang=english translate_only=true dataset=cribl_search_sample\nShow the 80 most recent entries\n'
+    const out = await ex.execute({
+      ...ctx,
+      source,
+      kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
+      emitIOPub,
+      dispatchNotebook: vi.fn(),
+    })
+
+    expect(out).toBe('ok')
+    expect(translate).toHaveBeenCalled()
+    const stderr = emitIOPub.mock.calls.find(
+      (c) => c[0]?.msg_type === 'stream' && c[0]?.name === 'stderr' && String(c[0]?.text).includes('built-in preview'),
+    )?.[0]
+    expect(stderr).toBeTruthy()
+    const stdout = emitIOPub.mock.calls.find(
+      (call) => call[0]?.msg_type === 'stream' && call[0]?.name === 'stdout',
+    )?.[0]
+    expect(String(stdout?.text)).toContain('dataset=cribl_search_sample | sort by _time desc | limit 80')
+    expect(runSearch).not.toHaveBeenCalled()
+  })
+
+  it('falls back to built-in English→KQL when AI translate returns HTTP 502', async () => {
+    const translate = vi
+      .fn<SearchService['translateEnglishToKql']>()
+      .mockRejectedValue(new Error('AI translation failed (502): bad gateway'))
+    const runSearch = vi.fn<SearchService['runSearch']>().mockResolvedValue({
+      rows: [],
+      columns: [],
+      totalRecords: 0,
+    })
+    const emitIOPub = vi.fn()
+    const ex = createCriblSearchExecutor({
+      ...baseDeps,
+      searchService: makeSearchService({ translateEnglishToKql: translate, runSearch }),
+      criblApiBase: 'https://api.example/v1',
+    })
+    const source =
+      '%%cribl_search lang=english translate_only=true dataset=cribl_search_sample\nShow the 80 most recent entries\n'
+    const out = await ex.execute({
+      ...ctx,
+      source,
+      kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
+      emitIOPub,
+      dispatchNotebook: vi.fn(),
+    })
+
+    expect(out).toBe('ok')
+    const stdout = emitIOPub.mock.calls.find(
+      (call) => call[0]?.msg_type === 'stream' && call[0]?.name === 'stdout',
+    )?.[0]
+    expect(String(stdout?.text)).toContain('dataset=cribl_search_sample | sort by _time desc | limit 80')
+  })
+
+  it('after AI translate network fallback, still runs search with stub KQL', async () => {
+    const translate = vi.fn<SearchService['translateEnglishToKql']>().mockRejectedValue(new TypeError('Failed to fetch'))
+    const runSearch = vi.fn<SearchService['runSearch']>().mockResolvedValue({
+      rows: [{ x: 1 }],
+      columns: ['x'],
+      totalRecords: 1,
+    })
+    const ex = createCriblSearchExecutor({
+      ...baseDeps,
+      searchService: makeSearchService({ translateEnglishToKql: translate, runSearch }),
+      criblApiBase: 'https://api.example/v1',
+    })
+    const source =
+      '%%cribl_search lang=english dataset=cribl_search_sample earliest=-1h latest=now\nShow the 5 most recent entries\n'
+    await ex.execute({
+      ...ctx,
+      source,
+      kernel: makeKernel(vi.fn().mockResolvedValue({ outputs: [] })),
+    })
+
+    expect(runSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: 'dataset=cribl_search_sample | sort by _time desc | limit 5' }),
+    )
+  })
 })

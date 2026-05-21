@@ -881,6 +881,51 @@ body {
   min-height: 40px;
 }
 
+/* Collapsible long code: clip editor; outputs stay below */
+.nb-cell-editor-clip {
+  position: relative;
+  min-height: 40px;
+}
+
+.nb-cell-editor-clip--folded {
+  max-height: calc(10 * 1.65 * 13px + 16px);
+  overflow: hidden;
+}
+
+.nb-cell-editor-clip--folded::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--nb-bg-cell));
+}
+
+.nb-cell-code-fold-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 6px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.nb-cell:hover .nb-cell-code-fold-row,
+.nb-cell--selected .nb-cell-code-fold-row {
+  border-bottom-color: var(--nb-border);
+}
+
+.nb-btn-code-fold {
+  font-size: 11px;
+  padding: 2px 8px;
+  opacity: 0.85;
+}
+
+.nb-cell:hover .nb-btn-code-fold,
+.nb-cell--selected .nb-btn-code-fold {
+  opacity: 1;
+}
+
 .nb-cell-editor-cm .cm-editor {
   outline: none;
 }
