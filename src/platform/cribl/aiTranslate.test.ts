@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { AI_INTERNAL_TRANSLATE_PATH, translateEnglishToKql } from '@platform/cribl/aiTranslate'
+import {
+  AI_INTERNAL_TRANSLATE_PATH,
+  buildTranslateEnglishToKqlRequestBody,
+  translateEnglishToKql,
+} from '@platform/cribl/aiTranslate'
 
 const HOSTED_API = 'https://cribl.example/api/v1'
 
@@ -16,6 +20,33 @@ describe('translateEnglishToKql (AI endpoint)', () => {
     else delete window.CRIBL_API_URL
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+  })
+
+  it('sends Search-aligned JSON body (datasetsInfo, quoted currentKqlQuery; no tools)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ kql: 'dataset=x | limit 10' }), { status: 200 }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await translateEnglishToKql('show me errors', { datasetHint: 'cribl_search_sample' })
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit
+    const body = JSON.parse(String(init.body)) as ReturnType<typeof buildTranslateEnglishToKqlRequestBody>
+    expect(body.stream).toBe(true)
+    expect(body).not.toHaveProperty('tools')
+    expect(body.context.datasetsInfo).toEqual([
+      { dataset: { id: 'cribl_search_sample', description: 'Search Cribl provided public sample data' } },
+    ])
+    expect(body.context.currentKqlQuery).toBe('dataset="cribl_search_sample" | limit 1000 ')
+    expect(body.context.resources).toEqual({})
+    expect(body.context.files).toEqual({})
+  })
+
+  it('buildTranslateEnglishToKqlRequestBody prefers explicit datasetsInfo over datasetHint', () => {
+    const b = buildTranslateEnglishToKqlRequestBody('hello', {
+      datasetHint: 'cribl_search_sample',
+      datasetsInfo: [{ dataset: { id: 'custom_ds', description: 'Custom desc' } }],
+    })
+    expect(b.context.datasetsInfo).toEqual([{ dataset: { id: 'custom_ds', description: 'Custom desc' } }])
+    expect(b.context.currentKqlQuery).toBe('dataset="cribl_search_sample" | limit 1000 ')
   })
 
   it('returns translated kql from JSON payload', async () => {
@@ -105,6 +136,18 @@ describe('translateEnglishToKql (AI endpoint)', () => {
     )
   })
 
+  it('extracts kql from NDJSON tail line via heuristic when JSON has no kql fields', async () => {
+    const body = [
+      JSON.stringify({ name: 'agent:kql-agent', role: 'assistant', content: null, tool_calls: [] }),
+      'noise dataset=cribl_search_sample | sort by _time desc | limit 2 trailing',
+    ].join('\n')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(body, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(translateEnglishToKql('anything', { datasetHint: 'cribl_search_sample' })).resolves.toBe(
+      'dataset=cribl_search_sample | sort by _time desc | limit 2',
+    )
+  })
+
   it('extracts kql from json-string content payload', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(
@@ -118,6 +161,19 @@ describe('translateEnglishToKql (AI endpoint)', () => {
     await expect(translateEnglishToKql('show the 2000 most recent records')).resolves.toBe(
       'cribl dataset=cribl_search_sample | sort by _time desc | limit 2000',
     )
+  })
+
+  it('extracts kql when content is nested under objects and arrays', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: { content: [{ type: 'text', text: 'dataset=z | limit 9' }] },
+        }),
+        { status: 200 },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(translateEnglishToKql('nested')).resolves.toBe('dataset=z | limit 9')
   })
 
   it('accepts Kusto-style | top N (common for “most recent” translations)', async () => {

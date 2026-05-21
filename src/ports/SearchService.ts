@@ -3,9 +3,17 @@
  * The default adapter talks to the Cribl Search REST API; tests substitute a
  * deterministic stub.
  */
-import type { SearchJobResult, SearchProgressEvent } from '@/domain/search'
+import type {
+  SearchJobResult,
+  SearchProgressEvent,
+  TranslateEnglishToKqlOptions,
+} from '@/domain/search'
 
-export type { SearchJobResult as CriblSearchJobResult, SearchProgressEvent }
+export type {
+  SearchJobResult as CriblSearchJobResult,
+  SearchProgressEvent,
+  TranslateEnglishToKqlOptions,
+}
 
 export interface SearchRunOptions {
   query: string
@@ -20,5 +28,5 @@ export interface SearchRunOptions {
 
 export interface SearchService {
   runSearch(opts: SearchRunOptions): Promise<SearchJobResult>
-  translateEnglishToKql(englishQuery: string, options?: { datasetHint?: string }): Promise<string>
+  translateEnglishToKql(englishQuery: string, options?: TranslateEnglishToKqlOptions): Promise<string>
 }

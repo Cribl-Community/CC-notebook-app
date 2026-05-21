@@ -74,7 +74,7 @@ Typical line shapes:
 
    Parse `tool_calls` to drive UI (buttons, searches, notebook edits, etc.) according to each tool’s contract.
 
-Timeouts: use `AbortController` and an appropriate limit for long streams (the KQL client uses ~20s for translation in `aiTranslate.ts`; interactive chat may need longer).
+Timeouts: use `AbortController` and an appropriate limit for long streams (the KQL client uses ~60s for translation in `aiTranslate.ts`; interactive chat may need longer).
 
 ## Minimal `fetch` sketch (App Platform)
 

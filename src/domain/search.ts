@@ -18,3 +18,12 @@ export type SearchJobResult = {
   columns: string[]
   totalRecords: number | null
 }
+
+/** One entry in `context.datasetsInfo` for `POST /ai/q/agents/kql` (same shape as Cribl Search). */
+export type KqlTranslateDatasetInfoEntry = { dataset: { id: string; description?: string } }
+
+export type TranslateEnglishToKqlOptions = {
+  datasetHint?: string
+  /** When set, sent as `context.datasetsInfo` verbatim; otherwise built from `datasetHint`. */
+  datasetsInfo?: ReadonlyArray<KqlTranslateDatasetInfoEntry>
+}
