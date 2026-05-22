@@ -1,7 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import type { AiCodeService } from '@ports/AiCodeService'
-import { riptideAiCodeService } from '@features/ai-riptide/aiCodeAdapter'
+import { riptideAiCodeService } from '@app/riptideAiCodeAdapter'
 
 const AiCodeContext = createContext<AiCodeService | null>(null)
 

@@ -13,7 +13,7 @@ import {
   getSameOriginPyodideLockFileUrl,
   PYODIDE_PACKAGE_BASE_URL,
 } from '@platform/pyodide/pyodideVersion'
-import { applyIOPubToRecords } from '@features/notebook/reducer/outputArea'
+import { applyIOPubToRecords } from '@/domain/iopubOutputArea'
 import completionPy from './notebook_complete.py?raw'
 import iopubBootstrapPy from './notebook_iopub_bootstrap.py?raw'
 import workerSourceTemplate from './kernel.worker.js?raw'

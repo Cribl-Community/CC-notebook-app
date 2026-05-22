@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { Dispatch, MutableRefObject } from 'react'
 import type { KernelFactory, KernelPort } from '@ports/KernelPort'
-// eslint-disable-next-line no-restricted-imports -- optional KernelFactory from composition root
 import { useOptionalKernelFactory } from '@app/providers'
 import type { CellId } from '@features/notebook/model/types'
 import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'

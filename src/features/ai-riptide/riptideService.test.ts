@@ -101,17 +101,17 @@ describe('generatePythonFromPrompt', () => {
     ].join('\n')
     const fetchMock = vi.fn().mockResolvedValue(new Response(ndjson, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
-    await expect(generatePythonFromPrompt('make a variable')).resolves.toBe('x = 1')
+    await expect(generatePythonFromPrompt('', 'make a variable')).resolves.toBe('x = 1')
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`/api/v1${AI_RIPTIDE_AGENT_PATH}`)
   })
 
   it('throws on non-ok responses', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('bad', { status: 503 })))
-    await expect(generatePythonFromPrompt('x')).rejects.toThrow(/Riptide request failed \(503\)/)
+    await expect(generatePythonFromPrompt('', 'x')).rejects.toThrow(/Riptide request failed \(503\)/)
   })
 
   it('throws when no code in response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 })))
-    await expect(generatePythonFromPrompt('x')).rejects.toThrow(/did not return usable Python/)
+    await expect(generatePythonFromPrompt('', 'x')).rejects.toThrow(/did not return usable Python/)
   })
 })

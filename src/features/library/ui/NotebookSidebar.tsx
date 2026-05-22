@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { buildTreeRows, type TreeRow } from '@features/library/manifest'
 import type { ManifestItem } from '@features/library/manifest'
-import { isKvMockMode } from '@platform/cribl/kvstore'
+import { useEnv } from '@app/providers'
 interface NotebookSidebarProps {
   items: ManifestItem[]
   loading: boolean
@@ -71,6 +71,7 @@ export function NotebookSidebar({
   onDelete,
   moveDestinations,
 }: NotebookSidebarProps) {
+  const { isKvMock } = useEnv()
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
 
   const rows: TreeRow[] = useMemo(() => buildTreeRows(items), [items])
@@ -133,7 +134,7 @@ export function NotebookSidebar({
           ↻
         </button>
       </div>
-      {isKvMockMode() && (
+      {isKvMock && (
         <div className="nb-sidebar-hint" title="KV store is simulated in this environment">
           Dev: local mock KV
         </div>

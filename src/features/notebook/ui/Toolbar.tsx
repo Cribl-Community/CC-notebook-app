@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { NOTEBOOK_STYLES, type AppStyleId } from '@app/styles/nbStyles'
+import { NOTEBOOK_STYLES, type AppStyleId } from '@app/providers'
 import type { KernelStatus } from '@features/notebook/model/types'
 
 interface ToolbarProps {

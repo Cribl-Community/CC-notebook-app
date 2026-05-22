@@ -9,7 +9,7 @@ import {
   findFirstMagicHeaderLineIndex,
   offsetAfterLineWithNewline,
   offsetOfLineStart,
-} from '@features/notebook/magicCellLines'
+} from '@/domain/criblCellMagicSource'
 
 const MAGIC_FIRST_LINE = /^%%cribl_api(?:\s+(.*))?$/
 

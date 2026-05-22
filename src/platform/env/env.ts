@@ -8,6 +8,7 @@
  * platform shell.
  */
 import type { EnvService } from '@ports/EnvService'
+import { notebookStaticPrefix } from '@platform/staticAssets'
 
 /** Returns empty string when not running inside Cribl (dev / tests). */
 export function getCriblApiBase(): string {
@@ -31,5 +32,6 @@ export function readEnv(): EnvService {
     apiBase,
     isCriblHosted: apiBase !== '',
     isKvMock: apiBase === '',
+    staticAssetPrefix: notebookStaticPrefix(),
   }
 }

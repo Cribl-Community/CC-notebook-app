@@ -1,7 +1,4 @@
-import { lineSkipsMagicScan } from '@features/notebook/magicCellLines'
-import { callCriblApi, type CriblApiHttpResult } from '@platform/cribl/criblApiFetch'
-import { getCriblApiBase } from '@platform/env/env'
-import { describeFetchError } from '@platform/cribl/fetchFailure'
+import { lineSkipsMagicScan } from '@/domain/criblCellMagicSource'
 import {
   buildCriblApiJsonValueAssignmentCode,
   buildCriblApiNoneAssignmentCode,
@@ -16,6 +13,14 @@ import { JINJA_RESULT_KEY_CRIBL_API, runNotebookJinjaInKernel } from '@features/
 import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 
+/** HTTP result shape returned by {@link CriblApiExecutorDeps.callCriblApi}. */
+export type CriblApiHttpResult = {
+  status: number
+  ok: boolean
+  text: string
+  jsonValue: unknown | null
+}
+
 export function looksLikeCriblApiMagic(source: string): boolean {
   for (const line of source.split(/\r?\n/)) {
     if (lineSkipsMagicScan(line)) continue
@@ -26,10 +31,16 @@ export function looksLikeCriblApiMagic(source: string): boolean {
 
 export type CriblApiExecutorDeps = {
   parseCriblApiMagic: typeof parseCriblApiMagic
-  getCriblApiBase: typeof getCriblApiBase
+  getCriblApiBase: () => string
   runNotebookJinjaInKernel: typeof runNotebookJinjaInKernel
   filterPyodidePackageChatter: typeof filterPyodidePackageChatter
-  callCriblApi: typeof callCriblApi
+  callCriblApi: (
+    method: string,
+    path: string,
+    part: { headers: Record<string, string>; body: string | undefined; bodyIsJson: boolean },
+    getBase?: () => string,
+  ) => Promise<CriblApiHttpResult>
+  describeFetchError: (err: unknown, operation?: string) => string
   parseCriblApiYamlToRequest: typeof parseCriblApiYamlToRequest
   wantsCriblApiJinjaTemplating: typeof wantsCriblApiJinjaTemplating
   encodeValueJsonForPythonBase64: typeof encodeValueJsonForPythonBase64
@@ -39,31 +50,13 @@ export type CriblApiExecutorDeps = {
   buildCriblApiStringValueAssignmentCode: typeof buildCriblApiStringValueAssignmentCode
 }
 
-export const DEFAULT_CRIBL_API_EXECUTOR_DEPS: CriblApiExecutorDeps = {
-  parseCriblApiMagic,
-  getCriblApiBase,
-  runNotebookJinjaInKernel,
-  filterPyodidePackageChatter,
-  callCriblApi,
-  parseCriblApiYamlToRequest,
-  wantsCriblApiJinjaTemplating,
-  encodeValueJsonForPythonBase64,
-  encodeUtf8TextForPythonBase64,
-  buildCriblApiJsonValueAssignmentCode,
-  buildCriblApiNoneAssignmentCode,
-  buildCriblApiStringValueAssignmentCode,
-}
-
-export function createCriblApiExecutor(overrides: Partial<CriblApiExecutorDeps> = {}): CellExecutor {
-  const deps: CriblApiExecutorDeps = { ...DEFAULT_CRIBL_API_EXECUTOR_DEPS, ...overrides }
+export function createCriblApiExecutor(deps: CriblApiExecutorDeps): CellExecutor {
   return {
     name: 'cribl-api',
     matches: looksLikeCriblApiMagic,
     execute: (ctx) => executeCriblApiCell(ctx, deps),
   }
 }
-
-export const criblApiExecutor: CellExecutor = createCriblApiExecutor()
 
 function parseResponseJson(
   res: CriblApiHttpResult,
@@ -186,7 +179,7 @@ async function executeCriblApiCell(
     const code = deps.buildCriblApiStringValueAssignmentCode(varName, b64s)
     return runKernelAssign(ctx, deps, count, code, isStale, emitIOPub, dispatchNotebook)
   } catch (e) {
-    const msg = describeFetchError(e, `Cribl API ${method} ${path}`)
+    const msg = deps.describeFetchError(e, `Cribl API ${method} ${path}`)
     emitIOPub({ msg_type: 'stream', name: 'stderr', text: `${msg}\n` })
     if (ignoreFailure) {
       return finishIgnoredFailure(ctx, deps, count, varName, isStale, emitIOPub, dispatchNotebook)

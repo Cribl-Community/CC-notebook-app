@@ -52,7 +52,7 @@ flowchart TB
 | `library/` | Saved notebooks + manifest in KV, sidebar | `notebookLibrary.ts`, `hooks/useNotebookLibrary.ts`, `ui/NotebookSidebar.tsx` |
 | `cribl-search/` | `%%cribl_search`, lookup save/load magics, editor, output | `criblSearchMagic.ts`, `criblSearchLookupMagic.ts`, `editor/criblSearchEditor.ts` |
 | `cribl-api/` | `%%cribl_api` magic, OpenAPI catalog, HTTP from cells | `criblApiMagic.ts`, `criblApiCatalog.ts`, `executor` usage via `notebook/` |
-| `ai-riptide/` | Riptide-backed `AiCodeService` adapter | `aiCodeAdapter.ts`, `riptideService.ts` |
+| `ai-riptide/` | Riptide client helpers | `riptideService.ts` (adapter: `app/riptideAiCodeAdapter.ts`) |
 | `examples/` | Bundled example notebooks manifest + loading | `useExamples.ts`, `examplesManifest.ts` |
 | `welcome/` | Welcome / release notes (uses examples) | `WelcomePage.tsx` |
 

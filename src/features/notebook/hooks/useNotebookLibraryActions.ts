@@ -16,7 +16,7 @@ import {
   storeManifest,
 } from '@features/library/notebookLibrary'
 import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
-import { notebookStaticPrefix } from '@platform/staticAssets'
+import { useEnv } from '@app/providers'
 import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
 import type { NotebookLibraryController } from '@features/library/hooks/useNotebookLibrary'
@@ -58,6 +58,7 @@ function closeDeletedTabs(
 
 export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
   const { workspace, runtime, library, showAlert, showConfirm, showPrompt } = args
+  const { staticAssetPrefix } = useEnv()
   const {
     dispatch,
     workspaceRef,
@@ -275,7 +276,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
       dispatch({ type: 'ADD_TAB', tab })
       void (async () => {
         try {
-          const res = await fetch(`${notebookStaticPrefix()}Examples/${filename}`)
+          const res = await fetch(`${staticAssetPrefix}Examples/${filename}`)
           if (!res.ok) throw new Error(`Could not load example (${res.status})`)
           const text = await res.text()
           const parsed = parseIpynbJson(text, { filename })
@@ -295,7 +296,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         }
       })()
     },
-    [dispatch, runtime, showAlert],
+    [dispatch, runtime, showAlert, staticAssetPrefix],
   )
 
   return {

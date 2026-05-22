@@ -18,7 +18,7 @@ import type { OutputRecord } from '@/domain/kernel'
 import {
   findFirstMagicHeaderLineIndex,
   lineExcludedFromMagicBody,
-} from '@features/notebook/magicCellLines'
+} from '@/domain/criblCellMagicSource'
 
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 

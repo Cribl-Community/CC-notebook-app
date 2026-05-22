@@ -8,7 +8,6 @@ import { createDefaultCellExecutors } from '@features/notebook/executor/executor
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
 import type { WorkspaceAction, WorkspaceState, NotebookTab } from '@features/notebook/reducer/tabWorkspace'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
-// eslint-disable-next-line no-restricted-imports -- notebook runtime reads ports from composition root
 import { useEnv, useLookupService, useSearchService } from '@app/providers'
 
 export interface CellRunnerController {

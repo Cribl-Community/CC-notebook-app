@@ -20,7 +20,7 @@ import { parse as parseYaml } from 'yaml'
 import {
   findFirstMagicHeaderLineIndex,
   lineExcludedFromMagicBody,
-} from '@features/notebook/magicCellLines'
+} from '@/domain/criblCellMagicSource'
 
 const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])

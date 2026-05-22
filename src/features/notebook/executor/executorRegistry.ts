@@ -1,13 +1,27 @@
 import type { LookupService } from '@ports/LookupService'
 import type { SearchService } from '@ports/SearchService'
-import { criblApiExecutor } from './criblApiExecutor'
+// eslint-disable-next-line no-restricted-imports -- sole wiring of platform fetch helpers into default executors (see docs/ARCHITECTURE.md).
+import { cellExecutorFetchHelpers } from '@platform/adapters/cellExecutorFetchHelpers'
+import {
+  buildCriblApiJsonValueAssignmentCode,
+  buildCriblApiNoneAssignmentCode,
+  buildCriblApiStringValueAssignmentCode,
+  encodeUtf8TextForPythonBase64,
+  encodeValueJsonForPythonBase64,
+  parseCriblApiMagic,
+  parseCriblApiYamlToRequest,
+  wantsCriblApiJinjaTemplating,
+} from '@features/cribl-api/criblApiMagic'
+import { runNotebookJinjaInKernel } from '@features/notebook/jinjaInKernel'
+import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
+import { createCriblApiExecutor } from './criblApiExecutor'
 import { createCriblSearchLookupExecutor } from './criblSearchLookupExecutor'
 import { createCriblSearchExecutor } from './criblSearchExecutor'
 import { pythonExecutor } from './pythonExecutor'
 import type { CellExecutor } from './cellExecutor'
 
 /**
- * Default ordered registry of executors. Specialized executors must come
+ * Default ordered registry of cell executors. Specialized executors must come
  * first so `selectExecutor` picks them before falling through to the
  * catch-all Python executor (which matches every source).
  *
@@ -16,6 +30,10 @@ import type { CellExecutor } from './cellExecutor'
  * callers that omit `executors` (mostly unit tests for plain Python cells)
  * still resolve the registry shape; production passes real services via
  * {@link createDefaultCellExecutors}.
+ *
+ * `cellExecutorFetchHelpers` is imported here (the single composition point) so
+ * executor modules under `features/` do not reach into `@platform/cribl/*`
+ * directly — see `docs/ARCHITECTURE.md`.
  */
 const UNIT_TEST_STUB_SEARCH_SERVICE: SearchService = {
   async runSearch() {
@@ -34,15 +52,41 @@ const UNIT_TEST_STUB_LOOKUP_SERVICE: LookupService = {
   async deleteLookup() {},
 }
 
+const productionCriblApiExecutor = createCriblApiExecutor({
+  parseCriblApiMagic,
+  getCriblApiBase: cellExecutorFetchHelpers.getCriblApiBase,
+  runNotebookJinjaInKernel,
+  filterPyodidePackageChatter,
+  callCriblApi: cellExecutorFetchHelpers.callCriblApi,
+  describeFetchError: cellExecutorFetchHelpers.describeFetchError,
+  parseCriblApiYamlToRequest,
+  wantsCriblApiJinjaTemplating,
+  encodeValueJsonForPythonBase64,
+  encodeUtf8TextForPythonBase64,
+  buildCriblApiJsonValueAssignmentCode,
+  buildCriblApiNoneAssignmentCode,
+  buildCriblApiStringValueAssignmentCode,
+})
+
 export function createDefaultCellExecutors(
   searchService: SearchService,
   criblApiBase: string,
   lookupService: LookupService,
 ): readonly CellExecutor[] {
   return [
-    criblApiExecutor,
-    createCriblSearchLookupExecutor({ lookupService, criblApiBase }),
-    createCriblSearchExecutor({ searchService, criblApiBase }),
+    productionCriblApiExecutor,
+    createCriblSearchLookupExecutor({
+      lookupService,
+      criblApiBase,
+      describeFetchError: cellExecutorFetchHelpers.describeFetchError,
+    }),
+    createCriblSearchExecutor({
+      searchService,
+      criblApiBase,
+      describeFetchError: cellExecutorFetchHelpers.describeFetchError,
+      isCorsOrNetworkFetchError: cellExecutorFetchHelpers.isCorsOrNetworkFetchError,
+      stubEnglishToKqlLocalDev: cellExecutorFetchHelpers.stubEnglishToKqlLocalDev,
+    }),
     pythonExecutor,
   ]
 }

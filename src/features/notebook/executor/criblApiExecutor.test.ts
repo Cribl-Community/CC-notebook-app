@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { callCriblApi } from '@platform/cribl/criblApiFetch'
-import { getCriblApiBase } from '@platform/cribl/kvstore'
+import type { CriblApiHttpResult, CriblApiExecutorDeps } from './criblApiExecutor'
+import { describeFetchError } from '@platform/cribl/fetchFailure'
 import {
   buildCriblApiJsonValueAssignmentCode,
   buildCriblApiNoneAssignmentCode,
@@ -38,17 +38,18 @@ function makeKernel(execute: KernelPort['execute']): KernelPort {
 
 const baseDeps = {
   parseCriblApiMagic,
-  getCriblApiBase: vi.fn<typeof getCriblApiBase>().mockReturnValue('https://h/api/v1'),
+  getCriblApiBase: vi.fn<() => string>().mockReturnValue('https://h/api/v1'),
   runNotebookJinjaInKernel: vi
     .fn<typeof runNotebookJinjaInKernel>()
     .mockResolvedValue({ ok: true, text: 'a: 1' }),
   filterPyodidePackageChatter,
-  callCriblApi: vi.fn<typeof callCriblApi>().mockResolvedValue({
+  callCriblApi: vi.fn<CriblApiExecutorDeps['callCriblApi']>().mockResolvedValue({
     status: 200,
     ok: true,
     text: '{}',
     jsonValue: {} as never,
   }),
+  describeFetchError,
   parseCriblApiYamlToRequest,
   wantsCriblApiJinjaTemplating,
   encodeValueJsonForPythonBase64,
@@ -60,7 +61,7 @@ const baseDeps = {
 
 describe('createCriblApiExecutor', () => {
   it('fails when no Cribl API base is configured', async () => {
-    const callCribl = vi.fn<typeof callCriblApi>()
+    const callCribl = vi.fn<CriblApiExecutorDeps['callCriblApi']>()
     const ex = createCriblApiExecutor({ ...baseDeps, getCriblApiBase: () => '', callCriblApi: callCribl })
     const out = await ex.execute({
       ...ctx,
@@ -82,7 +83,7 @@ describe('createCriblApiExecutor', () => {
 
   it('calls the API and assigns JSON into the kernel', async () => {
     const emitIOPub = vi.fn()
-    const api = vi.fn<typeof callCriblApi>().mockImplementation(async (method, path) => {
+    const api = vi.fn<CriblApiExecutorDeps['callCriblApi']>().mockImplementation(async (method, path) => {
       expect(method).toBe('GET')
       expect(path).toBe('/m/jobs')
       return { status: 200, ok: true, text: '{"items":1}', jsonValue: { items: 1 } }
@@ -105,12 +106,12 @@ describe('createCriblApiExecutor', () => {
   })
 
   it('treats HTTP 4xx as error and does not finish the cell as ok', async () => {
-    const api = vi.fn<typeof callCriblApi>().mockResolvedValue({
+    const api = vi.fn<CriblApiExecutorDeps['callCriblApi']>().mockResolvedValue({
       status: 400,
       ok: false,
       text: 'bad',
       jsonValue: null,
-    } as Awaited<ReturnType<typeof callCriblApi>>)
+    } satisfies CriblApiHttpResult)
     const ex = createCriblApiExecutor({ ...baseDeps, callCriblApi: api })
     const r = await ex.execute({
       ...ctx,
@@ -123,12 +124,12 @@ describe('createCriblApiExecutor', () => {
   it('completes ok with stderr when ignoreFailure=true on HTTP error', async () => {
     const emitIOPub = vi.fn()
     const dispatchNotebook = vi.fn()
-    const api = vi.fn<typeof callCriblApi>().mockResolvedValue({
+    const api = vi.fn<CriblApiExecutorDeps['callCriblApi']>().mockResolvedValue({
       status: 500,
       ok: false,
       text: '{"status":"error","message":"Entity missing"}',
       jsonValue: { status: 'error', message: 'Entity missing' },
-    } as Awaited<ReturnType<typeof callCriblApi>>)
+    } satisfies CriblApiHttpResult)
     const execute = vi.fn().mockResolvedValue({ outputs: [] })
     const ex = createCriblApiExecutor({ ...baseDeps, callCriblApi: api })
     const r = await ex.execute({
@@ -150,7 +151,7 @@ describe('createCriblApiExecutor', () => {
     const emitIOPub = vi.fn()
     const ex = createCriblApiExecutor({
       ...baseDeps,
-      callCriblApi: vi.fn<typeof callCriblApi>().mockRejectedValue(new TypeError('Failed to fetch')),
+      callCriblApi: vi.fn<CriblApiExecutorDeps['callCriblApi']>().mockRejectedValue(new TypeError('Failed to fetch')),
     })
     const r = await ex.execute({
       ...ctx,

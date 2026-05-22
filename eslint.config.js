@@ -52,17 +52,27 @@ export default defineConfig([
         {
           patterns: [
             {
-              group: ['@app/*'],
-              message: 'Feature code should not import from app composition root.',
+              group: ['@app/styles/*'],
+              message: 'Import notebook style metadata via @app/providers (re-exported from ThemeProvider barrel).',
             },
             {
-              group: ['@platform/pyodide/types'],
+              group: ['@app/riptideAiCodeAdapter'],
+              message: 'Use AiCodeProvider / useAiCodeService — do not import the Riptide adapter directly from features.',
+            },
+            {
+              group: ['@platform/*'],
               message:
-                'Notebook/kernel DTOs live in @/domain/kernel and @/domain/criblSearchMime — use @ports/KernelPort for kernel-facing types.',
+                'Features should depend on ports/domain and composition-root providers — not platform I/O directly (see docs/ARCHITECTURE.md). Kernel DTOs belong in @/domain/kernel.',
             },
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['src/features/**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': 'off',
     },
   },
 ])

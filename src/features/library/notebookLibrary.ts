@@ -7,6 +7,7 @@ import {
   type Manifest,
   type ManifestItem,
 } from '@features/library/manifest'
+// eslint-disable-next-line no-restricted-imports -- library slice orchestrates raw KV paths (see docs/ARCHITECTURE.md)
 import {
   kvDeleteNotebookPayload,
   kvFetchManifest,

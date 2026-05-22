@@ -5,7 +5,7 @@ import {
   lineSkipsMagicScan,
   offsetAfterLineWithNewline,
   offsetOfLineStart,
-} from './magicCellLines'
+} from '@/domain/criblCellMagicSource'
 
 describe('lineSkipsMagicScan', () => {
   it('skips empty and whitespace-only lines', () => {

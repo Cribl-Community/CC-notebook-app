@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { LookupService } from '@ports/LookupService'
+import { describeFetchError } from '@platform/cribl/fetchFailure'
 import { CRIBL_LOOKUP_EXPORT_RESULT_KEY } from '@features/cribl-search/criblSearchLookupMagic'
 import {
   createCriblSearchLookupExecutor,
@@ -49,6 +50,7 @@ describe('createCriblSearchLookupExecutor', () => {
     const ex = createCriblSearchLookupExecutor({
       lookupService: makeLookupService(),
       criblApiBase: '',
+      describeFetchError,
     })
     const dispatch = vi.fn()
     const out = await ex.execute({
@@ -81,6 +83,7 @@ describe('createCriblSearchLookupExecutor', () => {
     const ex = createCriblSearchLookupExecutor({
       lookupService: makeLookupService({ saveLookupFromCsv: save }),
       criblApiBase: 'https://api.example/v1',
+      describeFetchError,
     })
     const out = await ex.execute({
       ...ctxBase,
@@ -104,6 +107,7 @@ describe('createCriblSearchLookupExecutor', () => {
     const ex = createCriblSearchLookupExecutor({
       lookupService: makeLookupService({ downloadLookupCsv: download }),
       criblApiBase: 'https://api.example/v1',
+      describeFetchError,
     })
     const out = await ex.execute({
       ...ctxBase,
@@ -124,6 +128,7 @@ describe('createCriblSearchLookupExecutor', () => {
     const ex = createCriblSearchLookupExecutor({
       lookupService: makeLookupService({ deleteLookup: del }),
       criblApiBase: 'https://api.example/v1',
+      describeFetchError,
     })
     const out = await ex.execute({
       ...ctxBase,

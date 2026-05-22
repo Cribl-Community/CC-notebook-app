@@ -1,4 +1,4 @@
-import { PYODIDE_RELEASE } from '@platform/pyodide/pyodideVersion'
+import { PYODIDE_RELEASE } from '@app/providers'
 
 /**
  * Probe URLs aligned with `config/proxies.yml` allowlists. Used on the Welcome
