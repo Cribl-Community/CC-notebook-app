@@ -7,31 +7,27 @@ import {
   type Manifest,
   type ManifestItem,
 } from '@features/library/manifest'
-// eslint-disable-next-line no-restricted-imports -- library slice orchestrates raw KV paths (see docs/ARCHITECTURE.md)
-import {
-  kvDeleteNotebookPayload,
-  kvFetchManifest,
-  kvFetchNotebookPayload,
-  kvStoreManifest,
-  kvStoreNotebookPayload,
-} from '@platform/adapters/notebookKv'
+import type { NotebookRepo } from '@ports/NotebookRepo'
 
 export type { Manifest, ManifestItem }
 
-export async function fetchManifest(): Promise<Manifest> {
-  return kvFetchManifest()
+export async function storeManifest(repo: NotebookRepo, m: Manifest): Promise<void> {
+  await repo.writeManifest(m)
 }
 
-export async function storeManifest(m: Manifest): Promise<void> {
-  await kvStoreManifest(m)
+export async function fetchNotebookPayload(
+  repo: NotebookRepo,
+  notebookId: string,
+): Promise<string | null> {
+  return repo.readPayload(notebookId)
 }
 
-export async function fetchNotebookPayload(notebookId: string): Promise<string | null> {
-  return kvFetchNotebookPayload(notebookId)
-}
-
-export async function storeNotebookPayload(notebookId: string, ipynbJson: string): Promise<void> {
-  await kvStoreNotebookPayload(notebookId, ipynbJson)
+export async function storeNotebookPayload(
+  repo: NotebookRepo,
+  notebookId: string,
+  ipynbJson: string,
+): Promise<void> {
+  await repo.writePayload(notebookId, ipynbJson)
 }
 
 export function stateToIpynbJson(state: NotebookState): string {
@@ -168,19 +164,21 @@ export function manifestTouchNotebook(manifest: Manifest, notebookId: string): M
 
 /** Full save: PUT payload then manifest with updated time. */
 export async function saveNotebookState(
+  repo: NotebookRepo,
   manifest: Manifest,
   notebookId: string,
   state: NotebookState,
 ): Promise<Manifest> {
   const json = stateToIpynbJson(state)
-  await storeNotebookPayload(notebookId, json)
+  await storeNotebookPayload(repo, notebookId, json)
   const touched = manifestTouchNotebook(manifest, notebookId)
-  await storeManifest(touched)
+  await storeManifest(repo, touched)
   return touched
 }
 
 /** Create new notebook: manifest entry + payload. */
 export async function createNotebookWithPayload(
+  repo: NotebookRepo,
   manifest: Manifest,
   parentId: string | null,
   state: NotebookState,
@@ -189,18 +187,19 @@ export async function createNotebookWithPayload(
   const reg = manifestRegisterNotebook(manifest, title, parentId)
   if ('error' in reg) return reg
   const json = stateToIpynbJson({ ...state, title })
-  await storeNotebookPayload(reg.id, json)
-  await storeManifest(reg.manifest)
+  await storeNotebookPayload(repo, reg.id, json)
+  await storeManifest(repo, reg.manifest)
   return { manifest: reg.manifest, id: reg.id }
 }
 
 /** Delete KV payloads for notebook ids. */
-export async function deleteNotebookPayloads(ids: string[]): Promise<void> {
-  await Promise.all(ids.map((id) => kvDeleteNotebookPayload(id)))
+export async function deleteNotebookPayloads(repo: NotebookRepo, ids: string[]): Promise<void> {
+  await Promise.all(ids.map((id) => repo.deletePayload(id)))
 }
 
 /** Rename in manifest and sync `metadata.title` in stored .ipynb for notebooks. */
 export async function renameEntryInKv(
+  repo: NotebookRepo,
   manifest: Manifest,
   itemId: string,
   newName: string,
@@ -209,7 +208,7 @@ export async function renameEntryInKv(
   if ('error' in r) return r
   const item = r.manifest.items.find((i) => i.id === itemId)
   if (item?.type === 'notebook') {
-    const raw = await fetchNotebookPayload(itemId)
+    const raw = await fetchNotebookPayload(repo, itemId)
     if (raw) {
       try {
         const doc = JSON.parse(raw) as Record<string, unknown>
@@ -218,12 +217,12 @@ export async function renameEntryInKv(
           md && typeof md === 'object' ? (md as Record<string, unknown>) : {}
         meta.title = item.name
         doc.metadata = meta
-        await storeNotebookPayload(itemId, JSON.stringify(doc))
+        await storeNotebookPayload(repo, itemId, JSON.stringify(doc))
       } catch {
         /* keep existing payload if invalid */
       }
     }
   }
-  await storeManifest(r.manifest)
+  await storeManifest(repo, r.manifest)
   return { manifest: r.manifest }
 }

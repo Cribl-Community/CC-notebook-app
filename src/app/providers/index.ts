@@ -7,6 +7,7 @@ export {
   useOptionalKernelFactory,
 } from './KernelProvider'
 export { LookupProvider, useLookupService } from './LookupProvider'
+export { NotebookRepoProvider, useNotebookRepo } from './NotebookRepoProvider'
 export { SearchProvider, useSearchService } from './SearchProvider'
 export { ThemeProvider, useTheme, type ThemeController } from './ThemeProvider'
 export type { AppStyleId, AppStyleInfo, CodeMirrorLuma } from '@app/styles/nbStyles'

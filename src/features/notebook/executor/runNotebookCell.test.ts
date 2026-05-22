@@ -1,15 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
-import type { PyodideKernel } from '@platform/pyodide/PyodideKernel'
-import type { IOPubMessage } from '@ports/KernelPort'
+import type { IOPubMessage, KernelPort } from '@ports/KernelPort'
 import type { NotebookAction } from '@features/notebook/model/types'
 
 function mockKernel(executeImpl: (
   code: string,
   onIOPub?: (msg: IOPubMessage) => void,
   executionCount?: number,
-) => Promise<unknown>): PyodideKernel {
-  return { execute: executeImpl } as unknown as PyodideKernel
+) => Promise<unknown>): KernelPort {
+  return { execute: executeImpl } as unknown as KernelPort
 }
 
 describe('runNotebookCellAfterReady', () => {

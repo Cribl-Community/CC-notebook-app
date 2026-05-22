@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { SearchService } from '@ports/SearchService'
-import { describeFetchError, isCorsOrNetworkFetchError } from '@platform/cribl/fetchFailure'
-import { stubEnglishToKqlLocalDev } from '@platform/cribl/aiTranslate'
+import { cellExecutorFetchHelpers } from '@platform/adapters/cellExecutorFetchHelpers'
 import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import { createCriblSearchExecutor } from './criblSearchExecutor'
 import type { CellId } from '@features/notebook/model/types'
@@ -12,6 +11,9 @@ import { parseCriblSearchMagic } from '@features/cribl-search/criblSearchMagic'
 import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
 import { runCriblSearchJinjaInKernel } from '@features/cribl-search/criblSearchJinjaRender'
 import { wantsCriblSearchJinjaTemplating } from '@features/cribl-search/criblSearchMagic'
+
+const { describeFetchError, isCorsOrNetworkFetchError, stubEnglishToKqlLocalDev } =
+  cellExecutorFetchHelpers
 
 const ctx = {
   cellId: 'c1' as CellId,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { CriblApiHttpResult, CriblApiExecutorDeps } from './criblApiExecutor'
-import { describeFetchError } from '@platform/cribl/fetchFailure'
+import { cellExecutorFetchHelpers } from '@platform/adapters/cellExecutorFetchHelpers'
 import {
   buildCriblApiJsonValueAssignmentCode,
   buildCriblApiNoneAssignmentCode,
@@ -16,6 +16,8 @@ import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchS
 import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
 import { createCriblApiExecutor } from './criblApiExecutor'
+
+const { describeFetchError } = cellExecutorFetchHelpers
 
 const ctx = {
   cellId: 'c1' as CellId,
