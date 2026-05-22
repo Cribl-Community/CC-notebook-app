@@ -11,6 +11,18 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.5',
+    date: '2026-05-21',
+    highlights: [
+      'Architecture: shared IOPub output folding and `%%cribl_*` magic line helpers moved to `domain/`; Pyodide imports the same folding module as the notebook reducer (no platform → feature import for that path).',
+      'Architecture: default `%%cribl_api` / `%%cribl_search` / lookup executors avoid direct `@platform/cribl/*` imports—production fetch helpers wire in from `executorRegistry` only.',
+      'Env: `EnvService` includes `staticAssetPrefix` for `public/` URLs; bundled Pyodide **`PYODIDE_RELEASE`** is re-exported from `@app/providers` so welcome code does not import `platform/pyodide` directly.',
+      'Riptide: adapter lives at `app/riptideAiCodeAdapter.ts`; service helpers take an explicit API base (composition root supplies it from env).',
+      'Notebook: AI “Suggest fix” uses `useAiCodeService`; ESLint nudges features away from `@platform/*` and stray `@app/*` (providers + documented exceptions remain).',
+      'Packaging: build 1.2.5 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.4',
     date: '2026-05-18',
     highlights: [
