@@ -6,7 +6,7 @@ import { CellOutput } from '@features/notebook/ui/CellOutput'
 import { createPythonCellExtensions } from '@ui/editor/pythonCodeMirror'
 import type { CompletionItem } from '@ports/KernelPort'
 import { DEFAULT_RIPTIDE_PROMPT_PREFIX, parseRiptidePromptFromCellSource } from '@features/ai-riptide/riptideService'
-import { codeCellCanToggleFold } from '@features/notebook/codeCellFold'
+import { DEFAULT_RUN_CONDITION, codeCellCanToggleFold } from '@features/notebook/codeCellFold'
 
 interface CodeCellProps {
   cell: CellData
@@ -22,6 +22,8 @@ interface CodeCellProps {
   onMoveDown?: () => void
   onClone?: () => void
   onSetCodeFolded: (folded: boolean) => void
+  onSetCellEnabled: (enabled: boolean) => void
+  onSetRunCondition: (runCondition: string) => void
   /** Namespace-aware completion from the active tab's Pyodide kernel (Tab). */
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
   /**
@@ -52,6 +54,8 @@ export function CodeCell({
   onMoveDown,
   onClone,
   onSetCodeFolded,
+  onSetCellEnabled,
+  onSetRunCondition,
   completeCode,
   onAiGenerateFromPrompt,
   aiGenerateBusy = false,
@@ -202,10 +206,11 @@ export function CodeCell({
   const canClearOutput = cell.outputs.length > 0 || cell.execution_count !== null
   const canFold = codeCellCanToggleFold(cell)
   const folded = cell.codeFolded === true
+  const cellEnabled = cell.enabled !== false
 
   return (
     <div
-      className={`nb-cell${isSelected ? ' nb-cell--selected' : ''}`}
+      className={`nb-cell${isSelected ? ' nb-cell--selected' : ''}${!cellEnabled ? ' nb-cell--disabled' : ''}`}
       onClick={onSelect}
     >
       <div className="nb-cell-gutter">
@@ -213,84 +218,150 @@ export function CodeCell({
       </div>
       <div className="nb-cell-body">
         <div className="nb-cell-toolbar">
-          <button
-            className="nb-btn nb-btn-run"
-            onClick={(e) => {
-              e.stopPropagation()
-              onRun()
-            }}
-            disabled={isBusy}
-            title="Run cell (Shift+Enter)"
-          >
-            {isBusy ? '◼' : '▶'}
-          </button>
-          <button
-            className="nb-btn nb-btn-move"
-            onClick={(e) => {
-              e.stopPropagation()
-              onMoveUp?.()
-            }}
-            disabled={!onMoveUp}
-            title="Move cell up"
-          >
-            ▲
-          </button>
-          <button
-            className="nb-btn nb-btn-move"
-            onClick={(e) => {
-              e.stopPropagation()
-              onMoveDown?.()
-            }}
-            disabled={!onMoveDown}
-            title="Move cell down"
-          >
-            ▼
-          </button>
-          <button
-            className="nb-btn nb-btn-clear-output"
-            onClick={(e) => {
-              e.stopPropagation()
-              onClearOutput()
-            }}
-            disabled={!canClearOutput || isRunning}
-            title="Clear cell output (available while queued; not while executing)"
-          >
-            ⌫
-          </button>
-          {onAiGenerateFromPrompt && (
+          <div className="nb-cell-toolbar-group">
+            <button
+              className="nb-btn nb-btn-run"
+              onClick={(e) => {
+                e.stopPropagation()
+                onRun()
+              }}
+              disabled={isBusy || !cellEnabled}
+              title={
+                !cellEnabled
+                  ? 'Cell is disabled — turn On in the toolbar to run'
+                  : 'Run cell (Shift+Enter)'
+              }
+            >
+              {isBusy ? '◼' : '▶'}
+            </button>
             <button
               type="button"
-              className={`nb-btn nb-btn-ai${aiPanelOpen ? ' nb-btn-ai--active' : ''}`}
-              onClick={handleAiToggle}
-              disabled={isBusy || aiGenerateBusy}
-              title="Show or hide Riptide prompt (inline, above the editor)"
-              aria-expanded={aiPanelOpen}
+              className={`nb-btn nb-btn-cell-enabled${cellEnabled ? ' nb-btn-cell-enabled--on' : ''}`}
+              aria-pressed={cellEnabled}
+              onClick={(e) => {
+                e.stopPropagation()
+                onSetCellEnabled(!cellEnabled)
+              }}
+              title={cellEnabled ? 'Cell is enabled (click to disable)' : 'Cell is disabled (click to enable)'}
             >
-              AI
+              {cellEnabled ? 'On' : 'Off'}
             </button>
-          )}
-          <button
-            type="button"
-            className="nb-btn nb-btn-clone"
-            onClick={(e) => {
-              e.stopPropagation()
-              onClone?.()
-            }}
-            disabled={!onClone}
-            title="Duplicate cell below"
-          >
-            ⧉ Clone
-          </button>
-          <button
-            className="nb-btn nb-btn-delete"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-            title="Delete cell"
-          >
-            ✕
-          </button>
+            <label className="nb-cell-condition-label">
+              <span className="nb-cell-condition-label-text">If</span>
+              <input
+                type="text"
+                className="nb-cell-condition-input"
+                value={cell.runCondition ?? ''}
+                placeholder={DEFAULT_RUN_CONDITION}
+                spellCheck={false}
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onChange={(e) => onSetRunCondition(e.target.value)}
+                title="Python expression — cell body runs only when this is true"
+                aria-label="Run condition (Python expression)"
+              />
+              {cell.conditionOutcome != null && (
+                <span
+                  className={`nb-cell-condition-badge nb-cell-condition-badge--${cell.conditionOutcome}`}
+                  title={
+                    cell.conditionOutcome === 'true'
+                      ? 'Last run: condition true (body ran)'
+                      : cell.conditionOutcome === 'false'
+                        ? 'Last run: condition false (body skipped)'
+                        : 'Last run: condition raised an error (body skipped)'
+                  }
+                >
+                  {cell.conditionOutcome === 'true' ? 'T' : cell.conditionOutcome === 'false' ? 'F' : 'E'}
+                </span>
+              )}
+            </label>
+            {canFold && (
+              <button
+                type="button"
+                className="nb-btn nb-btn-code-fold"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onSetCodeFolded(!folded)
+                }}
+                aria-expanded={!folded}
+                title={folded ? 'Show full code editor' : 'Collapse code to about ten lines'}
+              >
+                {folded ? 'Show' : 'Fold'}
+              </button>
+            )}
+          </div>
+          <div className="nb-cell-toolbar-spacer" aria-hidden />
+          <div className="nb-cell-toolbar-group">
+            <button
+              className="nb-btn nb-btn-move"
+              onClick={(e) => {
+                e.stopPropagation()
+                onMoveUp?.()
+              }}
+              disabled={!onMoveUp}
+              title="Move cell up"
+            >
+              ▲
+            </button>
+            <button
+              className="nb-btn nb-btn-move"
+              onClick={(e) => {
+                e.stopPropagation()
+                onMoveDown?.()
+              }}
+              disabled={!onMoveDown}
+              title="Move cell down"
+            >
+              ▼
+            </button>
+            <button
+              className="nb-btn nb-btn-clear-output"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClearOutput()
+              }}
+              disabled={!canClearOutput || isRunning}
+              title="Clear cell output (available while queued; not while executing)"
+            >
+              ⌫
+            </button>
+            {onAiGenerateFromPrompt && (
+              <button
+                type="button"
+                className={`nb-btn nb-btn-ai${aiPanelOpen ? ' nb-btn-ai--active' : ''}`}
+                onClick={handleAiToggle}
+                disabled={isBusy || aiGenerateBusy}
+                title="Show or hide Riptide prompt (inline, above the editor)"
+                aria-expanded={aiPanelOpen}
+              >
+                AI
+              </button>
+            )}
+            <button
+              type="button"
+              className="nb-btn nb-btn-clone"
+              onClick={(e) => {
+                e.stopPropagation()
+                onClone?.()
+              }}
+              disabled={!onClone}
+              title="Duplicate cell below"
+            >
+              ⧉ Clone
+            </button>
+          </div>
+          <div className="nb-cell-toolbar-group nb-cell-toolbar-group--end">
+            <button
+              className="nb-btn nb-btn-delete"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete()
+              }}
+              title="Delete cell"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         {onAiGenerateFromPrompt && aiPanelOpen && (
           <div
@@ -354,26 +425,6 @@ export function CodeCell({
               use {'{{ name }}'} for notebook variables and {'{{ x | describe }}'} / {'{{ x | type_name }}'} for structured
               values from the kernel.
             </p>
-          </div>
-        )}
-        {canFold && (
-          <div
-            className="nb-cell-code-fold-row"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="nb-btn nb-btn-code-fold"
-              onClick={(e) => {
-                e.stopPropagation()
-                onSetCodeFolded(!folded)
-              }}
-              aria-expanded={!folded}
-              title={folded ? 'Show full code editor' : 'Collapse code to about ten lines'}
-            >
-              {folded ? 'Show code' : 'Collapse code'}
-            </button>
           </div>
         )}
         <div

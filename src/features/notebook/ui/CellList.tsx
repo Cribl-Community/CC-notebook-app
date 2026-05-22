@@ -44,6 +44,10 @@ export function CellList({
               onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
               onClone={() => dispatch({ type: 'DUPLICATE_CELL', id: cell.id })}
               onSetCodeFolded={(folded) => dispatch({ type: 'SET_CODE_FOLDED', id: cell.id, folded })}
+              onSetCellEnabled={(enabled) => dispatch({ type: 'SET_CELL_ENABLED', id: cell.id, enabled })}
+              onSetRunCondition={(runCondition) =>
+                dispatch({ type: 'SET_RUN_CONDITION', id: cell.id, runCondition })
+              }
               onAiGenerateFromPrompt={
                 onAiGenerateFromPrompt ? (p) => onAiGenerateFromPrompt(cell.id, p) : undefined
               }

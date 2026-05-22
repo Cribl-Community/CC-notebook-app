@@ -837,6 +837,8 @@ body {
 
 .nb-cell-toolbar {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
   padding: 4px 6px;
   border-bottom: 1px solid var(--nb-border);
@@ -845,12 +847,36 @@ body {
   transition: opacity 0.1s;
 }
 
+.nb-cell-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.nb-cell-toolbar-spacer {
+  flex: 1;
+  min-width: 8px;
+}
+
+.nb-cell-toolbar-group--end {
+  margin-left: auto;
+}
+
 .nb-cell:hover .nb-cell-toolbar,
 .nb-cell--selected .nb-cell-toolbar {
   opacity: 1;
 }
 
-.nb-btn-delete {
+.nb-cell--disabled {
+  opacity: 0.78;
+}
+
+.nb-cell--disabled.nb-cell--selected {
+  opacity: 0.88;
+}
+
+.nb-cell-toolbar > .nb-btn-delete {
   margin-left: auto;
 }
 
@@ -903,18 +929,6 @@ body {
   background: linear-gradient(to bottom, transparent, var(--nb-bg-cell));
 }
 
-.nb-cell-code-fold-row {
-  display: flex;
-  justify-content: flex-end;
-  padding: 2px 6px 0;
-  border-bottom: 1px solid transparent;
-}
-
-.nb-cell:hover .nb-cell-code-fold-row,
-.nb-cell--selected .nb-cell-code-fold-row {
-  border-bottom-color: var(--nb-border);
-}
-
 .nb-btn-code-fold {
   font-size: 11px;
   padding: 2px 8px;
@@ -924,6 +938,69 @@ body {
 .nb-cell:hover .nb-btn-code-fold,
 .nb-cell--selected .nb-btn-code-fold {
   opacity: 1;
+}
+
+.nb-btn-cell-enabled {
+  font-size: 11px;
+  padding: 2px 8px;
+  min-width: 2.25rem;
+}
+
+.nb-btn-cell-enabled--on {
+  font-weight: 600;
+}
+
+.nb-cell-condition-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1 1 120px;
+  min-width: 0;
+  max-width: min(100%, 360px);
+}
+
+.nb-cell-condition-label-text {
+  font-size: 11px;
+  color: var(--nb-text-muted, #888);
+  flex-shrink: 0;
+}
+
+.nb-cell-condition-input {
+  flex: 1;
+  min-width: 3rem;
+  max-width: 14rem;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.3;
+  padding: 2px 6px;
+  border: 1px solid var(--nb-border);
+  border-radius: 3px;
+  background: var(--nb-bg);
+  color: var(--nb-text);
+}
+
+.nb-cell-condition-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 1px 5px;
+  line-height: 1.2;
+}
+
+.nb-cell-condition-badge--true {
+  background: color-mix(in srgb, var(--nb-success, #2d6) 35%, transparent);
+  color: var(--nb-text);
+}
+
+.nb-cell-condition-badge--false {
+  background: color-mix(in srgb, var(--nb-text-muted, #888) 40%, transparent);
+  color: var(--nb-text);
+}
+
+.nb-cell-condition-badge--error {
+  background: color-mix(in srgb, var(--nb-error, #c33) 35%, transparent);
+  color: var(--nb-text);
 }
 
 .nb-cell-editor-cm .cm-editor {

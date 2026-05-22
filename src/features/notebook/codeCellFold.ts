@@ -4,6 +4,17 @@ import { isRiptidePromptCell } from '@features/ai-riptide/riptideService'
 /** nbformat `cell.metadata` namespace for app-specific UI state. */
 export const IPYNB_NOTEBOOK_APP_KEY = 'notebook_app' as const
 export const IPYNB_CODE_FOLDED_KEY = 'code_folded' as const
+/** Persisted only when false; absent means the cell is enabled. */
+export const IPYNB_CELL_ENABLED_KEY = 'cell_enabled' as const
+export const IPYNB_RUN_CONDITION_KEY = 'run_condition' as const
+
+/** Default run-condition expression (Python). */
+export const DEFAULT_RUN_CONDITION = 'True' as const
+
+export function normalizeRunCondition(raw: string | undefined): string {
+  const t = (raw ?? '').trim()
+  return t.length > 0 ? t : DEFAULT_RUN_CONDITION
+}
 
 /** Code cells with more than this many lines may be folded by default (example notebooks). */
 export const LONG_CODE_FOLD_LINE_THRESHOLD = 10
@@ -17,23 +28,47 @@ export function isLongCodeCellForDefaultFold(source: string): boolean {
   return sourceLineCount(source) > LONG_CODE_FOLD_LINE_THRESHOLD
 }
 
-export function parseCodeFoldedFromCellMetadata(metadata: unknown): boolean | undefined {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return undefined
-  const na = (metadata as Record<string, unknown>)[IPYNB_NOTEBOOK_APP_KEY]
-  if (!na || typeof na !== 'object' || Array.isArray(na)) return undefined
-  const v = (na as Record<string, unknown>)[IPYNB_CODE_FOLDED_KEY]
-  if (typeof v === 'boolean') return v
-  return undefined
+export type ParsedCodeCellNotebookApp = {
+  codeFolded?: boolean
+  /** Only read when explicitly false in metadata. */
+  cellDisabled?: boolean
+  runCondition?: string
 }
 
-/** Serialised under `cell.metadata.notebook_app.code_folded`. Omits the block when unset. */
-export function codeCellMetadataForIpynb(codeFolded: boolean | undefined): Record<string, unknown> {
-  if (codeFolded === undefined) return {}
-  return {
-    [IPYNB_NOTEBOOK_APP_KEY]: {
-      [IPYNB_CODE_FOLDED_KEY]: codeFolded,
-    },
+export function parseCodeCellNotebookAppFields(metadata: unknown): ParsedCodeCellNotebookApp {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {}
+  const na = (metadata as Record<string, unknown>)[IPYNB_NOTEBOOK_APP_KEY]
+  if (!na || typeof na !== 'object' || Array.isArray(na)) return {}
+  const block = na as Record<string, unknown>
+  const out: ParsedCodeCellNotebookApp = {}
+  const folded = block[IPYNB_CODE_FOLDED_KEY]
+  if (typeof folded === 'boolean') out.codeFolded = folded
+  const enabled = block[IPYNB_CELL_ENABLED_KEY]
+  if (enabled === false) out.cellDisabled = true
+  const rc = block[IPYNB_RUN_CONDITION_KEY]
+  if (typeof rc === 'string') out.runCondition = rc
+  return out
+}
+
+export function parseCodeFoldedFromCellMetadata(metadata: unknown): boolean | undefined {
+  return parseCodeCellNotebookAppFields(metadata).codeFolded
+}
+
+/** Builds `cell.metadata` for a code cell (nbformat). Omits keys when values match defaults. */
+export function buildCodeCellNotebookAppMetadata(cell: CodeCell): Record<string, unknown> {
+  const inner: Record<string, unknown> = {}
+  if (cell.codeFolded !== undefined) {
+    inner[IPYNB_CODE_FOLDED_KEY] = cell.codeFolded
   }
+  if (cell.enabled === false) {
+    inner[IPYNB_CELL_ENABLED_KEY] = false
+  }
+  const rc = normalizeRunCondition(cell.runCondition)
+  if (rc !== DEFAULT_RUN_CONDITION) {
+    inner[IPYNB_RUN_CONDITION_KEY] = rc
+  }
+  if (Object.keys(inner).length === 0) return {}
+  return { [IPYNB_NOTEBOOK_APP_KEY]: inner }
 }
 
 /**
