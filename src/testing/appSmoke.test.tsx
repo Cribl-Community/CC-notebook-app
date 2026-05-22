@@ -8,15 +8,15 @@ import { render, waitFor } from '@testing-library/react'
  * (KV manifest + Examples manifest) so the test is deterministic.
  */
 
-vi.mock('@features/library/notebookLibrary', async () => {
-  const actual = await vi.importActual<typeof import('@features/library/notebookLibrary')>(
-    '@features/library/notebookLibrary',
-  )
-  return {
-    ...actual,
-    fetchManifest: vi.fn().mockResolvedValue({ version: 1, items: [] }),
-  }
-})
+vi.mock('@platform/adapters/notebookRepoAdapter', () => ({
+  kvNotebookRepo: {
+    readManifest: vi.fn().mockResolvedValue({ version: 1, items: [] }),
+    writeManifest: vi.fn(),
+    readPayload: vi.fn(),
+    writePayload: vi.fn(),
+    deletePayload: vi.fn(),
+  },
+}))
 
 vi.mock('@platform/pyodide/PyodideKernelAdapter', () => ({
   pyodideKernelFactory: () => ({

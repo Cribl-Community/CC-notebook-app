@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { listMoveTargets } from '@features/library/manifest'
 import type { Manifest } from '@features/library/manifest'
-import { fetchManifest } from '@features/library/notebookLibrary'
+import { useNotebookRepo } from '@app/providers'
 
 export type MoveDestination = { id: string | null; label: string }
 
@@ -31,6 +31,7 @@ export interface NotebookLibraryController {
 }
 
 export function useNotebookLibrary(): NotebookLibraryController {
+  const repo = useNotebookRepo()
   const [manifest, setManifest] = useState<Manifest | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -42,14 +43,14 @@ export function useNotebookLibrary(): NotebookLibraryController {
     setLoading(true)
     setError(null)
     try {
-      const m = await fetchManifest()
+      const m = await repo.readManifest()
       setManifest(m)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load notebooks')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [repo])
 
   useEffect(() => {
     const id = window.setTimeout(() => {

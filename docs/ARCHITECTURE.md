@@ -110,6 +110,9 @@ flowchart LR
   - `SearchProvider` / `useSearchService` — injects `SearchService` for
     `%%cribl_search`. Production: `criblSearchService` in
     `platform/adapters/searchServiceAdapter.ts`.
+  - `NotebookRepoProvider` / `useNotebookRepo` — injects `NotebookRepo` for
+    library manifest + notebook payload I/O. Production: `kvNotebookRepo` in
+    `platform/adapters/notebookRepoAdapter.ts`.
   - `KernelProvider` / `useKernelFactory` / `useOptionalKernelFactory` —
     injects `KernelFactory` (Pyodide). Notebook hooks fall back to an
     explicit factory argument in unit tests.
@@ -157,7 +160,8 @@ flowchart LR
     `CellView`, `NotebookTabs`, `NotebookDialog`, …
 - `library/` — saved notebooks in KV.
   - `manifest.ts` — pure manifest model + validators.
-  - `notebookLibrary.ts` — KV-backed repository.
+  - `notebookLibrary.ts` — manifest + `.ipynb` orchestration; async persistence
+    helpers take `NotebookRepo` (from `useNotebookRepo`).
   - `hooks/useNotebookLibrary.ts` — manifest state + auto-load effect
     + selections + `saveBusy` + `moveDestinations`.
   - `ui/NotebookSidebar.tsx` — tree view.
@@ -277,26 +281,21 @@ could be reused outside this feature pie should land here.
 
 ### Known layering drift (intentional / in progress)
 
-- Some feature modules still import `@platform/*` (for example `notebookLibrary.ts`
-  → `notebookKv`, and executor unit tests → fetch helpers). Prefer `ports/` +
-  `domain/` + `@app/providers` re-exports when adding new call sites; ESLint warns
-  on `@platform/*` under `src/features/**` (tests are exempt). The bundled Pyodide
-  release string is re-exported from `@app/providers` so welcome code need not
-  import `platform/pyodide` directly.
 - `features/notebook/executor/executorRegistry.ts` is the **composition point** that
   imports `@platform/adapters/cellExecutorFetchHelpers` so individual executors stay
   free of direct `@platform/cribl/*` imports.
-- `features/library/notebookLibrary.ts` imports `@platform/adapters/notebookKv`
-  for raw KV I/O while keeping manifest mutation + `.ipynb` orchestration in
-  the library slice.
+- Library persistence goes through **`NotebookRepo`** (`useNotebookRepo` /
+  `NotebookRepoProvider`); `features/library/notebookLibrary.ts` takes a `NotebookRepo`
+  argument for all KV-backed operations and no longer imports `@platform/*`.
 
 ### Notebook hooks and `app/providers`
 
 `NotebookPage`, `useCellRunner`, `useTabNotebookRuntime`, and related UI import
-`@app/providers` to read port implementations from React context. ESLint allows
-`@app/providers` from features; it still warns on other `@app/*` paths (for example
-`@app/styles/*` — use the theme re-exports on the providers barrel — and
-`@app/riptideAiCodeAdapter`, which is only for `AiCodeProvider` wiring).
+`@app/providers` to read port implementations from React context. ESLint **errors** on
+`@platform/*` under `src/features/**` (tests are exempt). `@app/providers` is allowed
+from features; other `@app/*` paths stay restricted (for example `@app/styles/*` — use
+the theme re-exports on the providers barrel — and `@app/riptideAiCodeAdapter`, which
+is only for `AiCodeProvider` wiring).
 
 ## Execution pipeline (mental model)
 

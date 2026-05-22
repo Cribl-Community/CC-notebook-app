@@ -1,27 +1,36 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import type { ReactNode } from 'react'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import type { Manifest } from '@features/library/manifest'
+import type { NotebookRepo } from '@ports/NotebookRepo'
+import { NotebookRepoProvider } from '@app/providers'
 import { useNotebookLibrary } from './useNotebookLibrary'
 
-vi.mock('@features/library/notebookLibrary', () => ({
-  fetchManifest: vi.fn(),
-}))
+function wrapperFor(repo: NotebookRepo) {
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <NotebookRepoProvider value={repo}>{children}</NotebookRepoProvider>
+  }
+}
 
-import { fetchManifest } from '@features/library/notebookLibrary'
-
-const fetchManifestMock = vi.mocked(fetchManifest)
+function emptyRepo(readManifest: NotebookRepo['readManifest']): NotebookRepo {
+  return {
+    readManifest,
+    writeManifest: vi.fn(async () => {}),
+    readPayload: vi.fn(async () => null),
+    writePayload: vi.fn(async () => {}),
+    deletePayload: vi.fn(async () => {}),
+  }
+}
 
 describe('useNotebookLibrary', () => {
-  beforeEach(() => {
-    fetchManifestMock.mockReset()
-  })
-
   afterEach(() => {
-    fetchManifestMock.mockReset()
+    vi.clearAllMocks()
   })
 
   it('auto-reloads on mount and exposes manifest', async () => {
-    fetchManifestMock.mockResolvedValue({ version: 1, items: [] })
-    const { result } = renderHook(() => useNotebookLibrary())
+    const readManifest = vi.fn(async (): Promise<Manifest> => ({ version: 1, items: [] }))
+    const repo = emptyRepo(readManifest as NotebookRepo['readManifest'])
+    const { result } = renderHook(() => useNotebookLibrary(), { wrapper: wrapperFor(repo) })
 
     expect(result.current.loading).toBe(true)
     await waitFor(() => expect(result.current.loading).toBe(false))
@@ -30,8 +39,11 @@ describe('useNotebookLibrary', () => {
   })
 
   it('captures reload errors into the error field', async () => {
-    fetchManifestMock.mockRejectedValueOnce(new Error('boom'))
-    const { result } = renderHook(() => useNotebookLibrary())
+    const readManifest = vi.fn(async () => {
+      throw new Error('boom')
+    })
+    const repo = emptyRepo(readManifest as NotebookRepo['readManifest'])
+    const { result } = renderHook(() => useNotebookLibrary(), { wrapper: wrapperFor(repo) })
 
     await waitFor(() => expect(result.current.loading).toBe(false))
     expect(result.current.error).toBe('boom')
@@ -39,14 +51,17 @@ describe('useNotebookLibrary', () => {
   })
 
   it('moveDestinations is empty when nothing is moving', async () => {
-    fetchManifestMock.mockResolvedValue({
-      version: 1,
-      items: [
-        { id: 'f1', type: 'folder', parentId: null, name: 'Folder', updatedAt: '' },
-        { id: 'n1', type: 'notebook', parentId: null, name: 'N', updatedAt: '' },
-      ],
-    })
-    const { result } = renderHook(() => useNotebookLibrary())
+    const readManifest = vi.fn(
+      async (): Promise<Manifest> => ({
+        version: 1,
+        items: [
+          { id: 'f1', type: 'folder', parentId: null, name: 'Folder', updatedAt: '' },
+          { id: 'n1', type: 'notebook', parentId: null, name: 'N', updatedAt: '' },
+        ],
+      }),
+    )
+    const repo = emptyRepo(readManifest as NotebookRepo['readManifest'])
+    const { result } = renderHook(() => useNotebookLibrary(), { wrapper: wrapperFor(repo) })
     await waitFor(() => expect(result.current.manifest).not.toBeNull())
 
     expect(result.current.moveDestinations).toEqual([])

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { LookupService } from '@ports/LookupService'
-import { describeFetchError } from '@platform/cribl/fetchFailure'
+import { cellExecutorFetchHelpers } from '@platform/adapters/cellExecutorFetchHelpers'
 import { CRIBL_LOOKUP_EXPORT_RESULT_KEY } from '@features/cribl-search/criblSearchLookupMagic'
 import {
   createCriblSearchLookupExecutor,
@@ -8,6 +8,8 @@ import {
 } from '@features/notebook/executor/criblSearchLookupExecutor'
 import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
+
+const { describeFetchError } = cellExecutorFetchHelpers
 
 const ctxBase = {
   cellId: 'c1' as CellId,

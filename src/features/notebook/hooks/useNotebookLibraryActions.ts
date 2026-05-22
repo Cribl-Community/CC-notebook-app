@@ -16,7 +16,7 @@ import {
   storeManifest,
 } from '@features/library/notebookLibrary'
 import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
-import { useEnv } from '@app/providers'
+import { useEnv, useNotebookRepo } from '@app/providers'
 import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
 import type { NotebookLibraryController } from '@features/library/hooks/useNotebookLibrary'
@@ -59,6 +59,7 @@ function closeDeletedTabs(
 export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
   const { workspace, runtime, library, showAlert, showConfirm, showPrompt } = args
   const { staticAssetPrefix } = useEnv()
+  const repo = useNotebookRepo()
   const {
     dispatch,
     workspaceRef,
@@ -89,10 +90,10 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
       setSaveBusy(true)
       try {
         if (tab0.kvNotebookId) {
-          const next = await saveNotebookState(manifest, tab0.kvNotebookId, tab0.notebook)
+          const next = await saveNotebookState(repo, manifest, tab0.kvNotebookId, tab0.notebook)
           setManifest(next)
         } else {
-          const result = await createNotebookWithPayload(manifest, selectedParentId, tab0.notebook)
+          const result = await createNotebookWithPayload(repo, manifest, selectedParentId, tab0.notebook)
           if ('error' in result) {
             showAlert(result.error)
             return
@@ -119,14 +120,14 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         setSaveBusy(false)
       }
     })()
-  }, [activeTabIdRef, dispatch, loadLibrary, manifest, selectedParentId, setManifest, setSaveBusy, showAlert, workspaceRef])
+  }, [activeTabIdRef, dispatch, loadLibrary, manifest, repo, selectedParentId, setManifest, setSaveBusy, showAlert, workspaceRef])
 
   const handleOpenNotebook = useCallback(
     (id: string) => {
       const tab = createEmptyTab()
       dispatch({ type: 'ADD_TAB', tab })
       void (async () => {
-        const raw = await fetchNotebookPayload(id)
+        const raw = await fetchNotebookPayload(repo, id)
         if (!raw) {
           showAlert('Notebook not found in storage.')
           void loadLibrary()
@@ -147,7 +148,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         }
       })()
     },
-    [dispatch, loadLibrary, showAlert],
+    [dispatch, loadLibrary, repo, showAlert],
   )
 
   const handleNewFolder = useCallback(
@@ -162,7 +163,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
           return
         }
         try {
-          await storeManifest(result.manifest)
+          await storeManifest(repo, result.manifest)
           setManifest(result.manifest)
           await loadLibrary()
         } catch (e) {
@@ -170,7 +171,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         }
       })()
     },
-    [loadLibrary, manifest, setManifest, showAlert, showPrompt],
+    [loadLibrary, manifest, repo, setManifest, showAlert, showPrompt],
   )
 
   const handleRename = useCallback(
@@ -180,7 +181,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         const name = await showPrompt('Rename', 'New name', currentName)
         if (name === null) return
         try {
-          const result = await renameEntryInKv(manifest, id, name)
+          const result = await renameEntryInKv(repo, manifest, id, name)
           if ('error' in result) {
             showAlert(result.error)
             return
@@ -193,7 +194,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         }
       })()
     },
-    [dispatchNotebookForTab, loadLibrary, manifest, setManifest, showAlert, showPrompt, workspaceRef],
+    [dispatchNotebookForTab, loadLibrary, manifest, repo, setManifest, showAlert, showPrompt, workspaceRef],
   )
 
   const handleDelete = useCallback(
@@ -209,8 +210,8 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
               showAlert(result.error)
               return
             }
-            await deleteNotebookPayloads(result.notebookIdsToDelete)
-            await storeManifest(result.manifest)
+            await deleteNotebookPayloads(repo, result.notebookIdsToDelete)
+            await storeManifest(repo, result.manifest)
             setManifest(result.manifest)
             closeDeletedTabs(dispatch, workspaceRef, new Set(result.notebookIdsToDelete))
             await loadLibrary()
@@ -220,7 +221,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         })()
       })
     },
-    [dispatch, loadLibrary, manifest, setManifest, showAlert, showConfirm, workspaceRef],
+    [dispatch, loadLibrary, manifest, repo, setManifest, showAlert, showConfirm, workspaceRef],
   )
 
   const handleConfirmMove = useCallback(
@@ -233,7 +234,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
             showAlert(result.error)
             return
           }
-          await storeManifest(result.manifest)
+          await storeManifest(repo, result.manifest)
           setManifest(result.manifest)
           setMovingId(null)
           await loadLibrary()
@@ -242,7 +243,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         }
       })()
     },
-    [loadLibrary, manifest, setManifest, setMovingId, showAlert],
+    [loadLibrary, manifest, repo, setManifest, setMovingId, showAlert],
   )
 
   const handleImportFile = useCallback(

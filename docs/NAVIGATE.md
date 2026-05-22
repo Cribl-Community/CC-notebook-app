@@ -4,7 +4,7 @@ Task-oriented map for humans. For layering rules, port tables, and recipes in de
 
 ## Five-minute orientation
 
-1. **Composition root:** [`src/App.tsx`](../src/App.tsx) nests providers (env, theme, AI, dialogs, search, kernel) then mounts [`NotebookPage`](../src/features/notebook/ui/NotebookPage.tsx).
+1. **Composition root:** [`src/App.tsx`](../src/App.tsx) nests providers (env, theme, AI, dialogs, search, lookup, notebook repo, kernel) then mounts [`NotebookPage`](../src/features/notebook/ui/NotebookPage.tsx).
 2. **Main page:** `NotebookPage` composes toolbar, tabs, cells, and wires hooks for workspace + runtime + cell runs.
 3. **State:** Tab workspace and notebook content are driven by reducers under [`src/features/notebook/reducer/`](../src/features/notebook/reducer/).
 4. **Execution:** [`useCellRunner`](../src/features/notebook/hooks/useCellRunner.ts) queues work per tab; [`runNotebookCell`](../src/features/notebook/executor/runNotebookCell.ts) picks an executor from [`executorRegistry.ts`](../src/features/notebook/executor/executorRegistry.ts) (order: `%%cribl_api` → `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup` / `%%cribl_delete_search_lookup` → `%%cribl_search` → Python).
@@ -62,7 +62,7 @@ flowchart TB
 | --- | --- |
 | Change how **Run** behaves or add a cell type | `src/features/notebook/executor/` (`cellExecutor.ts`, `executorRegistry.ts`, `runNotebookCell.ts`), tests alongside |
 | Change **Pyodide** loading, worker, or packages | `src/platform/pyodide/`, [PYODIDE_CUSTOMIZATIONS.md](./PYODIDE_CUSTOMIZATIONS.md) |
-| Change **save/load** or library tree | `src/features/library/`, `src/platform/adapters/notebookKv.ts`, `src/ports/NotebookRepo.ts` |
+| Change **save/load** or library tree | `src/features/library/`, `src/ports/NotebookRepo.ts`, `src/platform/adapters/notebookRepoAdapter.ts` / `notebookKv.ts` |
 | Add a new **backend or test double** behind an interface | New or existing file in `src/ports/`, adapter in `src/platform/adapters/`, wire in `src/app/providers/` |
 | Change **Search** jobs or KQL UX | `src/features/cribl-search/`, `src/ports/SearchService.ts`, `src/platform/adapters/searchServiceAdapter.ts` |
 | Change **welcome / examples** list | `src/features/welcome/`, `src/features/examples/` |
