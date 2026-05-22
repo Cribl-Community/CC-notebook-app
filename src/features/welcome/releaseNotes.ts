@@ -11,6 +11,16 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.6',
+    date: '2026-05-23',
+    highlights: [
+      'Notebook: code cell toolbar — **On/Off** (skip run; greyed when off), **If** run-condition (Python expression; **T** / **F** / **E** badge after run; errors skip the body), fold/show in the same row, and reorganized actions.',
+      'Notebook: `cell.metadata.notebook_app` persists `cell_enabled` (when false) and `run_condition` (when not default `True`) in `.ipynb`; condition is evaluated on the kernel before the cell body.',
+      'Examples: **00 Getting Started Tour** demonstrates disabled and conditional cells; **Visualisations** includes an optional saved-disabled template cell.',
+      'Packaging: build 1.2.6 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.5',
     date: '2026-05-21',
     highlights: [

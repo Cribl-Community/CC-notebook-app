@@ -6,6 +6,9 @@ export type CellId = string
 
 export type ExecutionState = 'idle' | 'pending' | 'running'
 
+/** Result of evaluating `runCondition` after a run attempt (not serialised). */
+export type CellConditionOutcome = 'true' | 'false' | 'error'
+
 export interface CodeCell {
   id: CellId
   cell_type: 'code'
@@ -13,6 +16,23 @@ export interface CodeCell {
   outputs: OutputRecord[]
   execution_count: number | null
   execution_state: ExecutionState
+  /**
+   * When false, the cell is greyed out and not executed (Run All / Run cell).
+   * Serialised as `cell.metadata.notebook_app.cell_enabled` only when false.
+   * Absent or true means enabled.
+   */
+  enabled?: boolean
+  /**
+   * Single-line Python expression; body runs only when this evaluates truthy.
+   * Default `True`. Serialised under `cell.metadata.notebook_app.run_condition`
+   * when different from the default.
+   */
+  runCondition?: string
+  /**
+   * Last condition evaluation for UI (badge). Cleared when `source` or
+   * `runCondition` changes.
+   */
+  conditionOutcome?: CellConditionOutcome | null
   /**
    * Set to true by a `clear_output { wait: true }` IOPub message; consumed on
    * the next non-status message when the output area is actually cleared.
@@ -77,6 +97,11 @@ export type CellStructureAction =
   | { type: 'MOVE_CELL'; id: CellId; direction: 'up' | 'down' }
   | { type: 'UPDATE_SOURCE'; id: CellId; source: string }
   | { type: 'SET_CODE_FOLDED'; id: CellId; folded: boolean }
+  | { type: 'SET_CELL_ENABLED'; id: CellId; enabled: boolean }
+  | { type: 'SET_RUN_CONDITION'; id: CellId; runCondition: string }
+  | { type: 'SET_CONDITION_OUTCOME'; id: CellId; outcome: CellConditionOutcome | null }
+  /** Return a pending code cell to idle without executing (condition false/error). */
+  | { type: 'SKIP_CELL_TO_IDLE'; id: CellId }
   | { type: 'SELECT_CELL'; id: CellId }
   | { type: 'TOGGLE_MARKDOWN_EDIT'; id: CellId }
 

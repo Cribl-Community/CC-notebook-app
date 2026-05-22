@@ -376,4 +376,31 @@ describe('serializeNotebookToIpynbJson round-trip', () => {
     const c = cells[0]
     expect(c?.cell_type === 'code' && c.codeFolded).toBe(true)
   })
+
+  it('preserves cell_enabled and run_condition in cell metadata round trip', () => {
+    const state: NotebookState = {
+      title: 'Meta',
+      cells: [
+        {
+          id: 'c1',
+          cell_type: 'code',
+          source: 'print(1)',
+          outputs: [],
+          execution_count: null,
+          execution_state: 'idle',
+          enabled: false,
+          runCondition: '1 > 2',
+        },
+      ],
+      selectedId: 'c1',
+      executionCounter: 0,
+      kernelStatus: 'ready',
+      kernelInit: readyKernelInit,
+    }
+    const json = serializeNotebookToIpynbJson(state)
+    const { cells } = parseIpynbJson(json)
+    const c = cells[0]
+    expect(c?.cell_type === 'code' && c.enabled === false).toBe(true)
+    expect(c?.cell_type === 'code' && c.runCondition).toBe('1 > 2')
+  })
 })

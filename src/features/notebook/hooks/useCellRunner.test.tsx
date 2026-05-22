@@ -18,7 +18,20 @@ vi.mock('@features/notebook/executor/runNotebookCell', () => ({
 function makeKernel(): KernelPort {
   return {
     ready: Promise.resolve(),
-    execute: vi.fn().mockResolvedValue({ outputs: [] }),
+    execute: vi.fn().mockImplementation(async (code: string) => {
+      if (code.includes('"<run condition>"')) {
+        return {
+          outputs: [
+            {
+              output_type: 'stream',
+              name: 'stdout',
+              text: '__NB_COND_JSON__:{"outcome":"true"}\n',
+            },
+          ],
+        }
+      }
+      return { outputs: [] }
+    }),
     complete: vi.fn().mockResolvedValue([]),
     interrupt: vi.fn().mockResolvedValue(undefined),
     dispose: vi.fn(),
@@ -299,5 +312,98 @@ describe('useCellRunner', () => {
       tabId: 't1',
       action: { type: 'SET_KERNEL_STATUS', status: 'ready' },
     })
+  })
+
+  it('does not run a disabled code cell', async () => {
+    const notebook = makeNotebookState()
+    notebook.cells = notebook.cells.map((c, i) =>
+      i === 0 && c.cell_type === 'code' ? { ...c, enabled: false } : c,
+    )
+    const workspace: WorkspaceState = { tabs: [makeTab(notebook)], activeTabId: 't1' }
+    const workspaceRef = { current: workspace }
+    const activeTabIdRef = { current: 't1' }
+    const dispatch = vi.fn<(action: WorkspaceAction) => void>()
+    const { runtime } = makeRuntimeController()
+
+    const { result } = renderHook(
+      () =>
+        useCellRunner({
+          runtime,
+          workspaceRef: workspaceRef as never,
+          activeTabIdRef: activeTabIdRef as never,
+          dispatch,
+          activeTab: workspace.tabs[0],
+          state: notebook,
+        }),
+      { wrapper: cellRunnerProvidersWrapper },
+    )
+
+    act(() => {
+      result.current.runCell('c1')
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(runNotebookCellAfterReady).not.toHaveBeenCalled()
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('skips body when condition evaluates false', async () => {
+    const notebook = makeNotebookState()
+    const workspace: WorkspaceState = { tabs: [makeTab(notebook)], activeTabId: 't1' }
+    const workspaceRef = { current: workspace }
+    const activeTabIdRef = { current: 't1' }
+    const dispatch = vi.fn<(action: WorkspaceAction) => void>()
+    const { runtime, state } = makeRuntimeController()
+    state.kernel.execute = vi.fn().mockImplementation(async (code: string) => {
+      if (code.includes('"<run condition>"')) {
+        return {
+          outputs: [
+            {
+              output_type: 'stream',
+              name: 'stdout',
+              text: '__NB_COND_JSON__:{"outcome":"false"}\n',
+            },
+          ],
+        }
+      }
+      return { outputs: [] }
+    })
+
+    const { result } = renderHook(
+      () =>
+        useCellRunner({
+          runtime,
+          workspaceRef: workspaceRef as never,
+          activeTabIdRef: activeTabIdRef as never,
+          dispatch,
+          activeTab: workspace.tabs[0],
+          state: notebook,
+        }),
+      { wrapper: cellRunnerProvidersWrapper },
+    )
+
+    act(() => {
+      result.current.runCell('c1')
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(runNotebookCellAfterReady).not.toHaveBeenCalled()
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: expect.objectContaining({ type: 'SET_CONDITION_OUTCOME', outcome: 'false' }),
+      }),
+    )
+    expect(dispatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: { type: 'SKIP_CELL_TO_IDLE', id: 'c1' },
+      }),
+    )
   })
 })

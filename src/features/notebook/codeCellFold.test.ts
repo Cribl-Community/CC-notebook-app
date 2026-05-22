@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   applyExampleDefaultCodeFold,
-  codeCellMetadataForIpynb,
+  buildCodeCellNotebookAppMetadata,
   isLongCodeCellForDefaultFold,
+  parseCodeCellNotebookAppFields,
   parseCodeFoldedFromCellMetadata,
 } from '@features/notebook/codeCellFold'
 import type { Cell } from '@features/notebook/model/types'
@@ -20,7 +21,7 @@ function codeCell(overrides: Partial<Extract<Cell, { cell_type: 'code' }>>): Ext
   }
 }
 
-describe('parseCodeFoldedFromCellMetadata / codeCellMetadataForIpynb', () => {
+describe('parseCodeFoldedFromCellMetadata / parseCodeCellNotebookAppFields', () => {
   it('parses boolean from notebook_app.code_folded', () => {
     expect(parseCodeFoldedFromCellMetadata({ notebook_app: { code_folded: true } })).toBe(true)
     expect(parseCodeFoldedFromCellMetadata({ notebook_app: { code_folded: false } })).toBe(false)
@@ -30,10 +31,25 @@ describe('parseCodeFoldedFromCellMetadata / codeCellMetadataForIpynb', () => {
     expect(parseCodeFoldedFromCellMetadata({ notebook_app: {} })).toBeUndefined()
     expect(parseCodeFoldedFromCellMetadata({ notebook_app: { code_folded: 'yes' } })).toBeUndefined()
   })
-  it('serialises only when defined', () => {
-    expect(codeCellMetadataForIpynb(undefined)).toEqual({})
-    expect(codeCellMetadataForIpynb(true)).toEqual({ notebook_app: { code_folded: true } })
-    expect(codeCellMetadataForIpynb(false)).toEqual({ notebook_app: { code_folded: false } })
+  it('parses cell_enabled and run_condition from notebook_app', () => {
+    expect(parseCodeCellNotebookAppFields({ notebook_app: { cell_enabled: false } })).toEqual({
+      cellDisabled: true,
+    })
+    expect(parseCodeCellNotebookAppFields({ notebook_app: { run_condition: '1 < 2' } })).toEqual({
+      runCondition: '1 < 2',
+    })
+  })
+  it('serialises notebook_app via buildCodeCellNotebookAppMetadata', () => {
+    expect(buildCodeCellNotebookAppMetadata(codeCell({}))).toEqual({})
+    expect(buildCodeCellNotebookAppMetadata(codeCell({ codeFolded: true }))).toEqual({
+      notebook_app: { code_folded: true },
+    })
+    expect(buildCodeCellNotebookAppMetadata(codeCell({ enabled: false }))).toEqual({
+      notebook_app: { cell_enabled: false },
+    })
+    expect(buildCodeCellNotebookAppMetadata(codeCell({ runCondition: 'False' }))).toEqual({
+      notebook_app: { run_condition: 'False' },
+    })
   })
 })
 

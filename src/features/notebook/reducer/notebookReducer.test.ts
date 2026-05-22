@@ -138,6 +138,65 @@ describe('notebookReducer DUPLICATE_CELL', () => {
   })
 })
 
+describe('notebookReducer cell enable / condition / skip', () => {
+  it('SET_CELL_ENABLED toggles and clears conditionOutcome', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    const withOutcome = cells.map((c) =>
+      c.id === id && c.cell_type === 'code' ? { ...c, conditionOutcome: 'true' as const } : c,
+    )
+    let state = readyStateFromCells(withOutcome)
+    state = notebookReducer(state, { type: 'SET_CELL_ENABLED', id, enabled: false })
+    const c = state.cells[0]
+    expect(c?.cell_type === 'code' && c.enabled === false).toBe(true)
+    expect(c?.cell_type === 'code' && c.conditionOutcome).toBeNull()
+  })
+
+  it('SKIP_CELL_TO_IDLE clears pending only', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    const pending = cells.map((c) =>
+      c.id === id && c.cell_type === 'code' ? { ...c, execution_state: 'pending' as const } : c,
+    )
+    let state = readyStateFromCells(pending)
+    state = notebookReducer(state, { type: 'SKIP_CELL_TO_IDLE', id })
+    expect(state.cells[0]?.cell_type === 'code' && state.cells[0].execution_state).toBe('idle')
+  })
+
+  it('DUPLICATE_CELL copies enabled and runCondition and clears conditionOutcome', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    const src = cells.map((c) =>
+      c.id === id && c.cell_type === 'code'
+        ? {
+            ...c,
+            source: 'x',
+            enabled: false,
+            runCondition: 'False',
+            conditionOutcome: 'false' as const,
+          }
+        : c,
+    )
+    let state = readyStateFromCells(src)
+    state = notebookReducer(state, { type: 'DUPLICATE_CELL', id })
+    const clone = state.cells[1]
+    expect(clone?.cell_type === 'code' && clone.enabled).toBe(false)
+    expect(clone?.cell_type === 'code' && clone.runCondition).toBe('False')
+    expect(clone?.cell_type === 'code' && clone.conditionOutcome).toBeNull()
+  })
+
+  it('UPDATE_SOURCE clears conditionOutcome', () => {
+    const cells = createEmptyNotebookCells()
+    const id = cells[0]!.id
+    const withOutcome = cells.map((c) =>
+      c.id === id && c.cell_type === 'code' ? { ...c, conditionOutcome: 'true' as const } : c,
+    )
+    let state = readyStateFromCells(withOutcome)
+    state = notebookReducer(state, { type: 'UPDATE_SOURCE', id, source: 'print(2)' })
+    expect(state.cells[0]?.cell_type === 'code' && state.cells[0].conditionOutcome).toBeNull()
+  })
+})
+
 describe('notebookReducer SET_CODE_FOLDED', () => {
   it('sets codeFolded on the targeted code cell', () => {
     const cells = createEmptyNotebookCells()

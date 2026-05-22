@@ -4,6 +4,8 @@ import type { IOPubMessage } from '@ports/KernelPort'
 import type { CellId, NotebookAction, NotebookState } from '@features/notebook/model/types'
 import { isCommIOPubMessage } from '@/domain/kernel'
 import { runNotebookCellAfterReady } from '@features/notebook/executor/runNotebookCell'
+import { evaluateCellRunCondition } from '@features/notebook/executor/cellConditionEval'
+import { normalizeRunCondition } from '@features/notebook/codeCellFold'
 import { createDefaultCellExecutors } from '@features/notebook/executor/executorRegistry'
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
 import type { WorkspaceAction, WorkspaceState, NotebookTab } from '@features/notebook/reducer/tabWorkspace'
@@ -70,6 +72,8 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
 
       const cell = tab.notebook.cells.find((c) => c.id === id)
       if (!cell || cell.cell_type !== 'code') return
+      if (cell.enabled === false) return
+
       const source = cell.source
       const myGen = runtime.generationOf(tid)
 
@@ -92,11 +96,35 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
             return
           }
 
-          dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_RUNNING', id } })
-
           try {
             await kernel.ready
             if (runtime.generationOf(tid) !== myGen) return
+
+            const tabNow = workspaceRef.current.tabs.find((t) => t.id === tid)
+            const cellNow = tabNow?.notebook.cells.find((c) => c.id === id)
+            const runExpr =
+              cellNow?.cell_type === 'code' ? normalizeRunCondition(cellNow.runCondition) : 'True'
+
+            const cond = await evaluateCellRunCondition(kernel, runExpr)
+            if (runtime.generationOf(tid) !== myGen) return
+
+            dispatch({
+              type: 'TAB_NOTEBOOK',
+              tabId: tid,
+              action: { type: 'SET_CONDITION_OUTCOME', id, outcome: cond.outcome },
+            })
+
+            if (cond.skipBody) {
+              dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SKIP_CELL_TO_IDLE', id } })
+              return
+            }
+
+            dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'SET_RUNNING', id } })
+
+            const tabForSource = workspaceRef.current.tabs.find((t) => t.id === tid)
+            const cellForSource = tabForSource?.notebook.cells.find((c) => c.id === id)
+            const bodySource =
+              cellForSource?.cell_type === 'code' ? cellForSource.source : source
 
             dispatch({
               type: 'TAB_NOTEBOOK',
@@ -126,7 +154,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
             const outcome = await runNotebookCellAfterReady({
               kernel,
               cellId: id,
-              source,
+              source: bodySource,
               executionCount: count,
               emitIOPub,
               isStale: () => runtime.generationOf(tid) !== myGen,

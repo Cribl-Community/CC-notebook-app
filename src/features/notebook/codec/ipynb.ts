@@ -1,7 +1,9 @@
 import type { Cell, CodeCell, MarkdownCell, NotebookState } from '@features/notebook/model/types'
 import {
-  codeCellMetadataForIpynb,
-  parseCodeFoldedFromCellMetadata,
+  buildCodeCellNotebookAppMetadata,
+  DEFAULT_RUN_CONDITION,
+  normalizeRunCondition,
+  parseCodeCellNotebookAppFields,
 } from '@features/notebook/codeCellFold'
 import type { MimeBundle, MimeMetadata, OutputRecord } from '@/domain/kernel'
 
@@ -134,7 +136,12 @@ function parseCodeCell(cell: Record<string, unknown>): CodeCell {
     }
   }
 
-  const codeFolded = parseCodeFoldedFromCellMetadata(cell.metadata)
+  const app = parseCodeCellNotebookAppFields(cell.metadata)
+  const codeFolded = app.codeFolded
+  const enabled = app.cellDisabled === true ? false : undefined
+  const runConditionRaw = app.runCondition
+  const runConditionNorm =
+    runConditionRaw !== undefined ? normalizeRunCondition(runConditionRaw) : undefined
 
   return {
     id: crypto.randomUUID(),
@@ -144,6 +151,10 @@ function parseCodeCell(cell: Record<string, unknown>): CodeCell {
     execution_count: parseExecutionCount(cell.execution_count),
     execution_state: 'idle',
     ...(codeFolded !== undefined ? { codeFolded } : {}),
+    ...(enabled === false ? { enabled: false } : {}),
+    ...(runConditionNorm !== undefined && runConditionNorm !== DEFAULT_RUN_CONDITION
+      ? { runCondition: runConditionNorm }
+      : {}),
   }
 }
 
@@ -310,7 +321,7 @@ export function serializeNotebookToIpynbJson(state: NotebookState): string {
       cells.push({
         cell_type: 'code',
         execution_count: cell.execution_count,
-        metadata: codeCellMetadataForIpynb(cell.codeFolded),
+        metadata: buildCodeCellNotebookAppMetadata(cell),
         outputs: outputsToNbformat(cell.outputs),
         source: cell.source,
       })

@@ -32,6 +32,7 @@ function duplicateCell(c: Cell): Cell {
       execution_count: null,
       execution_state: 'idle',
       pendingClear: false,
+      conditionOutcome: null,
     }
   }
   return { ...c, id }
@@ -104,12 +105,50 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
           if (c.cell_type === 'markdown') {
             return { ...c, source: action.source }
           }
-          const next: CodeCell = { ...c, source: action.source }
+          const next: CodeCell = { ...c, source: action.source, conditionOutcome: null }
           if (!isLongCodeCellForDefaultFold(action.source) && c.codeFolded) {
             next.codeFolded = false
           }
           return next
         }),
+      }
+
+    case 'SET_CELL_ENABLED':
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell =>
+          c.id === action.id && c.cell_type === 'code'
+            ? { ...c, enabled: action.enabled, conditionOutcome: null }
+            : c,
+        ),
+      }
+
+    case 'SET_RUN_CONDITION':
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell =>
+          c.id === action.id && c.cell_type === 'code'
+            ? { ...c, runCondition: action.runCondition, conditionOutcome: null }
+            : c,
+        ),
+      }
+
+    case 'SET_CONDITION_OUTCOME':
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell =>
+          c.id === action.id && c.cell_type === 'code' ? { ...c, conditionOutcome: action.outcome } : c,
+        ),
+      }
+
+    case 'SKIP_CELL_TO_IDLE':
+      return {
+        ...state,
+        cells: state.cells.map((c): Cell =>
+          c.id === action.id && c.cell_type === 'code' && c.execution_state === 'pending'
+            ? { ...c, execution_state: 'idle' }
+            : c,
+        ),
       }
 
     case 'SET_CODE_FOLDED':
@@ -320,6 +359,7 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
                 execution_count: null,
                 execution_state: 'idle',
                 pendingClear: false,
+                conditionOutcome: null,
               }
             : c,
         ),
