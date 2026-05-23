@@ -62,6 +62,7 @@ Upgrade check:
 - Reconstructs `Response` objects from bridged payloads.
 - Initializes Pyodide via `importScripts(pyodide.js)` from same origin.
 - Injects `CRIBL_API_URL` into Python `os.environ`.
+- At init, loads **IPython** and **stack-data** in sequence before the IOPub bootstrap (avoids transitive install races). **Matplotlib** and **pandas** are not preloaded; they load on the first cell that imports them via **`loadPackagesFromImports`** on each `exec`, with **`packageFetchCache`** deduping fetches across kernels/tabs/reloads.
 - Installs completion + IOPub bootstrap Python code at worker init.
 - Wraps execution to emit IOPub-like events (`status`, `stream`, `error`).
 - **`loadPackagesFromImports(user_cell)`** failures are caught so PyPI-only imports
