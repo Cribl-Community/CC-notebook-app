@@ -1,6 +1,6 @@
 ---
 name: reppit
-description: Runs the RePPITS workflow (Research → Propose → Plan) for a topic, feature, or issue—thorough codebase research, up to two solution proposals, then a detailed implementation plan without coding. Use when the user invokes /reppit, asks for RePPITS, or wants research-then-proposals-then-plan before implementation.
+description: Runs the RePPIT workflow (Research → Propose → Plan) for a topic, feature, or issue—thorough codebase research, up to two solution proposals, then a detailed implementation plan without coding. Use when the user invokes /reppit, asks for RePPIT, or wants research-then-proposals-then-plan before implementation.
 ---
 
 # RePPIT (`/reppit`)

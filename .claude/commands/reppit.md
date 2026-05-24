@@ -1,4 +1,4 @@
-Run the RePPITS workflow. This message covers Research → Propose → Plan.
+Run the RePPIT workflow. This message covers Research → Propose → Plan.
 
 Input: A topic, feature description, or issue identifier.
 

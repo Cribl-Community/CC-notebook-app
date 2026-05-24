@@ -1,6 +1,6 @@
 # Plan: KQL highlighting + Tab completion for `%%cribl_search`
 
-Parent tracker for editor support in Cribl Search magic cells. Chosen approach: **decoration-based KQL highlighting + editor-local completion sources** (see RePPITS proposal).
+Parent tracker for editor support in Cribl Search magic cells. Chosen approach: **decoration-based KQL highlighting + editor-local completion sources** (see RePPIT proposal).
 
 ## Sub-tasks
 

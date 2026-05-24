@@ -1,4 +1,4 @@
-Continue the RePPITS workflow. The plan has been approved — now execute Implement → Test → Secure.
+Continue the RePPIT workflow. The plan has been approved — now execute Implement → Test → Secure.
 
 ## Phase 4 — Implement (per sub-task)
 

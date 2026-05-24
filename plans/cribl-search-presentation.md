@@ -1,6 +1,6 @@
 # Plan: `%%cribl_search` presentation improvements
 
-Parent tracker for the RePPITS workflow (Research → Propose → Plan).
+Parent tracker for the RePPIT workflow (Research → Propose → Plan).
 
 ## Requirements (from product)
 
