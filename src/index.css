@@ -1812,6 +1812,26 @@ body {
   line-height: 1.7;
 }
 
+.nb-md-rendered img,
+.nb-mime-markdown img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0.5em 0;
+}
+
+.nb-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .nb-md-rendered h1,
 .nb-md-rendered h2,
 .nb-md-rendered h3,

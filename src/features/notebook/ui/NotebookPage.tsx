@@ -379,6 +379,7 @@ export function NotebookPage() {
                             completeCode={completeCode}
                             onAiGenerateFromPrompt={handleAiGenerateFromPrompt}
                             aiCodeBusyCellId={aiCodeBusyCellId}
+                            onMarkdownEmbedError={showAlert}
                           />
                         </TabWidgetManagerProvider>
                       </div>

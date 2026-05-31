@@ -1,6 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
-import { marked } from 'marked'
 import { CRIBL_SEARCH_MIME, type CriblSearchPayload } from '@/domain/criblSearchMime'
 import type { MimeBundle, MimeMetadata } from '@ports/KernelPort'
 import { CriblSearchOutputView } from '@features/cribl-search/ui/CriblSearchOutput'
@@ -8,6 +7,7 @@ import { PlotlyMimeView } from '@features/notebook/ui/PlotlyMimeView'
 import { VegaMimeView } from '@features/notebook/ui/VegaMimeView'
 import { pickRenderer, registerMimeRenderer } from '@features/notebook/ui/mimeRegistry'
 import { WidgetMimeView } from '@features/notebook/widgets/WidgetMimeView'
+import { renderNotebookMarkdownToSafeHtml } from '@features/notebook/notebookMarkdownHtml'
 
 const SCRIPT_RE = /<script[\s>]/i
 const LONG_JSON_LINE_THRESHOLD = 24
@@ -145,14 +145,7 @@ function ImageMime({ data, mime }: { data: string; mime: string }) {
 }
 
 function MarkdownMime({ data }: { data: string }) {
-  const html = useMemo(() => {
-    const rendered = marked.parse(data, { async: false }) as string
-    return DOMPurify.sanitize(rendered, {
-      ADD_TAGS: ['iframe'],
-      ADD_ATTR: ['target', 'rel'],
-      FORBID_TAGS: ['script'],
-    })
-  }, [data])
+  const html = useMemo(() => renderNotebookMarkdownToSafeHtml(data), [data])
   return <div className="nb-mime-markdown" dangerouslySetInnerHTML={{ __html: html }} />
 }
 
