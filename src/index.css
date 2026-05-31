@@ -1820,6 +1820,56 @@ body {
   margin: 0.5em 0;
 }
 
+.nb-md-edit-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.nb-md-edit-seg {
+  width: 100%;
+  min-height: 2.5rem;
+  box-sizing: border-box;
+}
+
+.nb-md-edit-embed {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--nb-border);
+  border-radius: 6px;
+  background: var(--nb-bg-cell-alt);
+  min-width: 0;
+}
+
+.nb-md-edit-embed-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.nb-md-edit-embed-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--nb-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.nb-md-edit-embed-remove {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.nb-md-edit-embed-img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 4px;
+}
+
 .nb-hidden-file-input {
   position: absolute;
   width: 1px;

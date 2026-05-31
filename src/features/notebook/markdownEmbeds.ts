@@ -14,6 +14,58 @@ export const MAX_NOTEBOOK_JSON_UTF8_BYTES = 6 * 1024 * 1024
 const DATA_IMAGE_BASE64_RE =
   /data:image\/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=\s\r\n]+)/gi
 
+/** Markdown `![alt](data:image/...;base64,...)` blocks we surface as previews while editing. */
+const MARKDOWN_DATA_IMAGE_BLOCK_RE =
+  /!\[([^\]]*)\]\((data:image\/(?:png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=\s\r\n]+)\)/gi
+
+export type MarkdownDataImageEditSegment =
+  | { kind: 'text'; text: string }
+  | { kind: 'embed'; alt: string; dataUrl: string }
+
+export function splitMarkdownByDataImageEmbeds(source: string): MarkdownDataImageEditSegment[] {
+  if (source.length === 0) return [{ kind: 'text', text: '' }]
+  const parts: MarkdownDataImageEditSegment[] = []
+  MARKDOWN_DATA_IMAGE_BLOCK_RE.lastIndex = 0
+  let last = 0
+  let m: RegExpExecArray | null
+  while ((m = MARKDOWN_DATA_IMAGE_BLOCK_RE.exec(source)) !== null) {
+    if (m.index > last) {
+      parts.push({ kind: 'text', text: source.slice(last, m.index) })
+    }
+    parts.push({ kind: 'embed', alt: m[1] ?? '', dataUrl: m[2] ?? '' })
+    last = m.index + m[0].length
+  }
+  if (last < source.length) {
+    parts.push({ kind: 'text', text: source.slice(last) })
+  }
+  if (parts.length > 0 && parts[parts.length - 1].kind === 'embed') {
+    parts.push({ kind: 'text', text: '' })
+  }
+  if (parts.length > 0 && parts[0].kind === 'embed') {
+    parts.unshift({ kind: 'text', text: '' })
+  }
+  return parts
+}
+
+export function joinMarkdownDataImageEmbeds(segments: MarkdownDataImageEditSegment[]): string {
+  return segments.map((s) => (s.kind === 'text' ? s.text : `![${s.alt}](${s.dataUrl})`)).join('')
+}
+
+export function mergeAdjacentMarkdownTextSegments(
+  segments: MarkdownDataImageEditSegment[],
+): MarkdownDataImageEditSegment[] {
+  const out: MarkdownDataImageEditSegment[] = []
+  for (const s of segments) {
+    if (s.kind === 'text' && out.length > 0 && out[out.length - 1].kind === 'text') {
+      const prev = out[out.length - 1] as { kind: 'text'; text: string }
+      prev.text += s.text
+    } else {
+      out.push(s)
+    }
+  }
+  return out.length > 0 ? out : [{ kind: 'text', text: '' }]
+}
+
 export function decodedBase64ByteLength(base64: string): number {
   const s = base64.replace(/\s+/g, '')
   if (s.length === 0) return 0

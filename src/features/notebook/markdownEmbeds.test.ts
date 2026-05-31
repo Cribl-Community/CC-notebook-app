@@ -6,12 +6,40 @@ import {
   assertNotebookJsonUtf8WithinLimit,
   assertNotebookPersistable,
   decodedBase64ByteLength,
+  joinMarkdownDataImageEmbeds,
   MAX_MARKDOWN_EMBEDDED_IMAGE_BYTES,
   MAX_NOTEBOOK_JSON_UTF8_BYTES,
+  mergeAdjacentMarkdownTextSegments,
+  splitMarkdownByDataImageEmbeds,
 } from '@features/notebook/markdownEmbeds'
 
 const TINY_PNG_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAwUBAO2GZFQAAAAASUVORK5CYII='
+
+describe('markdown data-image edit segments', () => {
+  it('split/join round-trips markdown with one embed', () => {
+    const md = `Hi\n\n![x](data:image/png;base64,${TINY_PNG_B64})\n\nBye`
+    const segs = splitMarkdownByDataImageEmbeds(md)
+    expect(joinMarkdownDataImageEmbeds(segs)).toBe(md)
+  })
+
+  it('split adds empty text neighbors when cell is only an embed', () => {
+    const md = `![x](data:image/png;base64,${TINY_PNG_B64})`
+    const segs = splitMarkdownByDataImageEmbeds(md)
+    expect(segs[0]?.kind).toBe('text')
+    expect(segs[1]?.kind).toBe('embed')
+    expect(segs[2]?.kind).toBe('text')
+    expect(joinMarkdownDataImageEmbeds(segs)).toBe(md)
+  })
+
+  it('mergeAdjacentMarkdownTextSegments joins neighboring text blocks', () => {
+    const merged = mergeAdjacentMarkdownTextSegments([
+      { kind: 'text', text: 'a' },
+      { kind: 'text', text: 'b' },
+    ])
+    expect(merged).toEqual([{ kind: 'text', text: 'ab' }])
+  })
+})
 
 describe('markdownEmbeds', () => {
   it('decodedBase64ByteLength matches atob length for tiny png', () => {

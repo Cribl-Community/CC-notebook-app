@@ -1,6 +1,12 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useEffect, useCallback, useMemo } from 'react'
 import type { MarkdownCell as MarkdownCellData } from '@features/notebook/model/types'
-import { markdownImageTooLargeUserMessage, readImageFileAsDataUrl } from '@features/notebook/markdownEmbeds'
+import {
+  joinMarkdownDataImageEmbeds,
+  markdownImageTooLargeUserMessage,
+  mergeAdjacentMarkdownTextSegments,
+  readImageFileAsDataUrl,
+  splitMarkdownByDataImageEmbeds,
+} from '@features/notebook/markdownEmbeds'
 import { renderNotebookMarkdownToSafeHtml } from '@features/notebook/notebookMarkdownHtml'
 
 interface MarkdownCellProps {
@@ -29,22 +35,37 @@ export function MarkdownCell({
   onClone,
   onMarkdownEmbedError,
 }: MarkdownCellProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const editStackRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const lastFocusedTextSegRef = useRef(0)
+  const prevEditingRef = useRef(cell.editing)
 
-  // Auto-resize when in edit mode
+  const editSegments = useMemo(() => splitMarkdownByDataImageEmbeds(cell.source), [cell.source])
+
+  useEffect(() => {
+    if (cell.editing && !prevEditingRef.current) {
+      const segs = splitMarkdownByDataImageEmbeds(cell.source)
+      const idx = segs.findIndex((s) => s.kind === 'text')
+      lastFocusedTextSegRef.current = idx >= 0 ? idx : 0
+      requestAnimationFrame(() => {
+        const ta = editStackRef.current?.querySelector(
+          'textarea.nb-md-edit-seg',
+        ) as HTMLTextAreaElement | null
+        ta?.focus()
+      })
+    }
+    prevEditingRef.current = cell.editing
+  }, [cell.editing, cell.source])
+
+  // Auto-resize text segments in edit mode
   useEffect(() => {
     if (!cell.editing) return
-    const ta = textareaRef.current
-    if (!ta) return
-    ta.style.height = 'auto'
-    ta.style.height = `${ta.scrollHeight}px`
-  }, [cell.source, cell.editing])
-
-  // Focus when entering edit mode
-  useEffect(() => {
-    if (cell.editing) textareaRef.current?.focus()
-  }, [cell.editing])
+    editStackRef.current?.querySelectorAll('textarea.nb-md-edit-seg').forEach((n) => {
+      const ta = n as HTMLTextAreaElement
+      ta.style.height = 'auto'
+      ta.style.height = `${ta.scrollHeight}px`
+    })
+  }, [cell.editing, cell.source])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -59,12 +80,16 @@ export function MarkdownCell({
     [onToggleEdit],
   )
 
-  const insertAtCursor = useCallback(
-    (ta: HTMLTextAreaElement, insert: string) => {
+  const insertAtCursorInTextSegment = useCallback(
+    (ta: HTMLTextAreaElement, segIndex: number, insert: string) => {
+      const segs = splitMarkdownByDataImageEmbeds(cell.source)
+      const seg = segs[segIndex]
+      if (!seg || seg.kind !== 'text') return
       const start = ta.selectionStart
       const end = ta.selectionEnd
-      const next = cell.source.slice(0, start) + insert + cell.source.slice(end)
-      onChange(next)
+      const nextText = seg.text.slice(0, start) + insert + seg.text.slice(end)
+      segs[segIndex] = { kind: 'text', text: nextText }
+      onChange(joinMarkdownDataImageEmbeds(segs))
       requestAnimationFrame(() => {
         ta.focus()
         const pos = start + insert.length
@@ -74,8 +99,8 @@ export function MarkdownCell({
     [cell.source, onChange],
   )
 
-  const handlePaste = useCallback(
-    async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+  const handlePasteInTextSegment = useCallback(
+    (segIndex: number) => async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
       const dt = e.clipboardData
       if (!dt) return
 
@@ -102,12 +127,12 @@ export function MarkdownCell({
           onMarkdownEmbedError?.(markdownImageTooLargeUserMessage())
           return
         }
-        insertAtCursor(ta, `\n\n![image](${dataUrl})\n\n`)
+        insertAtCursorInTextSegment(ta, segIndex, `\n\n![image](${dataUrl})\n\n`)
       } catch {
         onMarkdownEmbedError?.('Could not paste image into markdown.')
       }
     },
-    [insertAtCursor, onMarkdownEmbedError],
+    [insertAtCursorInTextSegment, onMarkdownEmbedError],
   )
 
   const handlePickImage = useCallback(() => {
@@ -119,20 +144,52 @@ export function MarkdownCell({
       const file = e.target.files?.[0]
       e.target.value = ''
       if (!file) return
-      const ta = textareaRef.current
-      if (!ta) return
       try {
         const dataUrl = await readImageFileAsDataUrl(file)
         if (!dataUrl) {
           onMarkdownEmbedError?.(markdownImageTooLargeUserMessage())
           return
         }
-        insertAtCursor(ta, `\n\n![image](${dataUrl})\n\n`)
+        const insert = `\n\n![image](${dataUrl})\n\n`
+        const segs = splitMarkdownByDataImageEmbeds(cell.source)
+        let ti = lastFocusedTextSegRef.current
+        if (ti < 0 || !segs[ti] || segs[ti].kind !== 'text') {
+          const keys = [...segs.keys()].reverse()
+          const found = keys.find((k) => segs[k].kind === 'text')
+          ti = found ?? -1
+        }
+        if (ti < 0) {
+          onChange(joinMarkdownDataImageEmbeds([{ kind: 'text', text: insert }]))
+          return
+        }
+        const t = segs[ti] as { kind: 'text'; text: string }
+        segs[ti] = { kind: 'text', text: t.text + insert }
+        onChange(joinMarkdownDataImageEmbeds(segs))
       } catch {
         onMarkdownEmbedError?.('Could not insert image.')
       }
     },
-    [insertAtCursor, onMarkdownEmbedError],
+    [cell.source, onChange, onMarkdownEmbedError],
+  )
+
+  const handleRemoveEmbed = useCallback(
+    (embedIndex: number) => {
+      const segs = splitMarkdownByDataImageEmbeds(cell.source)
+      if (segs[embedIndex]?.kind !== 'embed') return
+      segs.splice(embedIndex, 1)
+      onChange(joinMarkdownDataImageEmbeds(mergeAdjacentMarkdownTextSegments(segs)))
+    },
+    [cell.source, onChange],
+  )
+
+  const handleTextSegmentChange = useCallback(
+    (segIndex: number, text: string) => {
+      const segs = splitMarkdownByDataImageEmbeds(cell.source)
+      if (segs[segIndex]?.kind !== 'text') return
+      segs[segIndex] = { kind: 'text', text }
+      onChange(joinMarkdownDataImageEmbeds(segs))
+    },
+    [cell.source, onChange],
   )
 
   const cellClass = `nb-cell nb-cell--md${isSelected ? ' nb-cell--selected' : ''}`
@@ -212,19 +269,54 @@ export function MarkdownCell({
               ✕
             </button>
           </div>
-          <textarea
-            ref={textareaRef}
-            className="nb-cell-editor nb-md-editor"
-            value={cell.source}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            onFocus={onSelect}
+          <div
+            ref={editStackRef}
+            className="nb-md-edit-stack"
             onClick={(e) => e.stopPropagation()}
-            placeholder="Write Markdown here… (Shift+Enter to render)"
-            spellCheck
-            rows={1}
-          />
+          >
+            {editSegments.map((seg, i) =>
+              seg.kind === 'text' ? (
+                <textarea
+                  key={`md-t-${cell.id}-${i}`}
+                  className="nb-cell-editor nb-md-editor nb-md-edit-seg"
+                  value={seg.text}
+                  onChange={(e) => handleTextSegmentChange(i, e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePasteInTextSegment(i)}
+                  onFocus={() => {
+                    onSelect()
+                    lastFocusedTextSegRef.current = i
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Write Markdown here… (Shift+Enter to render)"
+                  spellCheck
+                  rows={1}
+                />
+              ) : (
+                <figure key={`md-e-${cell.id}-${i}`} className="nb-md-edit-embed">
+                  <div className="nb-md-edit-embed-bar">
+                    <span className="nb-md-edit-embed-label">Embedded image</span>
+                    <button
+                      type="button"
+                      className="nb-btn nb-btn-delete nb-md-edit-embed-remove"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleRemoveEmbed(i)
+                      }}
+                      title="Remove image from cell"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <img
+                    className="nb-md-edit-embed-img"
+                    src={seg.dataUrl}
+                    alt={seg.alt || 'Embedded markdown image'}
+                  />
+                </figure>
+              ),
+            )}
+          </div>
         </div>
       </div>
     )

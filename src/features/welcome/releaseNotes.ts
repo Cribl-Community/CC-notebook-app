@@ -11,6 +11,16 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.7',
+    date: '2026-06-01',
+    highlights: [
+      'Notebook: markdown cells support embedded images (`data:image` PNG/JPEG/GIF/WebP), paste or **Image** insert (512 KB per image), responsive rendering, and save-time checks including total `.ipynb` size (6 MB).',
+      'Notebook: import and examples validate markdown embed size only so notebooks with large plot outputs still open.',
+      'Examples: **00 Getting Started Tour** includes a tiny inline PNG and notes on pasting images into markdown.',
+      'Packaging: build 1.2.7 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.6',
     date: '2026-05-23',
     highlights: [
