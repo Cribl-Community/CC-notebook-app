@@ -49,7 +49,7 @@ Implement a notebook-first Composio integration: add a curated SDK notebook + ex
 | Why not `composio` (top-level) | Hard dep on `openai → jiter` (Rust, no WASM wheel); also `pysher` (sockets, sdist-only) |
 | Composio API base URL | `https://backend.composio.dev` |
 | Auth mechanism | User replaces placeholders in the notebook, then `composio-client` / `httpx` sends `x-api-key` (or Composio-documented header) on each request — **not** KV store, **not** `proxies.yml` inject |
-| Path allowlist for proxy | `/api/v3/toolkits`, `/api/v3/tools`, `/api/v3/actions/execute` |
+| Path allowlist for proxy | `/api/v3/` (prefix — covers all Composio v3 endpoints; specific sub-paths cannot be enumerated statically because composio-client also calls per-toolkit paths like `/api/v3/toolkits/{slug}/tools`) |
 | Notebook scenario | 1) Install + init client; 2) List available toolkits; 3) List tools for one toolkit; 4) Execute one action; 5) Inspect structured result; optional chart/AI prompt cell |
 | Pyodide transitive dep check | `anyio`, `distro`, `httpx`, `pydantic`, `sniffio`, `typing-extensions` — all pure Python ✅ |
 
@@ -65,7 +65,7 @@ Implement a notebook-first Composio integration: add a curated SDK notebook + ex
 
 **Actions**
 - Add `backend.composio.dev` section with:
-  - `paths.allowlist`: `/api/v3/toolkits`, `/api/v3/tools`, `/api/v3/actions/execute`
+  - `paths.allowlist`: `/api/v3/` (single prefix covering all v3 endpoints — specific sub-paths like `/api/v3/toolkits/{slug}/tools` cannot be enumerated statically)
   - **Do not** add `headers.inject` for Composio (per product choice: credentials live only in the notebook at runtime).
 - Keep existing Pyodide/PyPI host entries (`cdn.jsdelivr.net`, `pypi.org`, `files.pythonhosted.org`) unchanged.
 - During implementation, confirm the platform forwards the client-supplied `x-api-key` (or equivalent) on proxied external requests; if a header is stripped, document the workaround or adjust the notebook to use an allowed pattern.
