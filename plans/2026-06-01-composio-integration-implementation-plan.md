@@ -49,7 +49,7 @@ Implement a notebook-first Composio integration: add a curated SDK notebook + ex
 | Why not `composio` (top-level) | Hard dep on `openai → jiter` (Rust, no WASM wheel); also `pysher` (sockets, sdist-only) |
 | Composio API base URL | `https://backend.composio.dev` |
 | Auth mechanism | User replaces placeholders in the notebook, then `composio-client` / `httpx` sends `x-api-key` (or Composio-documented header) on each request — **not** KV store, **not** `proxies.yml` inject |
-| Path allowlist for proxy | `/api/v3/` (prefix — covers all Composio v3 endpoints; specific sub-paths cannot be enumerated statically because composio-client also calls per-toolkit paths like `/api/v3/toolkits/{slug}/tools`) |
+| Path allowlist for proxy | `/api/v3.1/` (prefix — covers all Composio v3 endpoints; specific sub-paths cannot be enumerated statically because composio-client also calls per-toolkit paths like `/api/v3/toolkits/{slug}/tools`) |
 | Notebook scenario | 1) Install + init client; 2) List available toolkits; 3) List tools for one toolkit; 4) Execute one action; 5) Inspect structured result; optional chart/AI prompt cell |
 | Pyodide transitive dep check | `anyio`, `distro`, `httpx`, `pydantic`, `sniffio`, `typing-extensions` — all pure Python ✅ |
 
@@ -65,7 +65,7 @@ Implement a notebook-first Composio integration: add a curated SDK notebook + ex
 
 **Actions**
 - Add `backend.composio.dev` section with:
-  - `paths.allowlist`: `/api/v3/` (single prefix covering all v3 endpoints — specific sub-paths like `/api/v3/toolkits/{slug}/tools` cannot be enumerated statically)
+  - `paths.allowlist`: `/api/v3.1/` (single prefix covering all v3 endpoints — specific sub-paths like `/api/v3/toolkits/{slug}/tools` cannot be enumerated statically)
   - **Do not** add `headers.inject` for Composio (per product choice: credentials live only in the notebook at runtime).
 - Keep existing Pyodide/PyPI host entries (`cdn.jsdelivr.net`, `pypi.org`, `files.pythonhosted.org`) unchanged.
 - During implementation, confirm the platform forwards the client-supplied `x-api-key` (or equivalent) on proxied external requests; if a header is stripped, document the workaround or adjust the notebook to use an allowed pattern.
@@ -179,7 +179,7 @@ No additional pins needed — all transitive deps are pure Python.
 
 ## Rollout / Risk Controls
 - Keep integration notebook-scoped (no feature runtime architecture changes).
-- Use strict proxy allowlists (`/api/v3/` paths only). **Security trade-off:** API keys live in notebook cells at runtime; users must not commit filled-in values; consider org policy before promoting this pattern beyond examples.
+- Use strict proxy allowlists (`/api/v3.1/` paths only). **Security trade-off:** API keys live in notebook cells at runtime; users must not commit filled-in values; consider org policy before promoting this pattern beyond examples.
 - The `composio-client` Pyodide compatibility has been confirmed by dep-chain audit; no native
   extensions in the install graph. No fallback strategy needed for this blocker.
 - If Composio REST API shape changes between `composio-client` versions, pin to `==1.39.0` in
@@ -189,6 +189,6 @@ No additional pins needed — all transitive deps are pure Python.
 
 | Question | Resolution |
 |---|---|
-| Exact Composio domain/path/auth contract | `backend.composio.dev`, `/api/v3/...`; auth via notebook placeholders → client sends `x-api-key` (confirm exact header name against Composio docs at implement time) |
+| Exact Composio domain/path/auth contract | `backend.composio.dev`, `/api/v3.1/...`; auth via notebook placeholders → client sends `x-api-key` (confirm exact header name against Composio docs at implement time) |
 | Pyodide compatibility of SDK | `composio` (top-level) blocked; `composio-client==1.39.0` confirmed compatible |
 | Recommended order in Welcome list | Place at `recommendedOrder: 10` (after existing advanced notebooks); `level: advanced` |

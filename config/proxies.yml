@@ -21,10 +21,9 @@ files.pythonhosted.org:
 
 # Composio REST API — used by the Composio_Python_SDK example notebook.
 # Auth is supplied at runtime by the user (notebook placeholder); no KV inject.
-# Broad /api/v3/ prefix: composio-client makes calls to varied sub-paths
-# (toolkits, tools, per-toolkit tool lists, etc.) that cannot all be enumerated statically.
+# composio-client 1.39.0 calls paths under /api/v3.1/ (confirmed by inspecting the wheel).
 backend.composio.dev:
   paths:
     allowlist:
-      - /api/v3/
+      - /api/v3.1/
 
