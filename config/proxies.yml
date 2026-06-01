@@ -19,3 +19,12 @@ files.pythonhosted.org:
     allowlist:
       - /packages/
 
+# Composio REST API (example notebook: composio-client over HTTPS through pack proxy).
+# Auth is supplied from notebook placeholders at runtime — no headers.inject here.
+# composio-client 1.39.x calls paths under /api/v3.1/ (e.g. toolkits list, tools list, tools execute).
+backend.composio.dev:
+  paths:
+    allowlist:
+      - /api/v3.1/toolkits
+      - /api/v3.1/tools
+
