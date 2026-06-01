@@ -13,6 +13,7 @@ interface CellListProps {
   completeCode?: (code: string, cursor: number) => Promise<CompletionItem[] | null>
   onAiGenerateFromPrompt?: (id: CellId, prompt: string) => void
   aiCodeBusyCellId?: CellId | null
+  onMarkdownEmbedError?: (message: string) => void
 }
 
 export function CellList({
@@ -24,6 +25,7 @@ export function CellList({
   completeCode,
   onAiGenerateFromPrompt,
   aiCodeBusyCellId,
+  onMarkdownEmbedError,
 }: CellListProps) {
   return (
     <div className="nb-cell-list">
@@ -64,6 +66,7 @@ export function CellList({
               onMoveUp={index > 0 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'up' }) : undefined}
               onMoveDown={index < cells.length - 1 ? () => dispatch({ type: 'MOVE_CELL', id: cell.id, direction: 'down' }) : undefined}
               onClone={() => dispatch({ type: 'DUPLICATE_CELL', id: cell.id })}
+              onMarkdownEmbedError={onMarkdownEmbedError}
             />
           )}
           <div className="nb-add-between">

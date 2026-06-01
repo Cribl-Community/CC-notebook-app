@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import type { Dispatch, MutableRefObject } from 'react'
-import { createEmptyNotebookCells } from '@features/notebook/reducer/notebookReducer'
-import { parseIpynbJson } from '@features/notebook/codec/ipynb'
+import { createEmptyNotebookCells, initialState } from '@features/notebook/reducer/notebookReducer'
+import { parseIpynbJson, serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
 import { createEmptyTab, type WorkspaceAction, type WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 import {
   createNotebookWithPayload,
@@ -17,7 +17,10 @@ import {
 } from '@features/library/notebookLibrary'
 import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
 import { useEnv, useNotebookRepo } from '@app/providers'
-import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
+import {
+  assertMarkdownEmbedsWithinLimits,
+  assertNotebookPersistable,
+} from '@features/notebook/markdownEmbeds'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
 import type { NotebookLibraryController } from '@features/library/hooks/useNotebookLibrary'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
@@ -89,6 +92,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     void (async () => {
       setSaveBusy(true)
       try {
+        assertNotebookPersistable(tab0.notebook)
         if (tab0.kvNotebookId) {
           const next = await saveNotebookState(repo, manifest, tab0.kvNotebookId, tab0.notebook)
           setManifest(next)
@@ -130,21 +134,25 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         const raw = await fetchNotebookPayload(repo, id)
         if (!raw) {
           showAlert('Notebook not found in storage.')
+          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
           void loadLibrary()
           return
         }
         try {
           const { title, cells } = ipynbTextToLoadPayload(raw)
+          const nextCells = cells.length > 0 ? cells : createEmptyNotebookCells()
+          assertMarkdownEmbedsWithinLimits({ ...initialState, title, cells: nextCells })
           dispatch({
             type: 'REPLACE_TAB_CONTENT',
             tabId: tab.id,
             title,
-            cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
+            cells: nextCells,
             kvNotebookId: id,
           })
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to read notebook'
           showAlert(msg)
+          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
         }
       })()
     },
@@ -254,17 +262,20 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
         try {
           const text = await file.text()
           const { title, cells } = parseIpynbJson(text, { filename: file.name })
+          const nextCells = cells.length > 0 ? cells : createEmptyNotebookCells()
+          assertMarkdownEmbedsWithinLimits({ ...initialState, title, cells: nextCells })
           dispatch({
             type: 'REPLACE_TAB_CONTENT',
             tabId: tab.id,
             title,
-            cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
+            cells: nextCells,
             kvNotebookId: null,
           })
           runtime.restartKernelForTab(tab.id)
         } catch (err) {
           const msg = err instanceof Error ? err.message : 'Failed to open notebook'
           showAlert(msg)
+          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
         }
       })()
     },
@@ -283,17 +294,20 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
           const parsed = parseIpynbJson(text, { filename })
           const title = filename.trim() ? exampleNotebookDisplayLabel(filename.trim()) : parsed.title
           const { cells } = parsed
+          const nextCells = cells.length > 0 ? cells : createEmptyNotebookCells()
+          assertMarkdownEmbedsWithinLimits({ ...initialState, title, cells: nextCells })
           dispatch({
             type: 'REPLACE_TAB_CONTENT',
             tabId: tab.id,
             title,
-            cells: cells.length > 0 ? cells : createEmptyNotebookCells(),
+            cells: nextCells,
             kvNotebookId: null,
             collapseLongCodeCellsOnOpen: true,
           })
           runtime.restartKernelForTab(tab.id)
         } catch (e) {
           showAlert(e instanceof Error ? e.message : 'Failed to open example')
+          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
         }
       })()
     },
