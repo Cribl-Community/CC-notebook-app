@@ -17,10 +17,10 @@ app's Pyodide-based notebook runtime.
 ### Functional
 - Add a new bundled notebook demonstrating Composio SDK (`composio-client`) setup + core usage.
 - Ensure the notebook appears in the Examples list with metadata (summary/tags/level/runtime/order).
-- Ensure required Composio external hosts are declared in `config/proxies.yml` (path allowlist only; **no** KV `headers.inject` for Composio).
+- Ensure required Composio external hosts are declared in `config/proxies.yml` (path allowlist + `headers.inject: x-api-key: kv.composioApiKey`).
 - Keep notebook runnable in this app's environment (Pyodide + platform proxy).
 - Include a clear markdown note explaining why `composio-client` is used instead of the `composio` package.
-- **Credentials:** ship **placeholder** strings in the notebook (e.g. `COMPOSIO_API_KEY = "<REPLACE_AT_RUNTIME>"`) for users to replace before running; document that real keys must not be committed back to git.
+- **Credentials:** one-time save-to-KV cell in the notebook where the user pastes their API key and runs it once; the proxy injects `x-api-key` on every subsequent Composio request. Note the `composio` module is never passed the key directly — the platform proxy handles injection.
 
 ### Non-functional
 - No regressions to existing examples manifest generation.
@@ -48,7 +48,7 @@ Implement a notebook-first Composio integration: add a curated SDK notebook + ex
 | Python package to install | `composio-client==1.39.0` (pure Python, Pyodide-compatible) |
 | Why not `composio` (top-level) | Hard dep on `openai → jiter` (Rust, no WASM wheel); also `pysher` (sockets, sdist-only) |
 | Composio API base URL | `https://backend.composio.dev` |
-| Auth mechanism | User replaces placeholders in the notebook, then `composio-client` / `httpx` sends `x-api-key` (or Composio-documented header) on each request — **not** KV store, **not** `proxies.yml` inject |
+| Auth mechanism | User pastes key into a save-to-KV cell in the notebook (runs once); `proxies.yml` `headers.inject: x-api-key: kv.composioApiKey` injects it on every Composio request. Kernel bridge drops all custom headers, so the SDK cannot send `x-api-key` directly. |
 | Path allowlist for proxy | `/api/v3.1/` (prefix — covers all Composio v3 endpoints; specific sub-paths cannot be enumerated statically because composio-client also calls per-toolkit paths like `/api/v3/toolkits/{slug}/tools`) |
 | Notebook scenario | 1) Install + init client; 2) List available toolkits; 3) List tools for one toolkit; 4) Execute one action; 5) Inspect structured result; optional chart/AI prompt cell |
 | Pyodide transitive dep check | `anyio`, `distro`, `httpx`, `pydantic`, `sniffio`, `typing-extensions` — all pure Python ✅ |
@@ -57,7 +57,7 @@ Implement a notebook-first Composio integration: add a curated SDK notebook + ex
 - `plans/2026-06-01-composio-integration-implementation-plan.md` — this document (already updated)
 
 ### 2) Add Composio host policy to proxy config
-**Goal:** Allow outbound `fetch` to Composio through the pack proxy; auth is supplied from the notebook after the user replaces placeholders (no KV injection).
+**Goal:** Allow outbound `fetch` to Composio through the pack proxy; inject `x-api-key` from the app KV store (key: `composioApiKey`) because the Pyodide kernel bridge strips all custom headers from Python `fetch()` calls.
 
 **Scope / Files**
 - `config/proxies.yml`
@@ -66,13 +66,13 @@ Implement a notebook-first Composio integration: add a curated SDK notebook + ex
 **Actions**
 - Add `backend.composio.dev` section with:
   - `paths.allowlist`: `/api/v3.1/` (single prefix covering all v3 endpoints — specific sub-paths like `/api/v3/toolkits/{slug}/tools` cannot be enumerated statically)
-  - **Do not** add `headers.inject` for Composio (per product choice: credentials live only in the notebook at runtime).
+  - Add `headers.inject: x-api-key: kv.composioApiKey` (required: kernel bridge strips custom headers, so proxy injection is the only way auth reaches the Composio API).
 - Keep existing Pyodide/PyPI host entries (`cdn.jsdelivr.net`, `pypi.org`, `files.pythonhosted.org`) unchanged.
 - During implementation, confirm the platform forwards the client-supplied `x-api-key` (or equivalent) on proxied external requests; if a header is stripped, document the workaround or adjust the notebook to use an allowed pattern.
 
 **Acceptance criteria**
 - `config/proxies.yml` includes only the minimal needed Composio hosts/paths.
-- No Composio secrets in repo; bundled notebook uses placeholders only.
+- No Composio secrets in repo; bundled notebook uses a `<YOUR_COMPOSIO_API_KEY>` placeholder; real value is saved to KV store at runtime.
 - Existing proxy tests pass; add/update tests only if validation logic changes.
 
 ### 3) Author bundled Composio SDK notebook
@@ -94,11 +94,11 @@ No additional pins needed — all transitive deps are pure Python.
 2. **Pyodide caveat markdown**: explain that the full `composio` package requires native Python
    (`jiter` Rust extension); `composio-client` is its underlying HTTP layer and is used here
 3. Setup cell: `micropip.install('composio-client==1.39.0')`
-4. **Credentials cell (placeholders):** e.g. `COMPOSIO_API_KEY = "<REPLACE_AT_RUNTIME>"` and optional
+4. **Credentials cell (save-to-KV):** `COMPOSIO_API_KEY = "<YOUR_COMPOSIO_API_KEY>"` placeholder + `pyfetch PUT kvstore/composioApiKey` call; and optional
    `COMPOSIO_BASE_URL = "https://backend.composio.dev"` — markdown above instructs users to paste
    their key **only here**, run locally, and **not** save/commit the notebook with real values.
 5. Init cell: instantiate `ComposioClient` (or equivalent) with base URL and default headers using
-   the placeholder variables after user replacement
+   after the one-time KV save step
 6. Workflow cell 1: list available toolkits — checkpoint: print toolkit names/count
 7. Workflow cell 2: list tools for a specific toolkit (e.g. GitHub) — checkpoint: first N tool
    names
