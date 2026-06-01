@@ -108,6 +108,14 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '10 min',
     recommendedOrder: 7,
   },
+  'Composio_Python_SDK.ipynb': {
+    summary:
+      'Composio REST via composio-client in Pyodide: placeholders for API key, list toolkits/tools, optional execute.',
+    tags: ['composio', 'python', 'integration', 'sdk'],
+    level: 'advanced',
+    estimatedRuntime: '12 min',
+    recommendedOrder: 10,
+  },
 }
 
 function displayTitle(filename: string): string {
