@@ -17,6 +17,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
       'Notebook: markdown cells support embedded images (`data:image` PNG/JPEG/GIF/WebP), paste or **Image** insert (512 KB per image), responsive rendering, and save-time checks including total `.ipynb` size (6 MB).',
       'Notebook: import and examples validate markdown embed size only so notebooks with large plot outputs still open.',
       'Examples: **00 Getting Started Tour** includes a tiny inline PNG and notes on pasting images into markdown.',
+      'Examples: **Composio Python SDK** — new bundled notebook using `composio-client` (Pyodide-compatible); paste your API key and explore Composio toolkits and tools in-browser.',
       'Packaging: build 1.2.7 and refreshed distribution package.',
     ],
   },

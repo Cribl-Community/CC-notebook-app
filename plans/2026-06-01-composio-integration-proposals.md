@@ -49,7 +49,7 @@ Proposal 1 — Bundled `composio-client` notebook + proxy path allowlist (recomm
   - Manual open/run for the new notebook in dev; optionally staging E2E matrix run
 - Open Questions (resolved):
   - Host: `backend.composio.dev`; auth: user replaces placeholders in notebook; client sends API key header (confirm name vs Composio docs at implement time)
-  - Path allowlist: `/api/v3.1/toolkits`, `/api/v3.1/tools`
+  - Path allowlist: `/api/v3/toolkits`, `/api/v3/tools`, `/api/v3/actions/execute`
   - Pyodide compatibility: confirmed via dep-chain audit (see research addendum)
 
 Proposal 2 — Pure `httpx` REST notebook (no SDK package install)

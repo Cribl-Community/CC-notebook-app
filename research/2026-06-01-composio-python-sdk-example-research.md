@@ -111,4 +111,4 @@ given this repo's platform constraints.
 
 - Composio REST API base URL: `https://backend.composio.dev`
 - Auth: user replaces **placeholder** values in the notebook (e.g. `COMPOSIO_API_KEY = "<REPLACE_AT_RUNTIME>"`); the client library sends the Composio API key header from those variables. **Do not** use `headers.inject: kv.*` for this example (per plan update). Committed notebook must remain placeholder-only.
-- Key paths to allowlist (prefix match): `/api/v3.1/toolkits`, `/api/v3.1/tools`.
+- Key paths to allowlist: `/api/v3/toolkits`, `/api/v3/tools`, `/api/v3/actions/execute`.
