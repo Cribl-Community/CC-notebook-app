@@ -1,7 +1,12 @@
 import { useCallback, useMemo, useState } from 'react'
-import { buildTreeRows, type TreeRow } from '@features/library/manifest'
+import {
+  buildTreeRows,
+  filterManifestItemsByTagSelection,
+  type TreeRow,
+} from '@features/library/manifest'
 import type { ManifestItem } from '@features/library/manifest'
 import { useEnv } from '@app/providers'
+import { TagMultiFilter } from '@ui/TagMultiFilter'
 interface NotebookSidebarProps {
   items: ManifestItem[]
   loading: boolean
@@ -22,6 +27,8 @@ interface NotebookSidebarProps {
   onConfirmMove: (itemId: string, newParentId: string | null) => void
   onDelete: (id: string, name: string, kind: 'folder' | 'notebook') => void
   moveDestinations: { id: string | null; label: string }[]
+  /** Opens tag editor (prompt) for a saved notebook. */
+  onEditNotebookTags?: (id: string, currentTags: string[]) => void
 }
 
 function formatModified(iso: string): string {
@@ -70,11 +77,33 @@ export function NotebookSidebar({
   onConfirmMove,
   onDelete,
   moveDestinations,
+  onEditNotebookTags,
 }: NotebookSidebarProps) {
   const { isKvMock } = useEnv()
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
+  const [selectedFilterTags, setSelectedFilterTags] = useState<string[]>([])
 
-  const rows: TreeRow[] = useMemo(() => buildTreeRows(items), [items])
+  const allTags = useMemo(() => {
+    const s = new Set<string>()
+    for (const it of items) {
+      if (it.type !== 'notebook') continue
+      for (const t of it.tags) s.add(t)
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  }, [items])
+
+  const allTagSet = useMemo(() => new Set(allTags), [allTags])
+  const effectiveFilterTags = useMemo(
+    () => selectedFilterTags.filter((t) => allTagSet.has(t)),
+    [selectedFilterTags, allTagSet],
+  )
+
+  const treeItems = useMemo(
+    () => filterManifestItemsByTagSelection(items, new Set(effectiveFilterTags)),
+    [items, effectiveFilterTags],
+  )
+
+  const rows: TreeRow[] = useMemo(() => buildTreeRows(treeItems), [treeItems])
 
   const toggleFolder = useCallback((id: string) => {
     setCollapsed((prev) => {
@@ -104,6 +133,12 @@ export function NotebookSidebar({
   const [moveTarget, setMoveTarget] = useState<string>('')
 
   const movingItem = movingId ? items.find((i) => i.id === movingId) : undefined
+
+  const toggleFilterTag = useCallback((tag: string) => {
+    setSelectedFilterTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    )
+  }, [])
 
   const breadcrumbFolderId = useMemo(() => {
     if (selectedNotebookId) {
@@ -194,6 +229,14 @@ export function NotebookSidebar({
           </span>
         ))}
       </nav>
+      <TagMultiFilter
+        summary="Filter by tag"
+        hint="Shows notebooks that have any selected tag."
+        allTags={allTags}
+        selected={effectiveFilterTags}
+        onToggle={toggleFilterTag}
+        onClear={() => setSelectedFilterTags([])}
+      />
       <p className="nb-sidebar-help">Select a folder for new saves; click a notebook to open it.</p>
       {showTableHead && (
         <div className="nb-sidebar-table-head" aria-hidden>
@@ -207,7 +250,13 @@ export function NotebookSidebar({
           <div className="nb-sidebar-empty">Loading…</div>
         )}
         {!loading && visibleRows.length === 0 && (
-          <div className="nb-sidebar-empty">No saved notebooks yet.</div>
+          <div className="nb-sidebar-empty">
+            {items.length === 0
+              ? 'No saved notebooks yet.'
+              : effectiveFilterTags.length > 0
+                ? 'No notebooks match this tag filter.'
+                : 'No saved notebooks yet.'}
+          </div>
         )}
         {visibleRows.map(({ item, depth }) => {
           const isNb = item.type === 'notebook'
@@ -265,6 +314,20 @@ export function NotebookSidebar({
                     }}
                   >
                     +
+                  </button>
+                )}
+                {item.type === 'notebook' && onEditNotebookTags && (
+                  <button
+                    type="button"
+                    className="nb-sidebar-mini"
+                    title="Edit tags"
+                    aria-label="Edit tags"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEditNotebookTags(item.id, item.tags)
+                    }}
+                  >
+                    ⌗
                   </button>
                 )}
                 <button

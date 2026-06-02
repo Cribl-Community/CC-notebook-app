@@ -174,7 +174,7 @@ export async function suggestErrorFix(
   ename: string,
   evalue: string,
   traceback: string[],
-  options?: { signal?: AbortSignal },
+  options?: { signal?: AbortSignal; userHint?: string },
 ): Promise<string> {
   const source = cellSource.trim()
   if (!source) throw new Error('Cell source cannot be empty.')
@@ -190,7 +190,8 @@ export async function suggestErrorFix(
     else external.addEventListener('abort', mergeExternalAbort)
   }
 
-  const prompt = [
+  const hint = options?.userHint?.trim()
+  const promptParts = [
     'You are helping debug a Python notebook cell.',
     'Explain the likely cause and the fix in plain language.',
     'Use at most three short bullet points for prose.',
@@ -207,7 +208,17 @@ export async function suggestErrorFix(
     '',
     '## Traceback',
     traceback.join('\n').trim(),
-  ].join('\n')
+  ]
+  if (hint) {
+    promptParts.push(
+      '',
+      '## User guidance',
+      'The author provided optional guidance below. Prefer fixes that satisfy it when compatible with the error and cell code; if it conflicts, explain briefly.',
+      '',
+      hint,
+    )
+  }
+  const prompt = promptParts.join('\n')
 
   try {
     const res = await fetch(url, {

@@ -199,6 +199,7 @@ export function NotebookPage() {
     handleOpenNotebook,
     handleNewFolder,
     handleRename,
+    handleEditNotebookTags,
     handleDelete,
     handleConfirmMove,
     handleImportFile,
@@ -263,6 +264,7 @@ export function NotebookPage() {
                 onConfirmMove={handleConfirmMove}
                 onDelete={handleDelete}
                 moveDestinations={moveDestinations}
+                onEditNotebookTags={handleEditNotebookTags}
               />
           <div className="nb-workspace">
             <div className="nb-workspace-stack">

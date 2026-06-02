@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import type {
   DisplayDataOutput,
   ErrorOutput,
@@ -96,10 +96,12 @@ function ErrorOutputView({
   onReplaceCellSource?: (source: string) => void
 }) {
   const [fixState, setFixState] = useState<'idle' | 'loading' | 'shown' | 'dismissed'>('idle')
+  const [fixUserHint, setFixUserHint] = useState('')
   const [fixText, setFixText] = useState('')
   const [fixError, setFixError] = useState('')
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const copyTimerRef = useRef<ReturnType<typeof globalThis.setTimeout> | null>(null)
+  const fixHintFieldId = useId()
   const aiCode = useAiCodeService()
   const cleanedTraceback = output.traceback.map((line) => stripAnsi(line))
   const refs = extractCellLineRefs(cleanedTraceback)
@@ -111,11 +113,13 @@ function ErrorOutputView({
     setFixError('')
     setFixState('loading')
     try {
+      const hint = fixUserHint.trim()
       const suggested = await aiCode.suggestErrorFix(
         cellSource,
         output.ename,
         output.evalue,
         cleanedTraceback,
+        hint ? { userHint: hint } : undefined,
       )
       setFixText(suggested)
       setFixState('shown')
@@ -176,6 +180,22 @@ function ErrorOutputView({
       </pre>
       {canSuggestFix && (
         <div className="nb-output-error-fix-footer">
+          {(fixState === 'idle' || fixState === 'loading') && (
+            <div className="nb-output-error-fix-hint">
+              <label className="nb-output-error-fix-hint-label" htmlFor={fixHintFieldId}>
+                Optional guidance for the AI
+              </label>
+              <textarea
+                id={fixHintFieldId}
+                className="nb-output-error-fix-hint-input"
+                rows={2}
+                placeholder="e.g. must stay compatible with pandas 2.x, or explain the type error only"
+                value={fixUserHint}
+                onChange={(e) => setFixUserHint(e.target.value)}
+                disabled={fixState === 'loading'}
+              />
+            </div>
+          )}
           {fixState === 'idle' && (
             <button type="button" className="nb-btn nb-btn-ai-fix" onClick={handleSuggestFix}>
               ✦ Suggest Fix

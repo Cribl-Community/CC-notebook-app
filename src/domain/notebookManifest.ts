@@ -15,6 +15,25 @@ export function emptyManifest(): Manifest {
   return { version: 1, items: [] }
 }
 
+/** Trim, drop empties, dedupe first occurrence (case-sensitive). */
+export function normalizeManifestTagList(tags: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const x of tags) {
+    const t = typeof x === 'string' ? x.trim() : ''
+    if (!t || seen.has(t)) continue
+    seen.add(t)
+    out.push(t)
+  }
+  return out
+}
+
+function parseManifestTagsField(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const strings = raw.filter((x): x is string => typeof x === 'string')
+  return normalizeManifestTagList(strings)
+}
+
 export function parseManifestJson(text: string): Manifest {
   let root: unknown
   try {
@@ -40,15 +59,57 @@ export function parseManifestJson(text: string): Manifest {
       it.parentId === null || typeof it.parentId === 'string' ? it.parentId : undefined
     if (!id || (type !== 'folder' && type !== 'notebook') || parentId === undefined) continue
     if (!name.trim()) continue
-    out.push({
-      id,
-      type,
-      parentId,
-      name: name.trim(),
-      updatedAt: updatedAt || new Date(0).toISOString(),
-    })
+    const trimmedName = name.trim()
+    const ts = updatedAt || new Date(0).toISOString()
+    if (type === 'folder') {
+      out.push({
+        id,
+        type: 'folder',
+        parentId,
+        name: trimmedName,
+        updatedAt: ts,
+      })
+    } else {
+      out.push({
+        id,
+        type: 'notebook',
+        parentId,
+        name: trimmedName,
+        updatedAt: ts,
+        tags: parseManifestTagsField(it.tags),
+      })
+    }
   }
   return { version: 1, items: out }
+}
+
+/**
+ * When `selectedTags` is non-empty, keep notebooks that have **any** of those tags
+ * (OR), plus ancestor folders. Empty `selectedTags` returns `items` unchanged.
+ */
+export function filterManifestItemsByTagSelection(
+  items: ManifestItem[],
+  selectedTags: ReadonlySet<string>,
+): ManifestItem[] {
+  if (selectedTags.size === 0) return items
+  const byId = new Map(items.map((i) => [i.id, i]))
+  const matchingNotebookIds = new Set<string>()
+  for (const it of items) {
+    if (it.type !== 'notebook') continue
+    if (it.tags.some((t) => selectedTags.has(t))) matchingNotebookIds.add(it.id)
+  }
+  if (matchingNotebookIds.size === 0) return []
+  const keepIds = new Set<string>()
+  for (const nid of matchingNotebookIds) {
+    keepIds.add(nid)
+    let pid: string | null | undefined = byId.get(nid)?.parentId
+    while (pid) {
+      keepIds.add(pid)
+      const parent = byId.get(pid)
+      pid = parent?.parentId ?? null
+    }
+  }
+  return items.filter((i) => keepIds.has(i.id))
 }
 
 export function siblingNameTaken(

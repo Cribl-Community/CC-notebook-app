@@ -3,6 +3,7 @@ import type { Cell, NotebookState } from '@features/notebook/model/types'
 import {
   collectSubtreeIds,
   isUnderFolder,
+  normalizeManifestTagList,
   siblingNameTaken,
   type Manifest,
   type ManifestItem,
@@ -80,8 +81,27 @@ export function manifestRegisterNotebook(
     parentId,
     name: n,
     updatedAt: now,
+    tags: [],
   }
   return { manifest: { ...manifest, items: [...manifest.items, item] }, id }
+}
+
+export function manifestSetNotebookTags(
+  manifest: Manifest,
+  notebookId: string,
+  tags: string[],
+): { manifest: Manifest } | { error: string } {
+  const target = manifest.items.find((i) => i.id === notebookId)
+  if (!target) return { error: 'Item not found' }
+  if (target.type !== 'notebook') return { error: 'Not a notebook' }
+  const normalized = normalizeManifestTagList(tags)
+  const now = new Date().toISOString()
+  const items = manifest.items.map((i) =>
+    i.id === notebookId && i.type === 'notebook'
+      ? { ...i, tags: normalized, updatedAt: now }
+      : i,
+  )
+  return { manifest: { ...manifest, items } }
 }
 
 export function manifestRename(

@@ -1,8 +1,10 @@
-import { useRef } from 'react'
-import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { filterItemsByAnyTag } from '@domain/tagFilter'
+import { exampleNotebookDisplayLabel, type ExampleNotebook } from '@features/examples/examplesManifest'
 import { useExamples } from '@features/examples/useExamples'
 import { RELEASE_NOTES } from '@features/welcome/releaseNotes'
 import { WelcomeProxyCheck } from '@features/welcome/WelcomeProxyCheck'
+import { TagMultiFilter } from '@ui/TagMultiFilter'
 
 export type WelcomePageProps = {
   onOpenExample: (filename: string) => void
@@ -14,6 +16,45 @@ export function WelcomePage({ onOpenExample, onNewNotebook, onImportFile }: Welc
   const fileRef = useRef<HTMLInputElement>(null)
   const [top, ...rest] = RELEASE_NOTES
   const { state: examplesLoad, setSelected } = useExamples()
+  const [exampleTagFilter, setExampleTagFilter] = useState<string[]>([])
+
+  const exampleAllTags = useMemo(() => {
+    if (examplesLoad.kind !== 'ready') return []
+    const s = new Set<string>()
+    for (const n of examplesLoad.notebooks) {
+      for (const t of n.tags) s.add(t)
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  }, [examplesLoad])
+
+  const exampleAllTagSet = useMemo(() => new Set(exampleAllTags), [exampleAllTags])
+  const effectiveExampleFilterTags = useMemo(
+    () => exampleTagFilter.filter((t) => exampleAllTagSet.has(t)),
+    [exampleTagFilter, exampleAllTagSet],
+  )
+
+  const { visibleExamples, exampleSelection } = useMemo((): {
+    visibleExamples: ExampleNotebook[]
+    exampleSelection: string
+  } => {
+    if (examplesLoad.kind !== 'ready') {
+      return { visibleExamples: [], exampleSelection: '' }
+    }
+    const vis = filterItemsByAnyTag(examplesLoad.notebooks, new Set(effectiveExampleFilterTags))
+    const sel =
+      vis.find((n) => n.filename === examplesLoad.selectedFilename)?.filename ?? vis[0]?.filename ?? ''
+    return { visibleExamples: vis, exampleSelection: sel }
+  }, [examplesLoad, effectiveExampleFilterTags])
+
+  useEffect(() => {
+    if (examplesLoad.kind !== 'ready') return
+    if (exampleSelection === examplesLoad.selectedFilename) return
+    setSelected(exampleSelection)
+  }, [examplesLoad, exampleSelection, setSelected])
+
+  const toggleExampleFilterTag = useCallback((tag: string) => {
+    setExampleTagFilter((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]))
+  }, [])
 
   return (
     <div className="nb-welcome">
@@ -108,47 +149,61 @@ export function WelcomePage({ onOpenExample, onNewNotebook, onImportFile }: Welc
         )}
         {examplesLoad.kind === 'ready' && examplesLoad.notebooks.length > 0 && (
           <div className="nb-welcome-examples-picker">
+            <TagMultiFilter
+              summary="Filter examples by tag"
+              hint="Shows examples that have any selected tag."
+              allTags={exampleAllTags}
+              selected={effectiveExampleFilterTags}
+              onToggle={toggleExampleFilterTag}
+              onClear={() => setExampleTagFilter([])}
+            />
             <label className="nb-welcome-examples-label" htmlFor="nb-welcome-examples-select">
               Choose an example
             </label>
-            <select
-              id="nb-welcome-examples-select"
-              className="nb-welcome-examples-select"
-              size={Math.min(Math.max(examplesLoad.notebooks.length, 1), 10)}
-              value={examplesLoad.selectedFilename}
-              onChange={(e) => setSelected(e.target.value)}
-              onDoubleClick={(e) => {
-                const v = e.currentTarget.value
-                if (v) onOpenExample(v)
-              }}
-            >
-              {examplesLoad.notebooks.map((example) => (
-                <option key={example.filename} value={example.filename}>
-                  {example.title || exampleNotebookDisplayLabel(example.filename)}
-                </option>
-              ))}
-            </select>
-            {examplesLoad.notebooks
-              .filter((x) => x.filename === examplesLoad.selectedFilename)
-              .map((selected) => (
-                <div key={selected.filename} className="nb-welcome-example-meta">
-                  <p className="nb-welcome-example-summary">{selected.summary}</p>
-                  <p className="nb-welcome-example-badges">
-                    <span className="nb-welcome-example-pill">{selected.level}</span>
-                    <span className="nb-welcome-example-pill">{selected.estimatedRuntime}</span>
-                    {selected.tags.map((tag) => (
-                      <span key={tag} className="nb-welcome-example-pill">
-                        {tag}
-                      </span>
-                    ))}
-                  </p>
-                </div>
-              ))}
+            {visibleExamples.length === 0 ? (
+              <p className="nb-welcome-muted nb-welcome-examples-status">No examples match this tag filter.</p>
+            ) : (
+              <>
+                <select
+                  id="nb-welcome-examples-select"
+                  className="nb-welcome-examples-select"
+                  size={Math.min(Math.max(visibleExamples.length, 1), 10)}
+                  value={exampleSelection}
+                  onChange={(e) => setSelected(e.target.value)}
+                  onDoubleClick={(e) => {
+                    const v = e.currentTarget.value
+                    if (v) onOpenExample(v)
+                  }}
+                >
+                  {visibleExamples.map((example) => (
+                    <option key={example.filename} value={example.filename}>
+                      {example.title || exampleNotebookDisplayLabel(example.filename)}
+                    </option>
+                  ))}
+                </select>
+                {visibleExamples
+                  .filter((x) => x.filename === exampleSelection)
+                  .map((selected) => (
+                    <div key={selected.filename} className="nb-welcome-example-meta">
+                      <p className="nb-welcome-example-summary">{selected.summary}</p>
+                      <p className="nb-welcome-example-badges">
+                        <span className="nb-welcome-example-pill">{selected.level}</span>
+                        <span className="nb-welcome-example-pill">{selected.estimatedRuntime}</span>
+                        {selected.tags.map((tag) => (
+                          <span key={tag} className="nb-welcome-example-pill">
+                            {tag}
+                          </span>
+                        ))}
+                      </p>
+                    </div>
+                  ))}
+              </>
+            )}
             <button
               type="button"
               className="nb-btn nb-btn-primary nb-welcome-examples-open"
-              disabled={!examplesLoad.selectedFilename}
-              onClick={() => onOpenExample(examplesLoad.selectedFilename)}
+              disabled={!exampleSelection || visibleExamples.length === 0}
+              onClick={() => onOpenExample(exampleSelection)}
             >
               Open example
             </button>

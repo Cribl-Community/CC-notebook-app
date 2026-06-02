@@ -9,6 +9,7 @@ import {
   parseRiptidePromptFromCellSource,
   RIPTIDE_CELL_PROMPT_HEADER,
   isRiptidePromptCell,
+  suggestErrorFix,
 } from '@features/ai-riptide/riptideService'
 
 describe('parseRiptideNdjsonBody', () => {
@@ -113,5 +114,38 @@ describe('generatePythonFromPrompt', () => {
   it('throws when no code in response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 })))
     await expect(generatePythonFromPrompt('', 'x')).rejects.toThrow(/did not return usable Python/)
+  })
+})
+
+describe('suggestErrorFix', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  })
+
+  it('includes User guidance in the request body when userHint is set', async () => {
+    const ndjson = [JSON.stringify({ name: 'agent:riptide', role: 'assistant', content: 'Try `int(x)`.' })].join('\n')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(ndjson, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(
+      suggestErrorFix('', 'x = 1\n', 'TypeError', 'bad', ['line'], { userHint: '  keep it minimal  ' }),
+    ).resolves.toBe('Try `int(x)`.')
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      messages: Array<{ content: string }>
+    }
+    expect(body.messages[0]?.content).toContain('## User guidance')
+    expect(body.messages[0]?.content).toContain('keep it minimal')
+    expect(body.messages[0]?.content).not.toMatch(/userHint/)
+  })
+
+  it('omits User guidance when userHint is empty or whitespace', async () => {
+    const ndjson = [JSON.stringify({ role: 'assistant', content: 'ok' })].join('\n')
+    const fetchMock = vi.fn().mockResolvedValue(new Response(ndjson, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    await suggestErrorFix('', 'pass\n', 'E', 'v', [], { userHint: '  \n  ' })
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as {
+      messages: Array<{ content: string }>
+    }
+    expect(body.messages[0]?.content).not.toContain('## User guidance')
   })
 })
