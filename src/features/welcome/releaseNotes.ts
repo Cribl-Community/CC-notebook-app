@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.8',
+    date: '2026-06-02',
+    highlights: [
+      'Welcome: **Pack proxy check** reads `config/proxies.yml` at build time and runs a probe row for every declared host (Pyodide CDN / PyPI / pythonhosted keep the existing checks; other hosts GET the first allowlisted path and treat any HTTP response as OK when the proxy path works).',
+      'Packaging: build 1.2.8 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.7',
     date: '2026-06-01',
     highlights: [
