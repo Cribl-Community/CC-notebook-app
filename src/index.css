@@ -439,14 +439,20 @@ body {
   min-height: 30px;
 }
 
-.nb-sidebar-tag-filter {
+/* Shared tag filter (notebook sidebar + welcome examples). */
+.nb-tag-filter {
   margin: 0;
   padding: 0;
   border-bottom: 1px solid var(--nb-border);
   font-size: 11px;
 }
 
-.nb-sidebar-tag-filter-summary {
+.nb-welcome-examples-picker .nb-tag-filter {
+  border-bottom: none;
+  margin-bottom: var(--space-2);
+}
+
+.nb-tag-filter-summary {
   cursor: pointer;
   list-style: none;
   padding: 6px 10px;
@@ -454,32 +460,37 @@ body {
   user-select: none;
 }
 
-.nb-sidebar-tag-filter-summary::-webkit-details-marker {
+.nb-tag-filter-summary::-webkit-details-marker {
   display: none;
 }
 
-.nb-sidebar-tag-filter-summary::before {
+.nb-tag-filter-summary::before {
   content: '▸ ';
   display: inline-block;
   width: 1em;
   color: var(--nb-text-dim);
 }
 
-.nb-sidebar-tag-filter[open] .nb-sidebar-tag-filter-summary::before {
+.nb-tag-filter[open] .nb-tag-filter-summary::before {
   content: '▾ ';
 }
 
-.nb-sidebar-tag-filter-body {
+.nb-tag-filter-body {
   padding: 0 10px 8px;
 }
 
-.nb-sidebar-tag-chips {
+.nb-welcome-examples-picker .nb-tag-filter-body {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.nb-tag-filter-chips {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
-.nb-sidebar-tag-chip {
+.nb-tag-filter-chip {
   padding: 2px 6px;
   font: inherit;
   font-size: 10px;
@@ -494,18 +505,18 @@ body {
   white-space: nowrap;
 }
 
-.nb-sidebar-tag-chip:hover {
+.nb-tag-filter-chip:hover {
   border-color: var(--nb-border-hover);
   color: var(--nb-text);
 }
 
-.nb-sidebar-tag-chip--on {
+.nb-tag-filter-chip--on {
   outline: 1px solid var(--nb-list-selection-ring);
   background: var(--nb-list-selection-bg);
   color: var(--nb-text);
 }
 
-.nb-sidebar-tag-filter-clear {
+.nb-tag-filter-clear {
   margin-top: 6px;
   padding: 0;
   border: none;
@@ -517,7 +528,7 @@ body {
   text-decoration: underline;
 }
 
-.nb-sidebar-tag-filter-hint {
+.nb-tag-filter-hint {
   margin: 6px 0 0;
   font-size: 9px;
   color: var(--nb-text-dim);

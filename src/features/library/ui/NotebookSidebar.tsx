@@ -6,6 +6,7 @@ import {
 } from '@features/library/manifest'
 import type { ManifestItem } from '@features/library/manifest'
 import { useEnv } from '@app/providers'
+import { TagMultiFilter } from '@ui/TagMultiFilter'
 interface NotebookSidebarProps {
   items: ManifestItem[]
   loading: boolean
@@ -228,39 +229,14 @@ export function NotebookSidebar({
           </span>
         ))}
       </nav>
-      {allTags.length > 0 && (
-        <details className="nb-sidebar-tag-filter">
-          <summary className="nb-sidebar-tag-filter-summary">Filter by tag</summary>
-          <div className="nb-sidebar-tag-filter-body">
-            <div className="nb-sidebar-tag-chips" role="group" aria-label="Tag filters">
-              {allTags.map((tag) => {
-                const on = selectedFilterTags.includes(tag)
-                return (
-                  <button
-                    key={tag}
-                    type="button"
-                    className={'nb-sidebar-tag-chip' + (on ? ' nb-sidebar-tag-chip--on' : '')}
-                    aria-pressed={on}
-                    onClick={() => toggleFilterTag(tag)}
-                  >
-                    {tag}
-                  </button>
-                )
-              })}
-            </div>
-            {selectedFilterTags.length > 0 && (
-              <button
-                type="button"
-                className="nb-sidebar-tag-filter-clear"
-                onClick={() => setSelectedFilterTags([])}
-              >
-                Clear filter
-              </button>
-            )}
-            <p className="nb-sidebar-tag-filter-hint">Shows notebooks that have any selected tag.</p>
-          </div>
-        </details>
-      )}
+      <TagMultiFilter
+        summary="Filter by tag"
+        hint="Shows notebooks that have any selected tag."
+        allTags={allTags}
+        selected={effectiveFilterTags}
+        onToggle={toggleFilterTag}
+        onClear={() => setSelectedFilterTags([])}
+      />
       <p className="nb-sidebar-help">Select a folder for new saves; click a notebook to open it.</p>
       {showTableHead && (
         <div className="nb-sidebar-table-head" aria-hidden>
