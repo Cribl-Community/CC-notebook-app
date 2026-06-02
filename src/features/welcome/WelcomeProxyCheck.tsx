@@ -31,10 +31,10 @@ export function WelcomeProxyCheck() {
     <section className="nb-welcome-section nb-welcome-proxy">
       <h2>Pack proxy check</h2>
       <p className="nb-welcome-muted">
-        Quick checks against each host in <code className="nb-welcome-code">config/proxies.yml</code> (the
-        pythonhosted probe picks a wheel URL from PyPI pip metadata, then GETs that file). In Cribl
-        Apps, <code className="nb-welcome-code">fetch</code> is routed through the pack proxy; all checks
-        should report OK when proxy routing and allowlists are working.
+        Hosts are read from <code className="nb-welcome-code">config/proxies.yml</code> at build time. Pyodide
+        hosts use fixed JSON / wheel probes; other hosts GET the first allowlisted path (non-network
+        HTTP errors still count as OK when the proxy returned a response). In Cribl Apps,{' '}
+        <code className="nb-welcome-code">fetch</code> is routed through the pack proxy.
       </p>
       <div className="nb-welcome-proxy-actions">
         <button
