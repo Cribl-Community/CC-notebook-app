@@ -18,7 +18,11 @@ let currentKernelInit: NotebookState['kernelInit'] = {
 vi.mock('@app/providers', () => ({
   useTheme: () => ({ appStyle: 'default', setAppStyle: vi.fn(), codeMirrorLuma: false }),
   useDialogs: () => ({ alert: vi.fn(), confirm: vi.fn().mockResolvedValue(true), prompt: vi.fn() }),
-  useAiCodeService: () => ({ isAvailable: () => false, generatePythonFromPrompt: vi.fn() }),
+  useAiCodeService: () => ({
+    isAvailable: () => false,
+    generatePythonFromPrompt: vi.fn(),
+    suggestErrorFix: vi.fn(),
+  }),
   useEnv: () => ({ apiBase: '', isCriblHosted: false, isKvMock: true, staticAssetPrefix: '/' }),
   useSearchService: () => ({
     runSearch: vi.fn(),

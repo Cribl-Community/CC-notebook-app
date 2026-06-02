@@ -1180,6 +1180,43 @@ body {
   margin-top: 8px;
 }
 
+.nb-output-error-fix-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.nb-output-error-fix-hint-label {
+  font-size: 11px;
+  color: var(--nb-text-muted);
+}
+
+.nb-output-error-fix-hint-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--nb-text);
+  background: var(--nb-bg-cell);
+  border: 1px solid var(--nb-border);
+  border-radius: 4px;
+  resize: vertical;
+}
+
+.nb-output-error-fix-hint-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--nb-accent, var(--nb-border)) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.nb-output-error-fix-hint-input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 .nb-btn-ai-fix {
   font-size: 12px;
 }

@@ -11,6 +11,7 @@ export interface AiCodeService {
     ename: string,
     evalue: string,
     traceback: string[],
-    options?: { signal?: AbortSignal },
+    /** `userHint`: optional free text to steer the model (e.g. constraints or intent). */
+    options?: { signal?: AbortSignal; userHint?: string },
   ): Promise<string>
 }
