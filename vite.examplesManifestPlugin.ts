@@ -108,6 +108,13 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '10 min',
     recommendedOrder: 7,
   },
+  'Composio_Python_SDK.ipynb': {
+    summary: 'Explore Composio toolkits and tools via composio-client; paste your API key and run.',
+    tags: ['composio', 'python', 'integration', 'sdk', 'ai-tools'],
+    level: 'advanced',
+    estimatedRuntime: '10 min',
+    recommendedOrder: 10,
+  },
 }
 
 function displayTitle(filename: string): string {

@@ -19,3 +19,15 @@ files.pythonhosted.org:
     allowlist:
       - /packages/
 
+# Composio REST API — used by the Composio_Python_SDK example notebook.
+# The Pyodide kernel bridge strips all custom headers, so x-api-key cannot be sent by Python
+# code directly. The proxy injects it from the app's KV store (key: composioApiKey).
+# composio-client 1.39.0 calls paths under /api/v3.1/ (confirmed by inspecting the wheel).
+backend.composio.dev:
+  paths:
+    allowlist:
+      - /api/v3.1/
+  headers:
+    inject:
+      x-api-key: kv.composioApiKey
+
