@@ -56,7 +56,7 @@ describe('useNotebookLibrary', () => {
         version: 1,
         items: [
           { id: 'f1', type: 'folder', parentId: null, name: 'Folder', updatedAt: '' },
-          { id: 'n1', type: 'notebook', parentId: null, name: 'N', updatedAt: '' },
+          { id: 'n1', type: 'notebook', parentId: null, name: 'N', updatedAt: '', tags: [] },
         ],
       }),
     )

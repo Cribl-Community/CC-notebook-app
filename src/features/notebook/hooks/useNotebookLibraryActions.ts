@@ -11,6 +11,7 @@ import {
   manifestAddFolder,
   manifestMove,
   manifestRemove,
+  manifestSetNotebookTags,
   renameEntryInKv,
   saveNotebookState,
   storeManifest,
@@ -205,6 +206,33 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     [dispatchNotebookForTab, loadLibrary, manifest, repo, setManifest, showAlert, showPrompt, workspaceRef],
   )
 
+  const handleEditNotebookTags = useCallback(
+    (id: string, currentTags: string[]) => {
+      if (!manifest) return
+      void (async () => {
+        const raw = await showPrompt(
+          'Notebook tags',
+          'Comma-separated (leave empty to clear)',
+          currentTags.join(', '),
+        )
+        if (raw === null) return
+        const result = manifestSetNotebookTags(manifest, id, raw.split(','))
+        if ('error' in result) {
+          showAlert(result.error)
+          return
+        }
+        try {
+          await storeManifest(repo, result.manifest)
+          setManifest(result.manifest)
+          await loadLibrary()
+        } catch (e) {
+          showAlert(e instanceof Error ? e.message : 'Failed to update tags')
+        }
+      })()
+    },
+    [loadLibrary, manifest, repo, setManifest, showAlert, showPrompt],
+  )
+
   const handleDelete = useCallback(
     (id: string, name: string, kind: 'folder' | 'notebook') => {
       if (!manifest) return
@@ -319,6 +347,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     handleOpenNotebook,
     handleNewFolder,
     handleRename,
+    handleEditNotebookTags,
     handleDelete,
     handleConfirmMove,
     handleImportFile,

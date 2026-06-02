@@ -12,6 +12,8 @@ export type ManifestItem =
       parentId: string | null
       name: string
       updatedAt: string
+      /** Library-only labels for sidebar filtering (comma-edited in UI). */
+      tags: string[]
     }
 
 export interface Manifest {
