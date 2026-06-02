@@ -1,16 +1,45 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PYODIDE_RELEASE } from '@app/providers'
 import {
   getProxySmokeCheckDefinitions,
+  parseProxiesYamlEntries,
   resolvePythonHostedWheelProbeUrl,
   runProxySmokeTests,
   type ProxySmokeRowResult,
 } from '@features/welcome/proxySmokeTest'
 
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..')
+
+describe('parseProxiesYamlEntries', () => {
+  it('returns top-level keys in order with allowlists', () => {
+    const raw = `
+a.example.com:
+  paths:
+    allowlist:
+      - /one/
+b.example.com: {}
+`
+    const entries = parseProxiesYamlEntries(raw)
+    expect(entries.map((e) => e.yamlKey)).toEqual(['a.example.com', 'b.example.com'])
+    expect(entries[0]?.allowlist).toEqual(['/one/'])
+    expect(entries[1]?.allowlist).toEqual([])
+  })
+})
+
 describe('getProxySmokeCheckDefinitions', () => {
-  it('uses URLs that match config/proxies.yml allowlists', () => {
+  it('covers every top-level host in config/proxies.yml with allowlist-aligned probes', () => {
+    const yml = readFileSync(join(repoRoot, 'config', 'proxies.yml'), 'utf8')
+    const parsed = parseProxiesYamlEntries(yml)
+    expect(parsed.length).toBeGreaterThan(0)
+
     const checks = getProxySmokeCheckDefinitions()
-    expect(checks).toHaveLength(3)
+    const hosts = checks.map((c) => c.proxyYamlHost)
+    for (const { yamlKey } of parsed) {
+      expect(hosts).toContain(yamlKey)
+    }
 
     const jsd = checks.find((c) => c.id === 'jsdelivr')
     expect(jsd?.url).toBe(
@@ -24,7 +53,13 @@ describe('getProxySmokeCheckDefinitions', () => {
 
     const files = checks.find((c) => c.id === 'files')
     expect(files?.url).toBeUndefined()
+    expect(files?.probeMode).toBe('pypi-wheel')
     expect(files?.proxyYamlHost).toBe('files.pythonhosted.org')
+
+    const composio = checks.find((c) => c.proxyYamlHost === 'backend.composio.dev')
+    expect(composio).toBeDefined()
+    expect(composio?.acceptHttpErrors).toBe(true)
+    expect(composio?.url).toMatch(/^https:\/\/backend\.composio\.dev\/api\/v3\.1\//)
   })
 })
 
@@ -90,7 +125,7 @@ describe('runProxySmokeTests', () => {
     expect(finals[0]?.httpStatus).toBe(200)
   })
 
-  it('resolves files probe URL then fetches the wheel', async () => {
+  it('resolves pypi-wheel probe URL then fetches the wheel', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(
@@ -109,7 +144,7 @@ describe('runProxySmokeTests', () => {
       .mockResolvedValueOnce(new Response('', { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const defs = getProxySmokeCheckDefinitions().filter((d) => d.id === 'files')
+    const defs = getProxySmokeCheckDefinitions().filter((d) => d.probeMode === 'pypi-wheel')
     const finals: ProxySmokeRowResult[] = []
     await runProxySmokeTests(defs, (row) => {
       if (row.status !== 'pending') finals.push(row)
