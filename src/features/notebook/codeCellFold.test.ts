@@ -7,7 +7,7 @@ import {
   parseCodeFoldedFromCellMetadata,
 } from '@features/notebook/codeCellFold'
 import type { Cell } from '@features/notebook/model/types'
-import { RIPTIDE_CELL_PROMPT_HEADER } from '@features/ai-riptide/riptideService'
+import { RIPTIDE_CELL_PROMPT_HEADER } from '@features/ai-riptide'
 
 function codeCell(overrides: Partial<Extract<Cell, { cell_type: 'code' }>>): Extract<Cell, { cell_type: 'code' }> {
   return {

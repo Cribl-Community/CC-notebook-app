@@ -1,19 +1,17 @@
 import { DEFAULT_CRIBL_SEARCH_TABLE_PREVIEW_MAX_ROWS } from '@/domain/search'
 import { lineSkipsMagicScan } from '@/domain/criblCellMagicSource'
 import type { SearchService } from '@ports/SearchService'
-import { planCriblSearchDataframeHydration } from '@features/cribl-search/criblSearchDataframeHydration'
-import {
-  parseCriblSearchMagic,
-  wantsCriblSearchJinjaTemplating,
-} from '@features/cribl-search/criblSearchMagic'
-import { runCriblSearchJinjaInKernel } from '@features/cribl-search/criblSearchJinjaRender'
-import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
 import {
   criblSearchIOPub,
+  filterPyodidePackageChatter,
   formatCriblSearchError,
   formatCriblSearchJsonRows,
   formatCriblSearchRawRows,
-} from '@features/cribl-search/criblSearchCellRunner'
+  parseCriblSearchMagic,
+  planCriblSearchDataframeHydration,
+  runCriblSearchJinjaInKernel,
+  wantsCriblSearchJinjaTemplating,
+} from '@features/cribl-search'
 import type { IOPubMessage } from '@/domain/kernel'
 import type { SearchProgressEvent, TranslateEnglishToKqlOptions } from '@/domain/search'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'

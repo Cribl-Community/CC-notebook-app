@@ -3,7 +3,7 @@ import { getCriblApiBase } from '@platform/env/env'
 import {
   generatePythonFromPrompt,
   suggestErrorFix,
-} from '@features/ai-riptide/riptideService'
+} from '@features/ai-riptide'
 
 /**
  * Default AiCodeService adapter: calls Cribl Riptide through the platform

@@ -1,19 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, fireEvent, screen } from '@testing-library/react'
 import { WelcomePage } from './WelcomePage'
-import type { ExamplesLoadState } from '@features/examples/useExamples'
-
-vi.mock('@features/welcome/WelcomeProxyCheck', () => ({
-  WelcomeProxyCheck: () => null,
-}))
+import type { ExamplesLoadState } from '@features/examples'
 
 const useExamplesMock = vi.hoisted(() => ({
   state: { kind: 'loading' } as ExamplesLoadState,
   setSelected: vi.fn(),
 }))
 
-vi.mock('@features/examples/useExamples', () => ({
+vi.mock('@features/welcome/WelcomeProxyCheck', () => ({
+  WelcomeProxyCheck: () => null,
+}))
+
+vi.mock('@features/examples', () => ({
   useExamples: () => useExamplesMock,
+  exampleNotebookDisplayLabel: (filename: string) => filename,
+  parseExamplesManifest: vi.fn(),
 }))
 
 describe('WelcomePage', () => {

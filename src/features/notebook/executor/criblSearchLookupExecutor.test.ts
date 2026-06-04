@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import type { LookupService } from '@ports/LookupService'
 import { cellExecutorFetchHelpers } from '@platform/adapters/cellExecutorFetchHelpers'
-import { CRIBL_LOOKUP_EXPORT_RESULT_KEY } from '@features/cribl-search/criblSearchLookupMagic'
+import { CRIBL_LOOKUP_EXPORT_RESULT_KEY } from '@features/cribl-search'
 import {
   createCriblSearchLookupExecutor,
   looksLikeCriblSearchLookupMagic,

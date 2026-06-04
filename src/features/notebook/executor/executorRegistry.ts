@@ -13,7 +13,7 @@ import {
   wantsCriblApiJinjaTemplating,
 } from '@features/cribl-api/criblApiMagic'
 import { runNotebookJinjaInKernel } from '@features/notebook/jinjaInKernel'
-import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
+import { filterPyodidePackageChatter } from '@features/cribl-search'
 import { createCriblApiExecutor } from './criblApiExecutor'
 import { createCriblSearchLookupExecutor } from './criblSearchLookupExecutor'
 import { createCriblSearchExecutor } from './criblSearchExecutor'

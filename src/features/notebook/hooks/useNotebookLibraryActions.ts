@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { createEmptyTab } from '@features/notebook/reducer/tabWorkspace'
 import { useEnv, useNotebookRepo } from '@app/providers'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
-import type { NotebookLibraryController } from '@features/library/hooks/useNotebookLibrary'
+import type { NotebookLibraryController } from '@features/library'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
 import {
   confirmMoveLibraryEntry,

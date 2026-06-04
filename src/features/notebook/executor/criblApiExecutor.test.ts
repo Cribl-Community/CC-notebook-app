@@ -12,7 +12,7 @@ import {
   wantsCriblApiJinjaTemplating,
 } from '@features/cribl-api/criblApiMagic'
 import { runNotebookJinjaInKernel } from '@features/notebook/jinjaInKernel'
-import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
+import { filterPyodidePackageChatter } from '@features/cribl-search'
 import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
 import { createCriblApiExecutor } from './criblApiExecutor'

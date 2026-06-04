@@ -14,8 +14,8 @@ import {
   renameEntryInKv,
   saveNotebookState,
   storeManifest,
-} from '@features/library/notebookLibrary'
-import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
+} from '@features/library'
+import { exampleNotebookDisplayLabel } from '@features/examples'
 import {
   assertMarkdownEmbedsWithinLimits,
   assertNotebookPersistable,
