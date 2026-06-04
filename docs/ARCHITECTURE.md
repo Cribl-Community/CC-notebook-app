@@ -301,13 +301,22 @@ is only for `AiCodeProvider` wiring).
 
 Orchestration — async commands, tab/workspace side effects, and run-queue wiring —
 is split across focused modules under `features/notebook/hooks/` so
-`NotebookPage` stays mostly composition and JSX. See the **Notebook** row in
-[`docs/NAVIGATE.md`](./NAVIGATE.md) for the current entry-file list (orchestration
-helpers live next to the hooks they support).
+`NotebookPage` stays mostly composition and JSX.
 
-Cross-feature imports should prefer each slice’s `index.ts` barrel (for example
-`@features/library`, `@features/welcome`) over deep paths into another feature’s
-`ui/` or `hooks/` folders.
+| Concern | Modules |
+|--------|---------|
+| Cell run queue (serialized per tab) | `useCellRunner.ts`, `cellRunnerQueue.ts` |
+| KV library save / open / manifest CRUD / import / examples | `useNotebookLibraryActions.ts`, `notebookLibraryAsyncCommands.ts`, `notebookLibraryWorkspaceSync.ts` |
+| Per-tab Pyodide + widget bridge | `useTabNotebookRuntime.ts` |
+| Workspace + tab reducer wiring | `useNotebookWorkspace.ts` |
+| Code completion + Riptide prompt → cell source | `useNotebookPageCompleteCode.ts`, `useNotebookPageAiGenerate.ts` |
+| Tab chrome (close / select / new / download) | `useNotebookPageTabChrome.ts` |
+
+Cross-feature imports should use each slice’s `index.ts` barrel (`@features/library`,
+`@features/welcome`, `@features/examples`, `@features/cribl-search`, `@features/ai-riptide`)
+instead of deep paths into another feature’s `ui/` or `hooks/` folders. ESLint also
+discourages deep `@features/<slice>/...` imports from `src/app/` and `src/ui/` so
+composition and shared editor code stay coupled to public surfaces only.
 
 ## Execution pipeline (mental model)
 

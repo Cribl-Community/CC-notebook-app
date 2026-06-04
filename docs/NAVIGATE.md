@@ -5,7 +5,7 @@ Task-oriented map for humans. For layering rules, port tables, and recipes in de
 ## Five-minute orientation
 
 1. **Composition root:** [`src/App.tsx`](../src/App.tsx) nests providers (env, theme, AI, dialogs, search, lookup, notebook repo, kernel) then mounts [`NotebookPage`](../src/features/notebook/ui/NotebookPage.tsx).
-2. **Main page:** `NotebookPage` composes toolbar, tabs, cells, and wires hooks for workspace + runtime + cell runs.
+2. **Main page:** `NotebookPage` composes toolbar, tabs, cells; orchestration lives in hooks next to the page (`useNotebookPage*`, `useNotebookLibraryActions`, `useCellRunner`).
 3. **State:** Tab workspace and notebook content are driven by reducers under [`src/features/notebook/reducer/`](../src/features/notebook/reducer/).
 4. **Execution:** [`useCellRunner`](../src/features/notebook/hooks/useCellRunner.ts) queues work per tab; [`runNotebookCell`](../src/features/notebook/executor/runNotebookCell.ts) picks an executor from [`executorRegistry.ts`](../src/features/notebook/executor/executorRegistry.ts) (order: `%%cribl_api` → `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup` / `%%cribl_delete_search_lookup` → `%%cribl_search` → Python).
 5. **I/O:** Concrete `fetch`, workers, and KV live under [`src/platform/`](../src/platform/). Features talk to **ports** (`src/ports/`) and read implementations from **`app/providers/`** in production.
@@ -48,7 +48,7 @@ flowchart TB
 
 | Slice | Responsibility | Good entry files |
 | --- | --- | --- |
-| `notebook/` | Cells, tabs, execution, codec, main UI | `ui/NotebookPage.tsx`, `hooks/useCellRunner.ts`, `hooks/useTabNotebookRuntime.ts`, `executor/executorRegistry.ts`, `reducer/notebookReducer.ts` |
+| `notebook/` | Cells, tabs, execution, codec, main UI | `ui/NotebookPage.tsx`, `hooks/useCellRunner.ts`, `hooks/cellRunnerQueue.ts`, `hooks/useTabNotebookRuntime.ts`, `hooks/useNotebookLibraryActions.ts`, `hooks/notebookLibraryAsyncCommands.ts`, `hooks/useNotebookPageCompleteCode.ts`, `hooks/useNotebookPageAiGenerate.ts`, `hooks/useNotebookPageTabChrome.ts`, `executor/executorRegistry.ts`, `reducer/notebookReducer.ts` |
 | `library/` | Saved notebooks + manifest in KV, sidebar | `notebookLibrary.ts`, `hooks/useNotebookLibrary.ts`, `ui/NotebookSidebar.tsx` |
 | `cribl-search/` | `%%cribl_search`, lookup save/load magics, editor, output | `criblSearchMagic.ts`, `criblSearchLookupMagic.ts`, `editor/criblSearchEditor.ts` |
 | `cribl-api/` | `%%cribl_api` magic, OpenAPI catalog, HTTP from cells | `criblApiMagic.ts`, `criblApiCatalog.ts`, `executor` usage via `notebook/` |
