@@ -6,11 +6,13 @@ import { createCriblSearchExecutor } from './criblSearchExecutor'
 import type { CellId } from '@features/notebook/model/types'
 import type { KernelPort } from '@ports/KernelPort'
 import { CRIBL_SEARCH_MIME } from '@/domain/criblSearchMime'
-import { planCriblSearchDataframeHydration } from '@features/cribl-search/criblSearchDataframeHydration'
-import { parseCriblSearchMagic } from '@features/cribl-search/criblSearchMagic'
-import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
-import { runCriblSearchJinjaInKernel } from '@features/cribl-search/criblSearchJinjaRender'
-import { wantsCriblSearchJinjaTemplating } from '@features/cribl-search/criblSearchMagic'
+import {
+  filterPyodidePackageChatter,
+  parseCriblSearchMagic,
+  planCriblSearchDataframeHydration,
+  runCriblSearchJinjaInKernel,
+  wantsCriblSearchJinjaTemplating,
+} from '@features/cribl-search'
 
 const { describeFetchError, isCorsOrNetworkFetchError, stubEnglishToKqlLocalDev } =
   cellExecutorFetchHelpers

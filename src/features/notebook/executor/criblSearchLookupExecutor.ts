@@ -1,18 +1,16 @@
 import type { LookupService } from '@ports/LookupService'
 import { lineSkipsMagicScan } from '@/domain/criblCellMagicSource'
-import type {
-  CriblDeleteSearchLookupMagicOk,
-  CriblLoadSearchLookupMagicOk,
-  CriblSaveSearchLookupMagicOk,
-} from '@features/cribl-search/criblSearchLookupMagic'
 import {
   buildExportDataframeToLookupBundleCode,
   buildLookupLoadDataframeCode,
   encodeUtf8ForPythonBase64,
   extractLookupExportFromOutputs,
+  filterPyodidePackageChatter,
   parseCriblSearchLookupMagic,
-} from '@features/cribl-search/criblSearchLookupMagic'
-import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
+  type CriblDeleteSearchLookupMagicOk,
+  type CriblLoadSearchLookupMagicOk,
+  type CriblSaveSearchLookupMagicOk,
+} from '@features/cribl-search'
 import { shouldSuppressJinjaPreExecuteIOPub } from '@features/notebook/jinjaInKernel'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 

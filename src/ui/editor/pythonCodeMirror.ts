@@ -18,8 +18,7 @@ import {
 } from '@features/cribl-api/editor/criblApiCompletions'
 import { criblApiYamlHighlightPlugin } from '@features/cribl-api/editor/criblApiEditor'
 import { getCriblApiPathEditContext } from '@features/cribl-api/criblApiPathLine'
-import { criblSearchCompletionSource } from '@features/cribl-search/editor/criblSearchEditor'
-import { criblSearchKqlHighlightPlugin } from '@features/cribl-search/editor/criblKqlHighlight'
+import { criblSearchCompletionSource, criblSearchKqlHighlightPlugin } from '@features/cribl-search'
 
 /** Jupyter-like Python token colors (CSS vars in index.css). Lezer maps `as` and `print` to the same tag. */
 const jupyterPythonHighlight = HighlightStyle.define([

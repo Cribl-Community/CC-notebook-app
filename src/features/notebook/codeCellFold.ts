@@ -1,5 +1,5 @@
 import type { Cell, CodeCell } from '@features/notebook/model/types'
-import { isRiptidePromptCell } from '@features/ai-riptide/riptideService'
+import { isRiptidePromptCell } from '@features/ai-riptide'
 
 /** nbformat `cell.metadata` namespace for app-specific UI state. */
 export const IPYNB_NOTEBOOK_APP_KEY = 'notebook_app' as const

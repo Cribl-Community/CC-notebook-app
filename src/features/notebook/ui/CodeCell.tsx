@@ -5,7 +5,7 @@ import type { CodeCell as CellData } from '@features/notebook/model/types'
 import { CellOutput } from '@features/notebook/ui/CellOutput'
 import { createPythonCellExtensions } from '@ui/editor/pythonCodeMirror'
 import type { CompletionItem } from '@ports/KernelPort'
-import { DEFAULT_RIPTIDE_PROMPT_PREFIX, parseRiptidePromptFromCellSource } from '@features/ai-riptide/riptideService'
+import { DEFAULT_RIPTIDE_PROMPT_PREFIX, parseRiptidePromptFromCellSource } from '@features/ai-riptide'
 import { DEFAULT_RUN_CONDITION, codeCellCanToggleFold } from '@features/notebook/codeCellFold'
 
 interface CodeCellProps {

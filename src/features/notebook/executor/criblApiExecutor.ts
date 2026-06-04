@@ -10,7 +10,7 @@ import {
   wantsCriblApiJinjaTemplating,
 } from '@features/cribl-api/criblApiMagic'
 import { JINJA_RESULT_KEY_CRIBL_API, runNotebookJinjaInKernel } from '@features/notebook/jinjaInKernel'
-import { filterPyodidePackageChatter } from '@features/cribl-search/criblSearchStreamFilter'
+import { filterPyodidePackageChatter } from '@features/cribl-search'
 import type { CellExecutionContext, CellExecutor, CellRunOutcome } from './cellExecutor'
 
 /** HTTP result shape returned by {@link CriblApiExecutorDeps.callCriblApi}. */

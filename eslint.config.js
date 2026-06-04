@@ -75,4 +75,27 @@ export default defineConfig([
       'no-restricted-imports': 'off',
     },
   },
+  {
+    files: ['src/app/**/*.{ts,tsx}', 'src/ui/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '@features/library/**',
+                '@features/welcome/**',
+                '@features/examples/**',
+                '@features/cribl-search/**',
+                '@features/ai-riptide/**',
+              ],
+              message:
+                'Import feature slices via their public barrel (@features/<slice>) — not deep internal paths (see docs/ARCHITECTURE.md).',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ])

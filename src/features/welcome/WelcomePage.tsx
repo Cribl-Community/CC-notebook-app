@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { filterItemsByAnyTag } from '@domain/tagFilter'
-import { exampleNotebookDisplayLabel, type ExampleNotebook } from '@features/examples/examplesManifest'
-import { useExamples } from '@features/examples/useExamples'
+import { exampleNotebookDisplayLabel, useExamples, type ExampleNotebook } from '@features/examples'
 import { RELEASE_NOTES } from '@features/welcome/releaseNotes'
 import { WelcomeProxyCheck } from '@features/welcome/WelcomeProxyCheck'
 import { TagMultiFilter } from '@ui/TagMultiFilter'

@@ -297,6 +297,27 @@ from features; other `@app/*` paths stay restricted (for example `@app/styles/*`
 the theme re-exports on the providers barrel — and `@app/riptideAiCodeAdapter`, which
 is only for `AiCodeProvider` wiring).
 
+### Notebook orchestration layout (cohesion map)
+
+Orchestration — async commands, tab/workspace side effects, and run-queue wiring —
+is split across focused modules under `features/notebook/hooks/` so
+`NotebookPage` stays mostly composition and JSX.
+
+| Concern | Modules |
+|--------|---------|
+| Cell run queue (serialized per tab) | `useCellRunner.ts`, `cellRunnerQueue.ts` |
+| KV library save / open / manifest CRUD / import / examples | `useNotebookLibraryActions.ts`, `notebookLibraryAsyncCommands.ts`, `notebookLibraryWorkspaceSync.ts` |
+| Per-tab Pyodide + widget bridge | `useTabNotebookRuntime.ts` |
+| Workspace + tab reducer wiring | `useNotebookWorkspace.ts` |
+| Code completion + Riptide prompt → cell source | `useNotebookPageCompleteCode.ts`, `useNotebookPageAiGenerate.ts` |
+| Tab chrome (close / select / new / download) | `useNotebookPageTabChrome.ts` |
+
+Cross-feature imports should use each slice’s `index.ts` barrel (`@features/library`,
+`@features/welcome`, `@features/examples`, `@features/cribl-search`, `@features/ai-riptide`)
+instead of deep paths into another feature’s `ui/` or `hooks/` folders. ESLint also
+discourages deep `@features/<slice>/...` imports from `src/app/` and `src/ui/` so
+composition and shared editor code stay coupled to public surfaces only.
+
 ## Execution pipeline (mental model)
 
 ```

@@ -1,30 +1,20 @@
 import { useCallback } from 'react'
-import type { Dispatch, MutableRefObject } from 'react'
-import { createEmptyNotebookCells, initialState } from '@features/notebook/reducer/notebookReducer'
-import { parseIpynbJson, serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
-import { createEmptyTab, type WorkspaceAction, type WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
-import {
-  createNotebookWithPayload,
-  deleteNotebookPayloads,
-  fetchNotebookPayload,
-  ipynbTextToLoadPayload,
-  manifestAddFolder,
-  manifestMove,
-  manifestRemove,
-  manifestSetNotebookTags,
-  renameEntryInKv,
-  saveNotebookState,
-  storeManifest,
-} from '@features/library/notebookLibrary'
-import { exampleNotebookDisplayLabel } from '@features/examples/examplesManifest'
+import { createEmptyTab } from '@features/notebook/reducer/tabWorkspace'
 import { useEnv, useNotebookRepo } from '@app/providers'
-import {
-  assertMarkdownEmbedsWithinLimits,
-  assertNotebookPersistable,
-} from '@features/notebook/markdownEmbeds'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
-import type { NotebookLibraryController } from '@features/library/hooks/useNotebookLibrary'
+import type { NotebookLibraryController } from '@features/library'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
+import {
+  confirmMoveLibraryEntry,
+  createFolderInManifest,
+  deleteLibraryEntry,
+  importNotebookFileToTab,
+  loadExampleNotebookToTab,
+  openNotebookFromKv,
+  renameLibraryEntry,
+  saveCurrentTabNotebook,
+  setNotebookTagsInManifest,
+} from '@features/notebook/hooks/notebookLibraryAsyncCommands'
 
 export interface NotebookLibraryActionsArgs {
   workspace: NotebookWorkspaceController
@@ -33,31 +23,6 @@ export interface NotebookLibraryActionsArgs {
   showAlert: (message: string) => void
   showConfirm: (message: string) => Promise<boolean>
   showPrompt: (title: string, label: string, defaultValue?: string) => Promise<string | null>
-}
-
-function updateOpenTabTitles(
-  workspaceRef: MutableRefObject<WorkspaceState>,
-  dispatchNotebookForTab: NotebookWorkspaceController['dispatchNotebookForTab'],
-  notebookId: string,
-  name: string,
-): void {
-  for (const tab of workspaceRef.current.tabs) {
-    if (tab.kvNotebookId === notebookId) {
-      dispatchNotebookForTab(tab.id, { type: 'SET_NOTEBOOK_TITLE', title: name })
-    }
-  }
-}
-
-function closeDeletedTabs(
-  dispatch: Dispatch<WorkspaceAction>,
-  workspaceRef: MutableRefObject<WorkspaceState>,
-  deletedNotebookIds: Set<string>,
-): void {
-  for (const tab of [...workspaceRef.current.tabs]) {
-    if (tab.kvNotebookId && deletedNotebookIds.has(tab.kvNotebookId)) {
-      dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
-    }
-  }
 }
 
 export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
@@ -93,69 +58,46 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     void (async () => {
       setSaveBusy(true)
       try {
-        assertNotebookPersistable(tab0.notebook)
-        if (tab0.kvNotebookId) {
-          const next = await saveNotebookState(repo, manifest, tab0.kvNotebookId, tab0.notebook)
-          setManifest(next)
-        } else {
-          const result = await createNotebookWithPayload(repo, manifest, selectedParentId, tab0.notebook)
-          if ('error' in result) {
-            showAlert(result.error)
-            return
-          }
-          setManifest(result.manifest)
-          dispatch({
-            type: 'SET_TAB_META',
-            tabId,
-            kvNotebookId: result.id,
-          })
-        }
-        const updatedTab = workspaceRef.current.tabs.find((x) => x.id === tabId)
-        if (updatedTab) {
-          dispatch({
-            type: 'SET_TAB_META',
-            tabId,
-            lastSavedJson: serializeNotebookToIpynbJson(updatedTab.notebook),
-          })
-        }
-        await loadLibrary()
-      } catch (e) {
-        showAlert(e instanceof Error ? e.message : 'Save failed')
+        await saveCurrentTabNotebook({
+          repo,
+          tabId,
+          workspaceRef,
+          manifest,
+          selectedParentId,
+          dispatch,
+          setManifest,
+          loadLibrary,
+          showAlert,
+        })
       } finally {
         setSaveBusy(false)
       }
     })()
-  }, [activeTabIdRef, dispatch, loadLibrary, manifest, repo, selectedParentId, setManifest, setSaveBusy, showAlert, workspaceRef])
+  }, [
+    activeTabIdRef,
+    dispatch,
+    loadLibrary,
+    manifest,
+    repo,
+    selectedParentId,
+    setManifest,
+    setSaveBusy,
+    showAlert,
+    workspaceRef,
+  ])
 
   const handleOpenNotebook = useCallback(
     (id: string) => {
       const tab = createEmptyTab()
       dispatch({ type: 'ADD_TAB', tab })
-      void (async () => {
-        const raw = await fetchNotebookPayload(repo, id)
-        if (!raw) {
-          showAlert('Notebook not found in storage.')
-          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
-          void loadLibrary()
-          return
-        }
-        try {
-          const { title, cells } = ipynbTextToLoadPayload(raw)
-          const nextCells = cells.length > 0 ? cells : createEmptyNotebookCells()
-          assertMarkdownEmbedsWithinLimits({ ...initialState, title, cells: nextCells })
-          dispatch({
-            type: 'REPLACE_TAB_CONTENT',
-            tabId: tab.id,
-            title,
-            cells: nextCells,
-            kvNotebookId: id,
-          })
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Failed to read notebook'
-          showAlert(msg)
-          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
-        }
-      })()
+      void openNotebookFromKv({
+        repo,
+        tabId: tab.id,
+        notebookId: id,
+        dispatch,
+        loadLibrary,
+        showAlert,
+      })
     },
     [dispatch, loadLibrary, repo, showAlert],
   )
@@ -166,18 +108,15 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
       void (async () => {
         const name = await showPrompt('New folder', 'Folder name', '')
         if (name === null) return
-        const result = manifestAddFolder(manifest, name, parentId)
-        if ('error' in result) {
-          showAlert(result.error)
-          return
-        }
-        try {
-          await storeManifest(repo, result.manifest)
-          setManifest(result.manifest)
-          await loadLibrary()
-        } catch (e) {
-          showAlert(e instanceof Error ? e.message : 'Failed to create folder')
-        }
+        await createFolderInManifest({
+          repo,
+          manifest,
+          parentId,
+          name,
+          setManifest,
+          loadLibrary,
+          showAlert,
+        })
       })()
     },
     [loadLibrary, manifest, repo, setManifest, showAlert, showPrompt],
@@ -189,18 +128,17 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
       void (async () => {
         const name = await showPrompt('Rename', 'New name', currentName)
         if (name === null) return
-        try {
-          const result = await renameEntryInKv(repo, manifest, id, name)
-          if ('error' in result) {
-            showAlert(result.error)
-            return
-          }
-          setManifest(result.manifest)
-          updateOpenTabTitles(workspaceRef, dispatchNotebookForTab, id, name)
-          await loadLibrary()
-        } catch (e) {
-          showAlert(e instanceof Error ? e.message : 'Rename failed')
-        }
+        await renameLibraryEntry({
+          repo,
+          manifest,
+          itemId: id,
+          newName: name,
+          workspaceRef,
+          dispatchNotebookForTab,
+          setManifest,
+          loadLibrary,
+          showAlert,
+        })
       })()
     },
     [dispatchNotebookForTab, loadLibrary, manifest, repo, setManifest, showAlert, showPrompt, workspaceRef],
@@ -216,18 +154,15 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
           currentTags.join(', '),
         )
         if (raw === null) return
-        const result = manifestSetNotebookTags(manifest, id, raw.split(','))
-        if ('error' in result) {
-          showAlert(result.error)
-          return
-        }
-        try {
-          await storeManifest(repo, result.manifest)
-          setManifest(result.manifest)
-          await loadLibrary()
-        } catch (e) {
-          showAlert(e instanceof Error ? e.message : 'Failed to update tags')
-        }
+        await setNotebookTagsInManifest({
+          repo,
+          manifest,
+          notebookId: id,
+          tags: raw.split(','),
+          setManifest,
+          loadLibrary,
+          showAlert,
+        })
       })()
     },
     [loadLibrary, manifest, repo, setManifest, showAlert, showPrompt],
@@ -239,22 +174,16 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
       const label = kind === 'folder' ? `folder “${name}” and everything inside it` : `“${name}”`
       void showConfirm(`Delete ${label}? This cannot be undone.`).then((ok) => {
         if (!ok) return
-        void (async () => {
-          try {
-            const result = manifestRemove(manifest, id)
-            if ('error' in result) {
-              showAlert(result.error)
-              return
-            }
-            await deleteNotebookPayloads(repo, result.notebookIdsToDelete)
-            await storeManifest(repo, result.manifest)
-            setManifest(result.manifest)
-            closeDeletedTabs(dispatch, workspaceRef, new Set(result.notebookIdsToDelete))
-            await loadLibrary()
-          } catch (e) {
-            showAlert(e instanceof Error ? e.message : 'Delete failed')
-          }
-        })()
+        void deleteLibraryEntry({
+          repo,
+          manifest,
+          itemId: id,
+          dispatch,
+          workspaceRef,
+          setManifest,
+          loadLibrary,
+          showAlert,
+        })
       })
     },
     [dispatch, loadLibrary, manifest, repo, setManifest, showAlert, showConfirm, workspaceRef],
@@ -263,21 +192,16 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
   const handleConfirmMove = useCallback(
     (itemId: string, newParentId: string | null) => {
       if (!manifest) return
-      void (async () => {
-        try {
-          const result = manifestMove(manifest, itemId, newParentId)
-          if ('error' in result) {
-            showAlert(result.error)
-            return
-          }
-          await storeManifest(repo, result.manifest)
-          setManifest(result.manifest)
-          setMovingId(null)
-          await loadLibrary()
-        } catch (e) {
-          showAlert(e instanceof Error ? e.message : 'Move failed')
-        }
-      })()
+      void confirmMoveLibraryEntry({
+        repo,
+        manifest,
+        itemId,
+        newParentId,
+        setManifest,
+        setMovingId,
+        loadLibrary,
+        showAlert,
+      })
     },
     [loadLibrary, manifest, repo, setManifest, setMovingId, showAlert],
   )
@@ -286,26 +210,13 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     (file: File) => {
       const tab = createEmptyTab()
       dispatch({ type: 'ADD_TAB', tab })
-      void (async () => {
-        try {
-          const text = await file.text()
-          const { title, cells } = parseIpynbJson(text, { filename: file.name })
-          const nextCells = cells.length > 0 ? cells : createEmptyNotebookCells()
-          assertMarkdownEmbedsWithinLimits({ ...initialState, title, cells: nextCells })
-          dispatch({
-            type: 'REPLACE_TAB_CONTENT',
-            tabId: tab.id,
-            title,
-            cells: nextCells,
-            kvNotebookId: null,
-          })
-          runtime.restartKernelForTab(tab.id)
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : 'Failed to open notebook'
-          showAlert(msg)
-          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
-        }
-      })()
+      void importNotebookFileToTab({
+        file,
+        tabId: tab.id,
+        dispatch,
+        runtime,
+        showAlert,
+      })
     },
     [dispatch, runtime, showAlert],
   )
@@ -314,30 +225,14 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     (filename: string) => {
       const tab = createEmptyTab()
       dispatch({ type: 'ADD_TAB', tab })
-      void (async () => {
-        try {
-          const res = await fetch(`${staticAssetPrefix}Examples/${filename}`)
-          if (!res.ok) throw new Error(`Could not load example (${res.status})`)
-          const text = await res.text()
-          const parsed = parseIpynbJson(text, { filename })
-          const title = filename.trim() ? exampleNotebookDisplayLabel(filename.trim()) : parsed.title
-          const { cells } = parsed
-          const nextCells = cells.length > 0 ? cells : createEmptyNotebookCells()
-          assertMarkdownEmbedsWithinLimits({ ...initialState, title, cells: nextCells })
-          dispatch({
-            type: 'REPLACE_TAB_CONTENT',
-            tabId: tab.id,
-            title,
-            cells: nextCells,
-            kvNotebookId: null,
-            collapseLongCodeCellsOnOpen: true,
-          })
-          runtime.restartKernelForTab(tab.id)
-        } catch (e) {
-          showAlert(e instanceof Error ? e.message : 'Failed to open example')
-          dispatch({ type: 'CLOSE_TAB', tabId: tab.id })
-        }
-      })()
+      void loadExampleNotebookToTab({
+        staticAssetPrefix,
+        filename,
+        tabId: tab.id,
+        dispatch,
+        runtime,
+        showAlert,
+      })
     },
     [dispatch, runtime, showAlert, staticAssetPrefix],
   )

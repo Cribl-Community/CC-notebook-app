@@ -20,7 +20,9 @@ src/
 ```
 
 Use alias imports (`@app/*`, `@domain/*`, `@features/*`, `@platform/*`, `@ports/*`,
-`@ui/*`) to keep layering obvious. Features must not cross into each
+`@ui/*`) to keep layering obvious. When one feature imports another, use that slice’s
+`index.ts` barrel (`@features/library`, `@features/welcome`, …) rather than deep paths.
+Features must not cross into each
 other's internals or into `platform/*` directly — depend on a port.
 
 Run tests with `npm test` (Vitest + JSDOM + React Testing Library).

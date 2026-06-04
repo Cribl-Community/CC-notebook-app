@@ -13,7 +13,7 @@ Break the chosen proposal into a concrete implementation plan.
    - Set blocking relationships where steps depend on each other.
 3. If Linear is not available:
    - Create a `plans/` directory with a parent plan `.md` file and individual task `.md` files.
-4. Regardless of whether Linear is available, also create Claude Code Tasks using `TaskCreate` for each sub-task. This provides persistent task tracking that survives across sessions.
+4. Regardless of whether Linear is available, also record each sub-task in workspace todos using **`TodoWrite`**: stable `id` per sub-task, `content` with acceptance criteria and affected files, `status: "pending"`. Use `merge: false` when defining the initial list from a new plan, or `merge: true` to add/update by `id`. (Cursor does not expose `TaskCreate` / `TaskList` / `TaskUpdate`.)
 5. Present the plan to the user for review.
 
 ## Notes
