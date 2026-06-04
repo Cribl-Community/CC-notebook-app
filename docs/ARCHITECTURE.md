@@ -297,6 +297,18 @@ from features; other `@app/*` paths stay restricted (for example `@app/styles/*`
 the theme re-exports on the providers barrel — and `@app/riptideAiCodeAdapter`, which
 is only for `AiCodeProvider` wiring).
 
+### Notebook orchestration layout (cohesion map)
+
+Orchestration — async commands, tab/workspace side effects, and run-queue wiring —
+is split across focused modules under `features/notebook/hooks/` so
+`NotebookPage` stays mostly composition and JSX. See the **Notebook** row in
+[`docs/NAVIGATE.md`](./NAVIGATE.md) for the current entry-file list (orchestration
+helpers live next to the hooks they support).
+
+Cross-feature imports should prefer each slice’s `index.ts` barrel (for example
+`@features/library`, `@features/welcome`) over deep paths into another feature’s
+`ui/` or `hooks/` folders.
+
 ## Execution pipeline (mental model)
 
 ```
