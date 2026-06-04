@@ -4,9 +4,19 @@ import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer
 import { saveCurrentTabNotebook } from './notebookLibraryAsyncCommands'
 import type { NotebookRepo } from '@ports/NotebookRepo'
 import type { Manifest } from '@/domain/library'
+import type { KernelInitState } from '@features/notebook/model/types'
 
 function ref<T>(v: T): MutableRefObject<T> {
   return { current: v }
+}
+
+const readyKernelInit: KernelInitState = {
+  phase: 'ready',
+  message: 'Python kernel ready',
+  progressPercent: 100,
+  startedAtMs: null,
+  errorSummary: null,
+  errorDetail: null,
 }
 
 describe('notebookLibraryAsyncCommands', () => {
@@ -34,11 +44,11 @@ describe('notebookLibraryAsyncCommands', () => {
           lastSavedJson: '',
           notebook: {
             title: 'Hi',
-            cells: [{ id: 'c1', cell_type: 'markdown', source: 'x', metadata: {} }],
+            cells: [{ id: 'c1', cell_type: 'markdown', source: 'x', editing: false }],
             selectedId: 'c1',
             executionCounter: 0,
             kernelStatus: 'ready',
-            kernelInit: null,
+            kernelInit: readyKernelInit,
           },
         },
       ],

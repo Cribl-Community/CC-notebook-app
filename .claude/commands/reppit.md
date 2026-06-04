@@ -28,16 +28,14 @@ Break the work into concrete sub-tasks. Present the full plan clearly.
 
 **IMPORTANT: After presenting the plan, STOP. Do not proceed to implementation.** The user will review the plan and respond in the next message. Do not ask "shall I proceed" — just present the plan and end your response.
 
-## Task Persistence
+## Task persistence (Cursor)
 
-At the very start, call `TaskList` to check for existing tasks from a prior session. If tasks already exist, present their status and continue from where you left off instead of starting fresh.
+There is no `TaskList` / `TaskCreate` tool in this environment. Use **`TodoWrite`** for tracking:
 
-After presenting the plan, create a persistent task for each sub-task using `TaskCreate`:
-- Title: a short description of the sub-task
-- Description: acceptance criteria and affected files
-- Status: `open`
+- **At the start:** If the conversation already lists todos (from a prior turn), summarize their status and continue from the last incomplete phase. Otherwise start fresh after research.
+- **After the plan:** Call **`TodoWrite`** with `merge: false` to create one todo per sub-task, or `merge: true` to add/update items **by stable `id`**. Each item: `id` (string), `content` (title + acceptance criteria / affected paths), `status` — one of `pending`, `in_progress`, `completed`, `cancelled`.
 
-This ensures tasks survive across sessions and context compaction.
+`TodoWrite` is the supported way to persist sub-task state across long sessions when the UI exposes it.
 
 ## Rules
 - At the start of each phase, output the phase marker (e.g. `<!-- PHASE:research -->`) on its own line exactly as shown above.

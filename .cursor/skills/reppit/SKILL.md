@@ -11,7 +11,7 @@ Do **not** implement code in this workflow. Stop after the plan.
 
 ## Start
 
-At the very beginning, check existing workspace todos (if the environment exposes them). If there are RePPIT-related todos from a prior session, summarize their status and continue from the last incomplete phase instead of restarting from scratch.
+At the very beginning, check existing workspace todos in the conversation (or from the last **`TodoWrite`**). If there are RePPIT-related todos from a prior session, summarize their status and continue from the last incomplete phase instead of restarting from scratch. **Cursor:** use the **`TodoWrite`** tool (`merge: true` / `merge: false`, statuses `pending` | `in_progress` | `completed` | `cancelled`) — not `TaskList` / `TaskUpdate` / `TaskCreate`.
 
 ## Phase 1 — Research
 
@@ -41,7 +41,7 @@ Break work into **concrete sub-tasks**. Present the **full plan** clearly.
 
 ## Persistence after the plan
 
-After presenting the plan, create or update workspace todos so each sub-task is tracked: short title, acceptance criteria, and affected files/paths; mark incomplete items as actionable next steps. This keeps continuity across sessions when the tool supports it.
+After presenting the plan, call **`TodoWrite`** so each sub-task is tracked: stable `id`, `content` (short title + acceptance criteria + affected files/paths), `status: "pending"` for incomplete work. Use `merge: false` for a fresh list from this plan, or `merge: true` to update existing ids. This keeps continuity across sessions when the tool is available.
 
 ## Rules
 

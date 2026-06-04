@@ -4,20 +4,22 @@ Continue the RePPIT workflow. The plan has been approved — now execute Impleme
 
 <!-- PHASE:implement -->
 
-## Task Tracking
+## Task tracking (Cursor)
+
+Use **`TodoWrite`** (not `TaskList` / `TaskUpdate`). Each todo has `id`, `content`, and `status`: `pending` | `in_progress` | `completed` | `cancelled`. Use `merge: true` to update by `id` without dropping other items; use `merge: false` only when replacing the whole list.
 
 Before starting implementation:
-1. Call `TaskList` to see all current tasks and their statuses.
-2. Identify the next `open` task to work on.
-3. If all tasks are already `completed`, skip to Phase 5 (Test).
+1. Read current todos from the conversation (or the last `TodoWrite` result). If none exist yet, seed them from the approved plan with `TodoWrite(merge: false, todos: [...])` using stable `id`s per sub-task.
+2. Pick the next item with status `pending` (or equivalent “open” work).
+3. If everything is already `completed`, skip to Phase 5 (Test).
 
 For each sub-task in the approved plan, in order:
 
-1. Call `TaskUpdate` to set the task status to `in_progress`.
+1. **`TodoWrite(merge: true, …)`** — set that todo’s `status` to `in_progress` (and keep `content` / `id` unchanged).
 2. Follow `.claude/commands/implement.md` if available.
 3. After implementing each sub-task, commit the changes.
-4. Call `TaskUpdate` to set the task status to `completed`.
-5. Move to the next open task.
+4. **`TodoWrite(merge: true, …)`** — set the same todo’s `status` to `completed`.
+5. Move to the next `pending` todo.
 
 When all sub-tasks are implemented, proceed to Phase 5.
 

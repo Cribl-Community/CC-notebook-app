@@ -2,9 +2,19 @@ import { describe, it, expect, vi } from 'vitest'
 import type { MutableRefObject } from 'react'
 import { updateOpenTabTitles, closeDeletedTabs } from './notebookLibraryWorkspaceSync'
 import type { WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
+import type { KernelInitState } from '@features/notebook/model/types'
 
 function makeWorkspace(tabs: WorkspaceState['tabs']): MutableRefObject<WorkspaceState> {
   return { current: { tabs, activeTabId: tabs[0]?.id ?? '' } }
+}
+
+const readyKernelInit: KernelInitState = {
+  phase: 'ready',
+  message: 'Python kernel ready',
+  progressPercent: 100,
+  startedAtMs: null,
+  errorSummary: null,
+  errorDetail: null,
 }
 
 describe('notebookLibraryWorkspaceSync', () => {
@@ -22,7 +32,7 @@ describe('notebookLibraryWorkspaceSync', () => {
           selectedId: null,
           executionCounter: 0,
           kernelStatus: 'ready',
-          kernelInit: null,
+          kernelInit: readyKernelInit,
         },
       },
       {
@@ -36,7 +46,7 @@ describe('notebookLibraryWorkspaceSync', () => {
           selectedId: null,
           executionCounter: 0,
           kernelStatus: 'ready',
-          kernelInit: null,
+          kernelInit: readyKernelInit,
         },
       },
     ])
@@ -61,7 +71,7 @@ describe('notebookLibraryWorkspaceSync', () => {
           selectedId: null,
           executionCounter: 0,
           kernelStatus: 'ready',
-          kernelInit: null,
+          kernelInit: readyKernelInit,
         },
       },
       {
@@ -75,7 +85,7 @@ describe('notebookLibraryWorkspaceSync', () => {
           selectedId: null,
           executionCounter: 0,
           kernelStatus: 'ready',
-          kernelInit: null,
+          kernelInit: readyKernelInit,
         },
       },
     ])
