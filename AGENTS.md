@@ -98,6 +98,8 @@ Each app has a scoped KV store. Use `CRIBL_API_URL` as the base — the proxy ha
 | Delete | DELETE | `CRIBL_API_URL + '/kvstore/the/path/to/key'` | — |
 | List keys | POST | `CRIBL_API_URL + '/kvstore/keys'` | `{ prefix: 'my/key/prefix' }` |
 
+**Notebook app library:** Saved notebooks (manifest + `.ipynb` payloads) use keys under `nb/v1/…` for the pack. When the platform injects `window.getCriblUser` and it resolves to a user with non-empty `id` and `username`, the app stores that library under `nb/v1/u/{encodeURIComponent(id)}/{encodeURIComponent(username)}/…` instead so each user only sees their own notebooks. If `getCriblUser` is missing, throws, or returns incomplete data, the app keeps the legacy pack-wide `nb/v1/…` paths. Existing pack-wide data is not migrated automatically.
+
 ### Config Group Context
 
 Cribl REST API endpoints that don't begin with `/system/` are contextual and can be called in the context of a config group using the prefix `/m/:groupId`. Config groups can be listed using the `/master/groups` endpoint.
