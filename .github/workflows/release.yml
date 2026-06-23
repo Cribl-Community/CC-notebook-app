@@ -41,7 +41,7 @@ jobs:
         run: node --experimental-strip-types scripts/emit-github-release-notes.ts "${GITHUB_REF_NAME#v}" > gh-release-notes.md
 
       - name: Create GitHub Release with .tgz
-        uses: softprops/action-gh-release@v2.3.2
+        uses: softprops/action-gh-release@v3.0.1
         with:
           tag_name: ${{ github.ref_name }}
           name: Jupyter notebook app ${{ github.ref_name }}
