@@ -1,13 +1,30 @@
-/** KV key prefix for this app’s notebook library. */
+/** KV key prefix for this app’s notebook library (legacy pack-wide root). */
 import type { Manifest, ManifestItem } from '@/domain/library'
 
 export const NB_KV_PREFIX = 'nb/v1'
 
-export const MANIFEST_KEY = `${NB_KV_PREFIX}/manifest`
-
-export function notebookPayloadKey(notebookId: string): string {
-  return `${NB_KV_PREFIX}/notebooks/${notebookId}`
+function normalizeLibraryRoot(root: string): string {
+  return root
+    .trim()
+    .replace(/^\/+/, '')
+    .replace(/\/+$/, '')
+    .split('/')
+    .filter(Boolean)
+    .join('/')
 }
+
+/** Full KV key for the manifest JSON at a given library root (e.g. {@link NB_KV_PREFIX} or a user-scoped root). */
+export function manifestKey(libraryRoot: string): string {
+  return `${normalizeLibraryRoot(libraryRoot)}/manifest`
+}
+
+/** Full KV key for a notebook `.ipynb` payload at a given library root. */
+export function notebookPayloadKey(libraryRoot: string, notebookId: string): string {
+  return `${normalizeLibraryRoot(libraryRoot)}/notebooks/${notebookId}`
+}
+
+/** Pack-wide manifest key; same as {@link manifestKey}({@link NB_KV_PREFIX}). */
+export const MANIFEST_KEY = manifestKey(NB_KV_PREFIX)
 
 export type { Manifest, ManifestItem }
 
