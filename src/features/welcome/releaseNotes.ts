@@ -11,6 +11,16 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.2.9',
+    date: '2026-06-25',
+    highlights: [
+      'Library: saved notebooks use **per-user KV paths** when `window.getCriblUser` returns `id` and `username` (`nb/v1/u/{id}/{username}/…`); missing or incomplete user info keeps the legacy pack-wide `nb/v1/…` layout (existing data is not migrated automatically).',
+      'Notebook: orchestration split into focused hooks (`useNotebookLibraryWorkspace`, save flow helpers, `cellRunnerQueue`); library KV commands live in testable modules.',
+      'Architecture: feature **index barrels** for cross-slice imports; ESLint nudges `app/` and `ui/` toward barrels instead of deep feature paths.',
+      'Packaging: build 1.2.9 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.8',
     date: '2026-06-02',
     highlights: [
