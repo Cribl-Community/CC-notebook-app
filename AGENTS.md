@@ -42,6 +42,23 @@ deployments. Before touching worker/runtime upgrade paths, read
 - **Branch before implementing:** create a feature branch from the current `main` (or `origin/main`) before writing code or committing (`git checkout -b feature/...`). Do not stack feature work directly on `main`.
 - **Integrate via PR:** merge completed work through a pull request into `main`, then keep local `main` aligned with `origin/main` after merge.
 
+## Publishing to GitHub
+
+Cribl apps live in one of two GitHub orgs (coordinate with ProdEng / Chris Breshears):
+- Supported apps: `https://github.com/criblapps`
+- Community apps: `https://github.com/Cribl-Community`
+
+**License:** `LICENSE.TXT` (BSD-3, Cribl, Inc.) must be present at the repo root.
+
+**Release checklist (before tagging):**
+1. Prepend a block to `src/features/welcome/releaseNotes.ts` for the version.
+2. Optionally bump `package.json` to the same version.
+3. Merge to `main`.
+4. Dry-run: `npm ci && npm run lint && npm run package -- --version X.Y.Z && ls build/*.tgz`
+5. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
+
+**Install from Git (Cribl UI):** Apps → Install App → Import From Git. Set URL to the repo HTTPS URL and "Branch or tag" to the release tag (e.g. `v1.2.9`). Leaving the tag field blank causes the import to fail.
+
 ## Global Variables
 
 The following are set on `window` automatically when your app runs inside Cribl. They are read-only and always present.

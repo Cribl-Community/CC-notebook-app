@@ -25,7 +25,7 @@ npm run deploy:staging   # PUT .tgz to leader /api/v1/apps (+ preinstall + regis
 npm run release:github-notes -- X.Y.Z   # Print GitHub Release Markdown for semver X.Y.Z (from RELEASE_NOTES)
 ```
 
-**GitHub Releases:** Bump `package.json`, prepend an entry in `src/features/welcome/releaseNotes.ts` (newest first; tests require the latest block to match `package.json`), merge to the default branch, then create and push a tag `vX.Y.Z` that matches that version. Pushing the tag runs `.github/workflows/release.yml`, which runs `npm run package`, uploads `build/notebook-app-*.tgz`, and sets the release description from the same notes shown in the app welcome screen.
+**GitHub Releases:** Prepend an entry to `src/features/welcome/releaseNotes.ts` (newest first) for the version you are about to release. Optionally bump `package.json` to the same version (keeps the in-app welcome screen current; not required by CI). Merge to the default branch, then push a tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The tag triggers `.github/workflows/release.yml`, which lints, packages at the tag's version (leading `v` stripped), uploads `build/*.tgz`, and sets the release description from the curated notes prepended to GitHub's auto-generated commit list. Pre-tag dry-run: `npm ci && npm run lint && npm run package -- --version X.Y.Z && ls build/*.tgz`.
 
 Tests live next to the code they cover (`*.test.ts` / `*.test.tsx`) and
 run against a JSDOM environment. Setup lives in `src/testing/setup.ts`
