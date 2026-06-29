@@ -11,6 +11,16 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.3.0',
+    date: '2026-06-29',
+    highlights: [
+      'Publishing: BSD-3 `LICENSE.TXT`, tag-driven release workflow (`npm run lint`, `--version` from tag, `build/*.tgz`, curated + auto-generated release notes).',
+      'Packaging: `npm run package -- --version X.Y.Z` stamps the `.tgz` and embedded pack metadata without mutating root `package.json`.',
+      'Docs: tag-driven GitHub release checklist in `AGENTS.md` and `CLAUDE.md` (Import From Git requires a release tag).',
+      'Packaging: build 1.3.0 and refreshed distribution package.',
+    ],
+  },
+  {
     version: '1.2.9',
     date: '2026-06-25',
     highlights: [
