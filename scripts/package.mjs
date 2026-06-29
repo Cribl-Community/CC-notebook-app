@@ -42,8 +42,14 @@ async function assertBundledExamplesUnderSizeLimit(examplesDir, maxBytes) {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
 const buildOutDir = join(rootDir, 'build');
+
+// parse optional --version <semver> passed via: npm run package -- --version 1.2.3
+const versionArgIdx = process.argv.indexOf('--version');
+const versionOverride = versionArgIdx !== -1 ? process.argv[versionArgIdx + 1] : undefined;
+
 const packageInfo = JSON.parse(await readFile(join(rootDir, 'package.json'), 'utf8'));
-const tgzName = `${packageInfo.name || 'app'}-${packageInfo.version || '0.0.0'}.tgz`;
+const resolvedVersion = versionOverride ?? packageInfo.version ?? '0.0.0';
+const tgzName = `${packageInfo.name || 'app'}-${resolvedVersion}.tgz`;
 const tgzPath = join(buildOutDir, tgzName);
 await mkdir(buildOutDir, { recursive: true });
 
@@ -53,7 +59,7 @@ await assertBundledExamplesUnderSizeLimit(
   Number.isFinite(maxIpynb) && maxIpynb > 0 ? maxIpynb : DEFAULT_MAX_IPYNB_BYTES,
 );
 
-const { closePromise, stdout } = await createAppPack(false);
+const { closePromise, stdout } = await createAppPack(false, versionOverride);
 await Promise.all([ pipeline(stdout, createWriteStream(tgzPath)), closePromise ]);
 
 const maxBytes = 30 * 1024 * 1024;

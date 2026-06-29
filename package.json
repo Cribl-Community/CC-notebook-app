@@ -1,7 +1,7 @@
 {
   "name": "notebook-app",
   "private": true,
-  "version": "1.2.9",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -76,5 +76,6 @@
   },
   "displayName": "Jupyter notebook app",
   "description": "An application that can run a Jupyter notebook app in the browser",
-  "author": "Michael Hyatt"
+  "author": "Michael Hyatt",
+  "license": "BSD-3-Clause"
 }

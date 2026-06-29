@@ -54,9 +54,10 @@ async function pathExists(filePath) {
 
 /**
  * @param {boolean} [dev]
+ * @param {string} [versionOverride]
  * @returns {Promise<{ closePromise: Promise<void>; stdout: import('node:stream').Readable }>}
  */
-export async function createAppPack(dev = false) {
+export async function createAppPack(dev = false, versionOverride = undefined) {
   const rootDir = join(__dirname, '..');
   const buildDir = join(rootDir, 'package-build');
   const distDir = join(rootDir, 'dist');
@@ -94,6 +95,10 @@ export async function createAppPack(dev = false) {
   if (dev && packageInfo.name) {
     packageInfo.name = `__dev__${packageInfo.name}`;
     packageInfo.displayName = `__dev__${packageInfo.displayName || packageInfo.name}`;
+  }
+
+  if (versionOverride) {
+    packageInfo.version = versionOverride;
   }
 
   await writeFile(
