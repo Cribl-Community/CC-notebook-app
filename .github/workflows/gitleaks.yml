@@ -24,7 +24,7 @@ jobs:
     name: Gitleaks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.3.1
+      - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
           # Partial clone: full history for merge-base / log scan, blobs fetched on demand.

@@ -16,7 +16,7 @@ jobs:
     # Quick phase + slow phase (Pyodide): Visualisations + Anomaly notebook micropip/Run All can exceed 45m.
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4.3.1
+      - uses: actions/checkout@v7.0.0
 
       - uses: actions/setup-node@v4.4.0
         with:
