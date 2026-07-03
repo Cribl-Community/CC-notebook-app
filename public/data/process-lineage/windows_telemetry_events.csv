@@ -1,0 +1,52 @@
+UtcTime,Computer,User,EventID,Channel,Image,DestinationPort,Protocol,DestinationHostname,url
+2026-06-30T08:20:01Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:02Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:03Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:04Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:05Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:06Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:07Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:08Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,443,tcp,clients.google.com,
+2026-06-30T08:20:09Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,443,tcp,outlook.office365.com,
+2026-06-30T08:20:10Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,443,tcp,outlook.office365.com,
+2026-06-30T08:20:11Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,443,tcp,outlook.office365.com,
+2026-06-30T08:20:12Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,443,tcp,outlook.office365.com,
+2026-06-30T08:20:13Z,WIN-WKS07,WIN-WKS07\alice,3,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,443,tcp,outlook.office365.com,
+2026-06-30T08:20:14Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,443,tcp,ctldl.windowsupdate.com,
+2026-06-30T08:20:15Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,443,tcp,ctldl.windowsupdate.com,
+2026-06-30T08:20:16Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,443,tcp,ctldl.windowsupdate.com,
+2026-06-30T08:20:17Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,443,tcp,ctldl.windowsupdate.com,
+2026-06-30T08:20:18Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,443,tcp,ctldl.windowsupdate.com,
+2026-06-30T08:20:19Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,443,tcp,ctldl.windowsupdate.com,
+2026-06-30T08:20:20Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,53,udp,dns.msftncsi.com,
+2026-06-30T08:20:21Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,53,udp,dns.msftncsi.com,
+2026-06-30T08:20:22Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,53,udp,dns.msftncsi.com,
+2026-06-30T08:20:23Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,53,udp,dns.msftncsi.com,
+2026-06-30T08:20:24Z,WIN-DC01,NT AUTHORITY\SYSTEM,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\svchost.exe,53,udp,dns.msftncsi.com,
+2026-06-30T08:20:25Z,WIN-DC01,WIN-DC01\svc_backup,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\rundll32.exe,4444,tcp,185.220.101.45,
+2026-06-30T08:20:26Z,WIN-DC01,WIN-DC01\svc_backup,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,8443,tcp,cdn-update-server.net,
+2026-06-30T08:20:27Z,WIN-DC01,WIN-DC01\svc_backup,3,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,8443,tcp,cdn-update-server.net,
+2026-06-30T08:20:28Z,WIN-WKS07,WIN-WKS07\alice,4624,Security,,,,,
+2026-06-30T08:20:29Z,WIN-WKS07,WIN-WKS07\alice,4624,Security,,,,,
+2026-06-30T08:20:30Z,WIN-WKS07,WIN-WKS07\alice,4624,Security,,,,,
+2026-06-30T08:20:31Z,WIN-WKS07,WIN-WKS07\alice,4624,Security,,,,,
+2026-06-30T08:20:32Z,WIN-WKS07,WIN-WKS07\alice,4624,Security,,,,,
+2026-06-30T08:20:33Z,WIN-WKS07,WIN-WKS07\alice,4624,Security,,,,,
+2026-06-30T08:20:34Z,WIN-DC01,WIN-DC01\administrator,4624,Security,,,,,
+2026-06-30T08:20:35Z,WIN-DC01,WIN-DC01\administrator,4624,Security,,,,,
+2026-06-30T08:20:36Z,WIN-DC01,WIN-DC01\administrator,4624,Security,,,,,
+2026-06-30T08:20:37Z,WIN-DC01,WIN-DC01\administrator,4624,Security,,,,,
+2026-06-30T08:20:38Z,WIN-DC01,WIN-DC01\administrator,4624,Security,,,,,
+2026-06-30T08:20:39Z,WIN-DC01,WIN-DC01\svc_backup,4624,Security,,,,,
+2026-06-30T08:20:40Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,,,,https://www.google.com/
+2026-06-30T08:20:41Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,,,,https://www.google.com/
+2026-06-30T08:20:42Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,,,,https://www.google.com/
+2026-06-30T08:20:43Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,,,,https://www.google.com/
+2026-06-30T08:20:44Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Google\Chrome\Application\chrome.exe,,,,https://www.google.com/
+2026-06-30T08:20:45Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,,,,https://outlook.office365.com/
+2026-06-30T08:20:46Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,,,,https://outlook.office365.com/
+2026-06-30T08:20:47Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,,,,https://outlook.office365.com/
+2026-06-30T08:20:48Z,WIN-WKS07,WIN-WKS07\alice,22,Microsoft-Windows-Sysmon/Operational,C:\Program Files\Microsoft Office\root\Office16\OUTLOOK.EXE,,,,https://outlook.office365.com/
+2026-06-30T08:20:49Z,WIN-DC01,WIN-DC01\svc_backup,22,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\rundll32.exe,,,,http://185.220.101.45/gate.php
+2026-06-30T08:20:50Z,WIN-DC01,WIN-DC01\svc_backup,22,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,,,,http://cdn-update-server.net/p.dll
+2026-06-30T08:20:51Z,WIN-DC01,WIN-DC01\svc_backup,22,Microsoft-Windows-Sysmon/Operational,C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe,,,,http://cdn-update-server.net/p.dll
