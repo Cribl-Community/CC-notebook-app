@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.4.0',
+    date: '2026-07-04',
+    highlights: [
+      'Examples: new **Process Lineage Sigma Hunt** notebook — traces the parent→child process lineage behind Sigma rule hits into a **networkx** kill-chain graph and ranks rare port/user/URL tuples with a rarity baseline (after [sigmalineage-mcp](https://github.com/MohitDabas/sigmalineage-mcp)). Windows telemetry loads via `%%cribl_search` `externaldata`; `networkx` comes from the Pyodide lockfile (no `micropip`).',
+      'E2E: added `@regression @slow` `process-lineage-sigma-hunt-example.spec.ts` (Run All + lineage graph render) and auto-coverage in the `@examples-all` matrix.',
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-06-29',
     highlights: [

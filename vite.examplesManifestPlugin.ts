@@ -57,6 +57,23 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     estimatedRuntime: '20–35 min',
     recommendedOrder: 4,
   },
+  'Process_Lineage_Sigma_Hunt.ipynb': {
+    summary:
+      'Trace Sigma-hit process lineage (WMI → PowerShell → rundll32) as a networkx kill-chain, then rank rare port/user/URL tuples with a rarity baseline. Hosted Windows telemetry via %%cribl_search externaldata (after MohitDabas/sigmalineage-mcp).',
+    tags: [
+      'security',
+      'threat-hunting',
+      'sigma',
+      'evtx',
+      'process-lineage',
+      'networkx',
+      'externaldata',
+      'visualization',
+    ],
+    level: 'advanced',
+    estimatedRuntime: '15–25 min first run',
+    recommendedOrder: 4,
+  },
   'Cribl_Search_Examples.ipynb': {
     summary: 'KQL and English search patterns with templating and follow-up analysis.',
     tags: ['search', 'kql'],
