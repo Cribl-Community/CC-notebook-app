@@ -25,10 +25,20 @@ const OUT_DIR = join(__dirname, '..', 'public', 'data', 'process-lineage')
 const SYSMON_CHANNEL = 'Microsoft-Windows-Sysmon/Operational'
 const SECURITY_CHANNEL = 'Security'
 
-/** Deterministic Sysmon-style ProcessGuid from a host + pid. */
+/**
+ * Cribl Search `externaldata` with `datatype="CSV Datatypes"` silently drops every row
+ * when a column value looks like an ISO datetime with seconds (e.g. `2026-06-30T08:14:59Z`).
+ * Minute precision (`2026-06-30T08:14`) parses correctly.
+ */
+function formatUtcTimeForExternalData(iso) {
+  const m = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/.exec(String(iso))
+  return m ? m[1] : String(iso)
+}
+
+/** Deterministic Sysmon-style ProcessGuid from a host + pid (no `{}` — braces break Search CSV Datatypes). */
 function guid(host, pid) {
   const h = host.replace(/[^A-Za-z0-9]/g, '').slice(0, 8).toUpperCase().padEnd(8, '0')
-  return `{PL${h}-0000-0000-0000-${String(pid).padStart(12, '0')}}`
+  return `PL${h}-0000-0000-0000-${String(pid).padStart(12, '0')}`
 }
 
 /**
@@ -65,7 +75,7 @@ const PROC_COLUMNS = [
 
 function buildProcessRows() {
   return PROC_EVENTS.map((e) => ({
-    UtcTime: e.t,
+    UtcTime: formatUtcTimeForExternalData(e.t),
     Computer: e.host,
     User: e.user,
     EventID: e.eid,
@@ -97,7 +107,7 @@ function buildHitRows() {
     ProcessGuid: guid(h.host, h.pid),
     ProcessId: h.pid,
     Computer: h.host,
-    UtcTime: h.t,
+    UtcTime: formatUtcTimeForExternalData(h.t),
     Image: h.image,
     CommandLine: h.cmd,
   }))
@@ -143,7 +153,9 @@ function buildTelemetryRows() {
   for (const e of TELEMETRY) {
     for (let i = 0; i < e.n; i += 1) {
       sec += 1
-      const ts = new Date(Date.UTC(2026, 5, 30, 8, 20, sec % 60, 0)).toISOString().replace('.000', '')
+      const ts = formatUtcTimeForExternalData(
+        new Date(Date.UTC(2026, 5, 30, 8, 20, sec % 60, 0)).toISOString().replace('.000', ''),
+      )
       rows.push({
         UtcTime: ts,
         Computer: e.host,
@@ -161,9 +173,10 @@ function buildTelemetryRows() {
   return rows
 }
 
+/** RFC4180 + quote Windows paths/users (backslashes break Search CSV Datatypes). */
 function csvEscape(v) {
   const s = String(v ?? '')
-  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
+  if (/[",\n\r\\]/.test(s)) return `"${s.replace(/"/g, '""')}"`
   return s
 }
 
