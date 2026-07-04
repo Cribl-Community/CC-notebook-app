@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.4.2',
+    date: '2026-07-04',
+    highlights: [
+      'Examples: assign unique Welcome `recommendedOrder` values (1–13); hunt block stays Threat → Malware → Process Lineage at orders 3–5.',
+    ],
+  },
+  {
     version: '1.4.1',
     date: '2026-07-04',
     highlights: [

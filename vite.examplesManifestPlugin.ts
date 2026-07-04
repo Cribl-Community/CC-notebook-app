@@ -79,7 +79,7 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     tags: ['search', 'kql'],
     level: 'beginner',
     estimatedRuntime: '12 min',
-    recommendedOrder: 5,
+    recommendedOrder: 6,
   },
   'Cribl_Search_Lookup_Magics.ipynb': {
     summary:
@@ -87,28 +87,28 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     tags: ['search', 'lookups', 'magic-cells'],
     level: 'intermediate',
     estimatedRuntime: '8 min',
-    recommendedOrder: 9,
+    recommendedOrder: 12,
   },
   'Cribl_API_Examples.ipynb': {
     summary: 'Use %%cribl_api for GET/POST requests and templated YAML payloads.',
     tags: ['api', 'magic-cells'],
     level: 'intermediate',
     estimatedRuntime: '12 min',
-    recommendedOrder: 6,
+    recommendedOrder: 8,
   },
   'Cribl_Python_SDK.ipynb': {
     summary: 'SDK walkthrough for inventory insights and plotting with AI prompt helpers.',
     tags: ['sdk', 'python'],
     level: 'advanced',
     estimatedRuntime: '15 min',
-    recommendedOrder: 5,
+    recommendedOrder: 7,
   },
   'AI_Magic.ipynb': {
     summary: 'Prompt patterns for generate-and-iterate visualizations and debugging.',
     tags: ['ai', 'prompting'],
     level: 'intermediate',
     estimatedRuntime: '10 min',
-    recommendedOrder: 6,
+    recommendedOrder: 9,
   },
   'Anomaly_Detection_PyOD.ipynb': {
     summary:
@@ -116,21 +116,21 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     tags: ['python', 'ml', 'pyod', 'visualization', 'plotly'],
     level: 'advanced',
     estimatedRuntime: '25–40 min first run',
-    recommendedOrder: 8,
+    recommendedOrder: 11,
   },
   'Visualisations.ipynb': {
     summary: 'Rendering recipes with Matplotlib, Plotly, and Vega-Lite.',
     tags: ['visualization', 'plotly', 'altair'],
     level: 'beginner',
     estimatedRuntime: '10 min',
-    recommendedOrder: 7,
+    recommendedOrder: 10,
   },
   'Composio_Python_SDK.ipynb': {
     summary: 'Explore Composio toolkits and tools via composio-client; paste your API key and run.',
     tags: ['composio', 'python', 'integration', 'sdk', 'ai-tools'],
     level: 'advanced',
     estimatedRuntime: '10 min',
-    recommendedOrder: 10,
+    recommendedOrder: 13,
   },
 }
 
