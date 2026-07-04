@@ -72,7 +72,7 @@ const EXAMPLE_METADATA: Record<string, Omit<GeneratedExample, 'filename' | 'titl
     ],
     level: 'advanced',
     estimatedRuntime: '15–25 min first run',
-    recommendedOrder: 4,
+    recommendedOrder: 5,
   },
   'Cribl_Search_Examples.ipynb': {
     summary: 'KQL and English search patterns with templating and follow-up analysis.',

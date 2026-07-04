@@ -14,8 +14,8 @@ import {
  * Not `@heavy`: networkx ships in the Pyodide lockfile (no large micropip stack).
  */
 test.describe('@regression examples', () => {
-  // Pack-proxy / externaldata fetch flakes on staging; retry before failing the whole `npm run e2e` gate.
-  test.describe.configure({ retries: 3 })
+  // Match zz-anomaly-detection-example.spec.ts (Search + externaldata Run All; not micropip-heavy).
+  test.describe.configure({ retries: 1 })
 
   test('@slow Process Lineage Sigma Hunt example: Run All completes without cell errors', async ({
     page,
