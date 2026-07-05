@@ -12,8 +12,10 @@ export type ReleaseEntry = {
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
     version: '1.4.2',
-    date: '2026-07-04',
+    date: '2026-07-05',
     highlights: [
+      'Search: send `datasets: []` on job create so `externaldata` queries no longer 500 with `Cannot read properties of undefined (reading \'datasets\')`.',
+      'Examples: Process Lineage sample CSVs use minute-precision `UtcTime` and quoted Windows paths/GUIDs so Cribl Search `CSV Datatypes` returns rows.',
       'Examples: assign unique Welcome `recommendedOrder` values (1–13); hunt block stays Threat → Malware → Process Lineage at orders 3–5.',
     ],
   },
