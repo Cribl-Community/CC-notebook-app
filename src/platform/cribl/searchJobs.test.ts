@@ -213,8 +213,9 @@ describe('runCriblSearchJob queryMode', () => {
 
     const call = fetchMock.mock.calls[0]
     const init = call?.[1] as RequestInit
-    const body = JSON.parse(String(init.body)) as { query: string }
+    const body = JSON.parse(String(init.body)) as { query: string; datasets: unknown[] }
     expect(body.query).toBe(query)
+    expect(body.datasets).toEqual([])
   })
 
   it('keeps normalized behavior by default', async () => {

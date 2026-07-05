@@ -586,6 +586,8 @@ export async function runCriblSearchJob(options: RunSearchJobOptions): Promise<C
         earliest: options.earliest ?? DEFAULT_SEARCH_EARLIEST,
         latest: options.latest ?? DEFAULT_SEARCH_LATEST,
         sampleRate: 1,
+        /** Required on current Search leaders for `externaldata` jobs (omit → 500 reading `datasets`). */
+        datasets: [],
       }),
     },
     'Search job create',

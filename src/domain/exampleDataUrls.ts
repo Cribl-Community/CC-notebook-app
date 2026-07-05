@@ -16,6 +16,9 @@ export const EXAMPLE_DATA_PATHS = {
   malwareBazaarTiLookup: 'malware-hunt/malwarebazaar_ti_lookup.csv',
   malwareBazaarRecentSample: 'malware-hunt/malwarebazaar_recent_sample.csv',
   malwareHuntPeImports: 'malware-hunt/pe_imports_hunt.csv',
+  processLineageProcessEvents: 'process-lineage/windows_process_events.csv',
+  processLineageSigmaHits: 'process-lineage/sigma_hits.csv',
+  processLineageTelemetry: 'process-lineage/windows_telemetry_events.csv',
 } as const
 
 export const EXAMPLE_DATA_URLS = {
@@ -23,6 +26,9 @@ export const EXAMPLE_DATA_URLS = {
   malwareBazaarTiLookup: exampleDataRawUrl(EXAMPLE_DATA_PATHS.malwareBazaarTiLookup),
   malwareBazaarRecentSample: exampleDataRawUrl(EXAMPLE_DATA_PATHS.malwareBazaarRecentSample),
   malwareHuntPeImports: exampleDataRawUrl(EXAMPLE_DATA_PATHS.malwareHuntPeImports),
+  processLineageProcessEvents: exampleDataRawUrl(EXAMPLE_DATA_PATHS.processLineageProcessEvents),
+  processLineageSigmaHits: exampleDataRawUrl(EXAMPLE_DATA_PATHS.processLineageSigmaHits),
+  processLineageTelemetry: exampleDataRawUrl(EXAMPLE_DATA_PATHS.processLineageTelemetry),
 } as const
 
 /** All registered raw GitHub URLs (for contract tests and error hints). */

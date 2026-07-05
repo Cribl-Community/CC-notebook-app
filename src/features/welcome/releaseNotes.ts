@@ -11,6 +11,29 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.4.2',
+    date: '2026-07-04',
+    highlights: [
+      'Examples: assign unique Welcome `recommendedOrder` values (1–13); hunt block stays Threat → Malware → Process Lineage at orders 3–5.',
+    ],
+  },
+  {
+    version: '1.4.1',
+    date: '2026-07-04',
+    highlights: [
+      'Examples: fix Process Lineage Sigma Hunt Welcome ordering (`recommendedOrder: 5`, after Malware Hash Threat Hunt).',
+      'E2E: align process-lineage example spec retries with anomaly externaldata spec (`retries: 1`).',
+    ],
+  },
+  {
+    version: '1.4.0',
+    date: '2026-07-04',
+    highlights: [
+      'Examples: new **Process Lineage Sigma Hunt** notebook — traces the parent→child process lineage behind Sigma rule hits into a **networkx** kill-chain graph and ranks rare port/user/URL tuples with a rarity baseline (after [sigmalineage-mcp](https://github.com/MohitDabas/sigmalineage-mcp)). Windows telemetry loads via `%%cribl_search` `externaldata`; `networkx` comes from the Pyodide lockfile (no `micropip`).',
+      'E2E: added `@regression @slow` `process-lineage-sigma-hunt-example.spec.ts` (Run All + lineage graph render) and auto-coverage in the `@examples-all` matrix.',
+    ],
+  },
+  {
     version: '1.3.0',
     date: '2026-06-29',
     highlights: [
