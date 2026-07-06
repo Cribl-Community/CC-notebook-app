@@ -14,11 +14,11 @@ Telemetry endpoints such as `POST /api/v1/ai/event` and access pings are **out o
 | Request `Content-Type` | `application/json` |
 | Response `Content-Type` | `application/x-ndjson` (streamed newline-delimited JSON) |
 
-The same URL family is used for other agents (e.g. KQL translation uses `/api/v1/ai/q/agents/kql`; see `src/cribl/aiTranslate.ts`).
+The same URL family is used for other agents (e.g. KQL translation uses `/api/v1/ai/q/agents/kql`; see `src/platform/cribl/aiTranslate.ts`).
 
 ## Authentication
 
-- **Inside Cribl App Platform**: use `fetch` against `CRIBL_API_URL + '/ai/q/agents/riptide'`. The parent **fetch proxy** attaches credentials; your iframe code does not handle tokens manually. See `AGENTS.md`.
+- **Inside Cribl App Platform**: use `fetch` against `CRIBL_API_URL + '/ai/q/agents/riptide'`. The parent **fetch proxy** attaches credentials; your iframe code does not handle tokens manually. See [`docs/PLATFORM.md`](./PLATFORM.md).
 - **Direct API clients** (e.g. internal tools): requests include standard Cribl session headers such as `Authorization: Bearer <JWT>` and contextual headers (e.g. `x-cribl-surface`, encoded context). Do not hard-code or commit tokens.
 
 ## Request body (conceptual)
@@ -74,7 +74,7 @@ Typical line shapes:
 
    Parse `tool_calls` to drive UI (buttons, searches, notebook edits, etc.) according to each tool’s contract.
 
-Timeouts: use `AbortController` and an appropriate limit for long streams (the KQL client uses ~60s for translation in `aiTranslate.ts`; interactive chat may need longer).
+Timeouts: use `AbortController` and an appropriate limit for long streams (the KQL client uses ~60s for translation in `src/platform/cribl/aiTranslate.ts`; interactive chat may need longer).
 
 ## Minimal `fetch` sketch (App Platform)
 
@@ -107,8 +107,9 @@ Adjust **`context`** and **`tools`** to match what your org’s Riptide deployme
 
 | File | Relevance |
 |------|-----------|
-| `src/cribl/aiTranslate.ts` | Same API family for `/ai/q/agents/kql`: POST JSON, `stream: true`, parsing text/JSON from the response body |
-| `AGENTS.md` | `CRIBL_API_URL`, fetch proxy, auth behavior |
+| `src/platform/cribl/aiTranslate.ts` | Same API family for `/ai/q/agents/kql`: POST JSON, `stream: true`, parsing text/JSON from the response body |
+| `src/features/ai-riptide/riptideService.ts` | Riptide request/response helpers used by the notebook AI adapter |
+| [`docs/PLATFORM.md`](./PLATFORM.md) | `CRIBL_API_URL`, fetch proxy, auth behavior |
 
 ## See also
 

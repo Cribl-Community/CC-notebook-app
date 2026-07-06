@@ -9,21 +9,22 @@ TL;DR:
 
 ```
 src/
-  app/          Composition root (App.tsx, providers/)
+  app/          Composition root (App.tsx, providers/, styles/)
   domain/       Port-level DTOs shared across layers
   features/     Vertical slices (notebook, library, cribl-search,
                 cribl-api, ai-riptide, examples, welcome)
-  platform/    Real-world adapters (pyodide, cribl, env, staticAssets)
-  ports/       Interfaces features depend on
+  platform/    Real-world adapters (pyodide, cribl, env, staticAssets, adapters)
+  ports/       Interfaces features depend on (KernelPort, NotebookRepo,
+                AiCodeService, SearchService, LookupService, DialogService, EnvService)
   ui/          Framework-agnostic UI primitives
   testing/     Vitest setup + smoke tests
 ```
 
-Use alias imports (`@app/*`, `@domain/*`, `@features/*`, `@platform/*`, `@ports/*`,
-`@ui/*`) to keep layering obvious. When one feature imports another, use that slice’s
-`index.ts` barrel (`@features/library`, `@features/welcome`, …) rather than deep paths.
-Features must not cross into each
-other's internals or into `platform/*` directly — depend on a port.
+Use alias imports (`@/*`, `@app/*`, `@domain/*`, `@features/*`, `@platform/*`,
+`@ports/*`, `@ui/*`, `@testing/*`) to keep layering obvious. When one feature imports
+another, use that slice’s `index.ts` barrel (`@features/library`, `@features/welcome`,
+…) rather than deep paths. Features must not cross into each other's internals or into
+`platform/*` directly — depend on a port.
 
 Run tests with `npm test` (Vitest + JSDOM + React Testing Library).
 
@@ -59,164 +60,25 @@ Cribl apps live in one of two GitHub orgs (coordinate with ProdEng / Chris Bresh
 
 **Install from Git (Cribl UI):** Apps → Install App → Import From Git. Set URL to the repo HTTPS URL and "Branch or tag" to the release tag (e.g. `v1.2.9`). Leaving the tag field blank causes the import to fail.
 
-## Global Variables
+## Cribl platform integration
 
-The following are set on `window` automatically when your app runs inside Cribl. They are read-only and always present.
+The app runs as a widget in a sandboxed Cribl iframe. The platform injects read-only
+globals (`CRIBL_API_URL`, `CRIBL_BASE_PATH`, optional `getCriblUser`), transparently
+authenticates and proxies every `fetch()` to `CRIBL_API_URL`, scopes a per-pack KV
+store, and routes declared external domains through the pack proxy.
 
-| Variable | Example | Description |
-|---|---|---|
-| `CRIBL_API_URL` | `https://localhost:9000/api/v1` | Base URL for all Cribl API calls |
-| `CRIBL_BASE_PATH` | `/app-ui/my-app` | The base path your app is mounted at |
+**All of this is documented in one canonical place:
+[`docs/PLATFORM.md`](./docs/PLATFORM.md)** — globals, the fetch proxy + URL rewriting,
+the KV store (including notebook-library key scoping), config-group context, the
+`config/proxies.yml` schema with examples, React Router basename, and navigation sync.
+Read it before adding a Cribl API call or an external dependency.
 
-## How API Calls Work (Fetch Proxy)
+Essentials to keep in mind:
 
-Your app runs inside a sandboxed iframe. The platform **automatically intercepts all `fetch()` calls** to `CRIBL_API_URL` and proxies them through the parent window. This is transparent to your code — just use `fetch()` normally.
-
-**What the proxy does for you:**
-- Injects authentication headers (your app never sees or handles auth tokens)
-- Rewrites URLs to scope requests to your app's pack
-- Streams responses back to your app
-
-**What this means for your code:**
-- Use `fetch()` as normal — it just works
-- You do NOT need to handle authentication
-- You cannot override or replace `window.fetch` (it is locked)
-- Requests that don't target `CRIBL_API_URL` are passed through directly (no proxy)
-
-### URL Rewriting Rules
-
-The proxy applies these rewrites automatically:
-
-| What you call | What actually happens | Why |
-|---|---|---|
-| `fetch(CRIBL_API_URL + '/kvstore/my-key')` | Rewritten to `/api/v1/p/{yourPackId}/kvstore/my-key` | Scopes KV store access to your pack |
-| `fetch(CRIBL_API_URL + '/proxy/some/path')` | Rewritten to `/api/v1/p/{yourPackId}/proxy/some/path` | Scopes proxy calls to your pack |
-| `fetch('https://api.example.com/data')` | Rewritten to `/api/v1/p/{yourPackId}/proxy/api.example.com/data` | External calls are routed through the platform proxy |
-| `fetch(CRIBL_API_URL + '/search/jobs')` | Passed through as-is | Standard API calls are not rewritten |
-
-**Important:** Your app cannot access other packs' resources. Any request targeting a different pack ID will be rejected.
-
-### Request Timeout
-
-Proxied requests time out after **30 seconds** if no response is received. Use `AbortController` if you need to cancel requests earlier.
-
-## Platform APIs
-
-API endpoint definitions are available in `openapi.json` (if downloaded during project setup).
-
-### Key-Value Store
-
-Each app has a scoped KV store. Use `CRIBL_API_URL` as the base — the proxy handles scoping.
-
-| Operation | Method | URL | Body |
-|---|---|---|---|
-| Get | GET | `CRIBL_API_URL + '/kvstore/the/path/to/key'` | — |
-| Set | PUT | `CRIBL_API_URL + '/kvstore/the/path/to/key'` | value |
-| Delete | DELETE | `CRIBL_API_URL + '/kvstore/the/path/to/key'` | — |
-| List keys | POST | `CRIBL_API_URL + '/kvstore/keys'` | `{ prefix: 'my/key/prefix' }` |
-
-**Notebook app library:** Saved notebooks (manifest + `.ipynb` payloads) use keys under `nb/v1/…` for the pack. When the platform injects `window.getCriblUser` and it resolves to a user with non-empty `id` and `username`, the app stores that library under `nb/v1/u/{encodeURIComponent(id)}/{encodeURIComponent(username)}/…` instead so each user only sees their own notebooks. If `getCriblUser` is missing, throws, or returns incomplete data, the app keeps the legacy pack-wide `nb/v1/…` paths. Existing pack-wide data is not migrated automatically.
-
-### Config Group Context
-
-Cribl REST API endpoints that don't begin with `/system/` are contextual and can be called in the context of a config group using the prefix `/m/:groupId`. Config groups can be listed using the `/master/groups` endpoint.
-
-Endpoints beginning with `/search/` should ALWAYS use `groupId` set to `default_search` — for example: `/m/default_search/search/jobs`. Never use any other group ID for search endpoints.
-
-When asked to build a feature, always inspect Cribl REST APIs and understand the context of the request before starting to build.
-
-### External API Calls
-
-To call external APIs, just use `fetch()` with the full URL. The platform will automatically route these through your pack's proxy endpoint. The external domain must be declared in your app's `config/proxies.yml`.
-
-### proxies.yml — External Domain Configuration
-
-Your app must declare every external domain it needs to access in `config/proxies.yml`. This file lives in your project's `config/` directory and gets packaged with your app. Admins can see exactly which external endpoints your app communicates with at install time.
-
-**Schema:**
-
-```yaml
-# config/proxies.yml
-# Top-level keys are domain:port pairs (port optional, defaults to 443)
-
-api.openai.com:
-  timeout: 10000          # Optional: request timeout in ms (1000–120000, default 30000)
-
-  paths:                   # Optional: control which URL paths are allowed
-    allowlist:             # Prefix match — request path must start with one of these
-      - /v1/chat/
-      - /v1/models
-    blocklist:             # Prefix match — these paths are always blocked (takes precedence over allowlist)
-      - /v1/admin/
-
-  headers:                 # Optional: control header forwarding and injection
-    inject:                # Headers to add to every outgoing request to this domain
-      x-api-key: "'static-key'"
-      Authorization: "'Bearer ' + kv.openaiApiKey"
-      x-custom: kv.myHeaderValue
-    allowlist:             # Only forward these headers from the original request (supports wildcards)
-      - content-type
-      - accept
-      - x-custom-*
-    blocklist:             # Never forward these headers (takes precedence, supports wildcards)
-      - x-internal-*
-```
-
-**Header injection expressions** support:
-- String literals: `"'my-static-value'"`
-- KV store lookups: `kv.mySecretKey` (resolves encrypted KV values at request time)
-- Concatenation: `"'Bearer ' + kv.apiToken"`
-
-**Security notes:**
-- Sensitive headers (`cookie`, `authorization`, `proxy-authorization`, `host`, `connection`, `transfer-encoding`) are always stripped from the original request before forwarding — use `headers.inject` to set auth headers instead
-- The platform validates target domains against SSRF protections (private/reserved IPs are blocked)
-- Requests are rate-limited per pack (100 requests/minute)
-- All proxied requests use HTTPS
-
-**Example — minimal config for a single API:**
-
-```yaml
-# config/proxies.yml
-api.example.com:
-  headers:
-    inject:
-      Authorization: "'Bearer ' + kv.apiKey"
-```
-
-**Example — multiple domains with path restrictions:**
-
-```yaml
-# config/proxies.yml
-api.openai.com:
-  timeout: 60000
-  paths:
-    allowlist:
-      - /v1/chat/completions
-      - /v1/embeddings
-  headers:
-    inject:
-      Authorization: "'Bearer ' + kv.openaiKey"
-
-hooks.slack.com:
-  paths:
-    allowlist:
-      - /services/
-  headers:
-    inject:
-      Content-Type: "'application/json'"
-```
-
-**How it connects to fetch:** When your app calls `fetch('https://api.openai.com/v1/chat/completions', ...)`, the platform rewrites this to `/api/v1/p/{yourPackId}/proxy/api.openai.com/v1/chat/completions`, looks up `api.openai.com` in your `proxies.yml`, validates the path, injects headers, and forwards the request.
-
-## React Router
-
-When using React Router, set the basename to `window.CRIBL_BASE_PATH`:
-
-```jsx
-<BrowserRouter basename={window.CRIBL_BASE_PATH}>
-```
-
-## Navigation
-
-The platform synchronizes navigation between your app and the parent Cribl UI. If you use `history.pushState()` or `history.replaceState()`, the parent URL bar will update to reflect your app's current route. Navigation changes from the parent are also forwarded to your app as `popstate` events.
+- Never handle auth in app code; `window.fetch` is locked and cannot be replaced.
+- Search endpoints always use `groupId = default_search` (`/m/default_search/search/…`).
+- Every external domain must be declared in `config/proxies.yml`; auth headers go
+  through `headers.inject` (KV-backed), since the proxy strips sensitive request headers.
+- REST endpoint definitions live in `openapi.json` at the repo root (if downloaded
+  during setup); the Riptide agent contract is in [`docs/riptide-api.md`](./docs/riptide-api.md).
 

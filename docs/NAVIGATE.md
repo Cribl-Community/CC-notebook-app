@@ -39,22 +39,24 @@ flowchart TB
   AC["AiCodeProvider"]
   D["DialogProvider"]
   S["SearchProvider"]
+  L["LookupProvider"]
+  R["NotebookRepoProvider"]
   K["KernelProvider"]
   N["NotebookPage"]
-  E --> T --> AC --> D --> S --> K --> N
+  E --> T --> AC --> D --> S --> L --> R --> K --> N
 ```
 
 ## `src/features/` at a glance
 
 | Slice | Responsibility | Good entry files |
 | --- | --- | --- |
-| `notebook/` | Cells, tabs, execution, codec, main UI | `ui/NotebookPage.tsx`, `hooks/useCellRunner.ts`, `hooks/cellRunnerQueue.ts`, `hooks/useTabNotebookRuntime.ts`, `hooks/useNotebookLibraryActions.ts`, `hooks/notebookLibraryAsyncCommands.ts`, `hooks/useNotebookPageCompleteCode.ts`, `hooks/useNotebookPageAiGenerate.ts`, `hooks/useNotebookPageTabChrome.ts`, `executor/executorRegistry.ts`, `reducer/notebookReducer.ts` |
+| `notebook/` | Cells, tabs, execution, codec, main UI, widgets | `ui/NotebookPage.tsx`, `hooks/useCellRunner.ts`, `hooks/cellRunnerQueue.ts`, `hooks/useTabNotebookRuntime.ts`, `hooks/useNotebookLibraryActions.ts`, `hooks/notebookLibraryAsyncCommands.ts`, `hooks/useNotebookPage*.ts`, `executor/executorRegistry.ts`, `reducer/notebookReducer.ts`, `widgets/notebookWidgetManager.ts` |
 | `library/` | Saved notebooks + manifest in KV, sidebar | `notebookLibrary.ts`, `hooks/useNotebookLibrary.ts`, `ui/NotebookSidebar.tsx` |
-| `cribl-search/` | `%%cribl_search`, lookup save/load magics, editor, output | `criblSearchMagic.ts`, `criblSearchLookupMagic.ts`, `editor/criblSearchEditor.ts` |
-| `cribl-api/` | `%%cribl_api` magic, OpenAPI catalog, HTTP from cells | `criblApiMagic.ts`, `criblApiCatalog.ts`, `executor` usage via `notebook/` |
+| `cribl-search/` | `%%cribl_search`, lookup save/load/delete magics, KQL editor, output | `criblSearchMagic.ts`, `criblSearchLookupMagic.ts`, `editor/criblSearchEditor.ts`, `ui/CriblSearchOutput.tsx` |
+| `cribl-api/` | `%%cribl_api` magic, OpenAPI catalog + completions, HTTP from cells | `criblApiMagic.ts`, `criblApiCatalog.ts`, `editor/criblApiCompletions.ts`, `generated/criblApiOpenApiIndex.json` |
 | `ai-riptide/` | Riptide client helpers | `riptideService.ts` (adapter: `app/riptideAiCodeAdapter.ts`) |
 | `examples/` | Bundled example notebooks manifest + loading | `useExamples.ts`, `examplesManifest.ts` |
-| `welcome/` | Welcome / release notes (uses examples) | `WelcomePage.tsx` |
+| `welcome/` | Welcome / release notes + proxy smoke check (uses examples) | `WelcomePage.tsx`, `releaseNotes.ts` |
 
 ## If you want to…
 
@@ -65,7 +67,11 @@ flowchart TB
 | Change **save/load** or library tree | `src/features/library/`, `src/ports/NotebookRepo.ts`, `src/platform/adapters/notebookRepoAdapter.ts` / `notebookKv.ts` |
 | Add a new **backend or test double** behind an interface | New or existing file in `src/ports/`, adapter in `src/platform/adapters/`, wire in `src/app/providers/` |
 | Change **Search** jobs or KQL UX | `src/features/cribl-search/`, `src/ports/SearchService.ts`, `src/platform/adapters/searchServiceAdapter.ts` |
+| Change **Search lookup** magics (`%%cribl_*_search_lookup`) | `src/features/cribl-search/criblSearchLookupMagic.ts`, `src/ports/LookupService.ts`, `src/app/providers/LookupProvider.tsx` |
+| Change **`%%cribl_api`** REST magic or catalog | `src/features/cribl-api/`, regenerate with `npm run update:cribl-api` |
+| Work on **ipywidgets** / interactive output | `src/features/notebook/widgets/` |
 | Change **welcome / examples** list | `src/features/welcome/`, `src/features/examples/` |
+| Understand **Cribl platform** wiring (fetch proxy, KV, `proxies.yml`) | [PLATFORM.md](./PLATFORM.md) |
 | Run or extend **staging E2E** | [E2E_STAGING.md](./E2E_STAGING.md), `e2e/specs/` |
 
 ## Run pipeline (high level)
@@ -105,4 +111,5 @@ When you change structure or behavior that newcomers rely on, update the relevan
 - **New provider or order change in `App.tsx`** — update the provider diagram above and the provider list in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - **New port or default adapter** — update the ports table in [ARCHITECTURE.md](./ARCHITECTURE.md).
 - **Executor order or run semantics** — update [ARCHITECTURE.md](./ARCHITECTURE.md) execution section and the “If you want to…” row here.
-- **`tsconfig.app.json` path aliases** — update [ARCHITECTURE.md](./ARCHITECTURE.md), [AGENTS.md](../AGENTS.md), and [CLAUDE.md](../CLAUDE.md) per the note at the top of [ARCHITECTURE.md](./ARCHITECTURE.md).
+- **`tsconfig.app.json` path aliases** — update [ARCHITECTURE.md](./ARCHITECTURE.md) and the alias list in [AGENTS.md](../AGENTS.md).
+- **Cribl platform integration** (fetch proxy, KV keys, config groups, `proxies.yml`) — update [PLATFORM.md](./PLATFORM.md).

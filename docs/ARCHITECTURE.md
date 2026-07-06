@@ -1,11 +1,15 @@
 # Notebook App — Architecture
 
-A human- and LLM-friendly map of the codebase after the 2026 refactor.
-This document is the authoritative description of the layering. If you
-change it here, update `tsconfig.app.json > paths`, `CLAUDE.md`, and
-`AGENTS.md` to match.
+A human- and LLM-friendly map of the codebase. This document is the
+authoritative description of the **layering**. If you change the layering here,
+update `tsconfig.app.json > paths` to match.
 
-**Human-oriented entry:** [`docs/NAVIGATE.md`](./NAVIGATE.md) — first files to open, diagrams, and “if you want to…” pointers.
+**Companion docs:**
+
+- [`docs/NAVIGATE.md`](./NAVIGATE.md) — task-oriented entry: first files to open, diagrams, and “if you want to…” pointers.
+- [`docs/PLATFORM.md`](./PLATFORM.md) — how the app talks to Cribl (globals, fetch proxy, KV, config groups, `proxies.yml`).
+- [`docs/PYODIDE_CUSTOMIZATIONS.md`](./PYODIDE_CUSTOMIZATIONS.md) — non-default Pyodide/worker behavior + upgrade checklist.
+- [`docs/E2E_STAGING.md`](./E2E_STAGING.md) — Playwright staging E2E.
 
 ## Layering at a glance
 
@@ -69,10 +73,16 @@ flowchart LR
   ACP["AiCodeProvider"]
   DP["DialogProvider"]
   SP["SearchProvider"]
+  LP["LookupProvider"]
+  NR["NotebookRepoProvider"]
   KP["KernelProvider"]
   NP["NotebookPage"]
-  EP --> TP --> ACP --> DP --> SP --> KP --> NP
+  EP --> TP --> ACP --> DP --> SP --> LP --> NR --> KP --> NP
 ```
+
+The exact nesting lives in [`src/App.tsx`](../src/App.tsx). Per-tab widget state
+(ipywidgets) is provided lower down, inside `NotebookPage`, by
+`TabWidgetManagerProvider` (see `features/notebook/widgets/`).
 
 ### Why this shape?
 
@@ -110,6 +120,9 @@ flowchart LR
   - `SearchProvider` / `useSearchService` — injects `SearchService` for
     `%%cribl_search`. Production: `criblSearchService` in
     `platform/adapters/searchServiceAdapter.ts`.
+  - `LookupProvider` / `useLookupService` — injects `LookupService` for the
+    `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup` /
+    `%%cribl_delete_search_lookup` magics (Cribl Search lookup CRUD).
   - `NotebookRepoProvider` / `useNotebookRepo` — injects `NotebookRepo` for
     library manifest + notebook payload I/O. Production: `kvNotebookRepo` in
     `platform/adapters/notebookRepoAdapter.ts`.
@@ -157,7 +170,12 @@ flowchart LR
       `platform/cribl/*` directly.
   - `ui/` — the React components that paint the page.
     `NotebookPage.tsx` is the page composition; `Toolbar`, `CellList`,
-    `CellView`, `NotebookTabs`, `NotebookDialog`, …
+    `CellView`, `NotebookTabs`, `NotebookDialog`, `MimeBundleView`, …
+  - `widgets/` — **ipywidgets** bridge. `NotebookWidgetManager` (extends
+    `@jupyter-widgets/base-manager`) maps Jupyter comm IOPub traffic to widget
+    models/views and forwards outbound `comm_msg` to the kernel via
+    `KernelPort.postComm`. Wired per-tab through `TabWidgetManagerProvider` /
+    `useTabWidgetManager`; `WidgetMimeView` renders the widget MIME type.
 - `library/` — saved notebooks in KV.
   - `manifest.ts` — pure manifest model + validators.
   - `notebookLibrary.ts` — manifest + `.ipynb` orchestration; async persistence
@@ -218,17 +236,23 @@ touch the network, `window`, or browser workers directly.
 Pure transport/domain DTOs shared across `ports/*`, features, and adapters.
 This avoids `ports/*` importing from `platform/*` or feature internals.
 
-- `domain/kernel.ts` — Jupyter-shaped IOPub messages, MIME bundles, and cell
-  output records (single source for notebook reducer + kernel port).
+- `domain/kernel.ts` — Jupyter-shaped IOPub messages (including comm messages for
+  widgets), MIME bundles, and cell output records (single source for the notebook
+  reducer + kernel port).
 - `domain/iopubOutputArea.ts` — pure IOPub → output-record folding (shared by
   `notebookReducer` and `PyodideKernel`).
 - `domain/criblCellMagicSource.ts` — line/offset helpers for `%%cribl_*` cell magics
   (shared by notebook executors and cribl-search / cribl-api parsers).
 - `domain/criblSearchMime.ts` — `%%cribl_search` structured display MIME key +
   payload union.
-- `domain/notebookManifest.ts` — library manifest model helpers, KV key paths,
-  and tree/move utilities (shared by `features/library` and
+- `domain/search.ts` — shared Cribl Search result + progress DTOs.
+- `domain/notebookManifest.ts` / `domain/library.ts` — library manifest model
+  helpers, KV key paths, and tree/move utilities (shared by `features/library` and
   `platform/adapters/notebookKv.ts` so repo adapters need not import feature internals).
+- `domain/exampleDataUrls.ts` — allowed sample-data URLs for bundled examples.
+- `domain/criblUser.ts` — `getCriblUser` shape used for per-user KV scoping.
+- `domain/tagFilter.ts` — pure tag-filtering helper for the library / examples UI.
+- `domain/index.ts` — barrel re-exporting the common DTO types.
 
 ### `src/ports/`
 
@@ -241,6 +265,7 @@ no coupling to a specific adapter.
 | `NotebookRepo` | Save/load notebooks (+ manifest) | `kvNotebookRepo` (`platform/adapters/notebookRepoAdapter.ts`) |
 | `AiCodeService` | Natural-language → Python, error-fix suggestions | `riptideAiCodeService` (`app/riptideAiCodeAdapter.ts`) |
 | `SearchService` | Cribl Search job orchestration | `criblSearchService` (`platform/adapters/searchServiceAdapter.ts`) |
+| `LookupService` | Cribl Search lookup file CRUD (`%%cribl_*_search_lookup`) | Search lookup adapter (`/m/{group}/system/lookups`) |
 | `DialogService` | alert / confirm / prompt | `DialogProvider` |
 | `EnvService` | Env snapshot (API base, KV mock, hosted flag, static asset prefix) | `readEnv()` |
 
@@ -371,10 +396,11 @@ sequenceDiagram
 Update docs in the same change when you:
 
 - Add or rename **`src/features/*`** slices — feature list in this file and the tables in [`docs/NAVIGATE.md`](./NAVIGATE.md).
-- Change **`src/App.tsx`** provider nesting or add a provider — provider list above and the Mermaid provider stack.
+- Change **`src/App.tsx`** provider nesting or add a provider — provider list above and the Mermaid provider stack (here and in [`docs/NAVIGATE.md`](./NAVIGATE.md)).
 - Add a **port** or change a default adapter — ports table under `src/ports/`.
 - Change **executor order** or run semantics — execution pipeline (text + diagrams) in this file and the run row in [`docs/NAVIGATE.md`](./NAVIGATE.md).
-- Change **`tsconfig.app.json` path aliases** — also update `CLAUDE.md` and `AGENTS.md` (see the note at the top of this document).
+- Change **`tsconfig.app.json` path aliases** — keep the alias list in [`AGENTS.md`](../AGENTS.md) in sync.
+- Change **Cribl platform integration** (fetch proxy, KV keys, config groups, `proxies.yml`) — update [`docs/PLATFORM.md`](./PLATFORM.md), the single source for those rules.
 
 ## Testing
 
