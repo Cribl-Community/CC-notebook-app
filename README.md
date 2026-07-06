@@ -8,9 +8,11 @@ React + TypeScript notebook UI for the **Cribl App Platform**: Jupyter-style cel
 | --- | --- |
 | [docs/NAVIGATE.md](./docs/NAVIGATE.md) | **Start here** — first files to open, “if you want to…”, diagrams |
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Layering, ports, import rules, execution pipeline, recipes |
-| [AGENTS.md](./AGENTS.md) | Platform `fetch` proxy, KV store, git workflow, deployment |
+| [docs/PLATFORM.md](./docs/PLATFORM.md) | Cribl integration reference: globals, `fetch` proxy, KV store, config groups, `proxies.yml` |
 | [docs/E2E_STAGING.md](./docs/E2E_STAGING.md) | Playwright staging E2E setup and when to update specs |
 | [docs/PYODIDE_CUSTOMIZATIONS.md](./docs/PYODIDE_CUSTOMIZATIONS.md) | Pyodide worker behavior and upgrade checklist |
+| [docs/riptide-api.md](./docs/riptide-api.md) | Cribl Riptide AI agent endpoint contract |
+| [CLAUDE.md](./CLAUDE.md) / [AGENTS.md](./AGENTS.md) | Agent guides: full command reference, git workflow, publishing |
 
 ## Quick start
 
