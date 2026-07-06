@@ -337,18 +337,14 @@ self.onmessage = async function (e) {
           'os.environ["CRIBL_APP_ORIGIN"] = ' +
           JSON.stringify(_appOrigin),
       )
-      // Preload from the lockfile in sequence: `loadPyodide({ packages: [...] })` can race transitive
-      // installs (e.g. IPython without traitlets). Lazy-loading matplotlib mid-notebook also spikes
-      // proxied fetches and flakes on staging.
+      // Preload IPython stack in sequence: `loadPyodide({ packages: [...] })` can race transitive
+      // installs (e.g. IPython without traitlets). Matplotlib/pandas load on first cell import via
+      // `loadPackagesFromImports` in the exec path; main-thread packageFetchCache dedupes fetches.
       initPhase = 'bootstrap'
       postInitProgress('bootstrap', 'Loading IPython', 72)
       await pyodide.loadPackage('ipython')
-      postInitProgress('bootstrap', 'Loading stack-data', 75)
+      postInitProgress('bootstrap', 'Loading stack-data', 78)
       await pyodide.loadPackage('stack-data')
-      postInitProgress('bootstrap', 'Loading matplotlib', 78)
-      await pyodide.loadPackage('matplotlib')
-      postInitProgress('bootstrap', 'Loading pandas', 82)
-      await pyodide.loadPackage('pandas')
       postInitProgress('bootstrap', 'Loading notebook bootstrap scripts', 85)
       await pyodide.runPythonAsync(COMPLETION_PY)
       await pyodide.loadPackagesFromImports(IOPUB_BOOTSTRAP_PY)
@@ -440,6 +436,7 @@ self.onmessage = async function (e) {
 
     postIOPub(execId, { msg_type: 'status', execution_state: 'busy' })
     try {
+      // Lockfile wheels (matplotlib, pandas, etc.) load here when absent; init only loads IPython stack.
       // Load any imported packages BEFORE installing the user-facing stdout/stderr
       // hooks, so package loader chatter ("Loading X", "Loaded X") does not leak
       // into cell output.
