@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.4.3',
+    date: '2026-07-07',
+    highlights: [
+      'Packaging: release CI publishes `static/` and `default/proxies.yml` on the tag so **Import from Git** serves the built app (same layout as the `.tgz`).',
+      'Examples: fix Threat Hunting Playbook `_pick_col` to match column names case-insensitively (e.g. `IP_Address` → `ip_address`).',
+    ],
+  },
+  {
     version: '1.4.2',
     date: '2026-07-05',
     highlights: [
