@@ -17,6 +17,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
       'Search: send `datasets: []` on job create so `externaldata` queries no longer 500 with `Cannot read properties of undefined (reading \'datasets\')`.',
       'Examples: Process Lineage sample CSVs use minute-precision `UtcTime` and quoted Windows paths/GUIDs so Cribl Search `CSV Datatypes` returns rows.',
       'Examples: assign unique Welcome `recommendedOrder` values (1–13); hunt block stays Threat → Malware → Process Lineage at orders 3–5.',
+      'Packaging: remove accidental `scripts/__pycache__` bytecode from the repo so Git-based app installs no longer flag an executable script.',
     ],
   },
   {
