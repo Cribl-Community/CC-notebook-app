@@ -14,6 +14,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
     version: '1.4.3',
     date: '2026-07-07',
     highlights: [
+      'Library: fix notebook save on Cribl Cloud — per-user library via shared `nb/v1/manifest` (`ownerUsername` on items) and `nb/v1/notebooks/{usernameToken}_{id}` payloads (legacy pack-wide keys when username is unavailable).',
       'Packaging: release CI publishes `static/` and `default/proxies.yml` on the tag so **Import from Git** serves the built app (same layout as the `.tgz`).',
       'Examples: fix Threat Hunting Playbook `_pick_col` to match column names case-insensitively (e.g. `IP_Address` → `ip_address`).',
     ],

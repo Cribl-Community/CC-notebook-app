@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NB_KV_PREFIX } from '@/domain/notebookManifest'
 import {
   resolveNotebookLibraryKvRoot,
+  resolveNotebookLibraryUsername,
   resetNotebookLibraryKvRootCacheForTests,
 } from '@platform/cribl/criblUser'
 
-describe('resolveNotebookLibraryKvRoot', () => {
+describe('resolveNotebookLibraryUsername', () => {
   const prev = window.getCriblUser
 
   beforeEach(() => {
@@ -19,43 +20,36 @@ describe('resolveNotebookLibraryKvRoot', () => {
     else delete window.getCriblUser
   })
 
-  it('returns legacy NB_KV_PREFIX when getCriblUser is missing', async () => {
+  it('returns null when getCriblUser is missing', async () => {
     delete window.getCriblUser
-    await expect(resolveNotebookLibraryKvRoot()).resolves.toBe(NB_KV_PREFIX)
+    await expect(resolveNotebookLibraryUsername()).resolves.toBeNull()
   })
 
-  it('returns scoped path when user has id and username', async () => {
+  it('returns username when getCriblUser resolves', async () => {
     window.getCriblUser = vi.fn().mockResolvedValue({ id: 'u1', username: 'alice' })
-    await expect(resolveNotebookLibraryKvRoot()).resolves.toBe(`${NB_KV_PREFIX}/u/u1/alice`)
+    await expect(resolveNotebookLibraryUsername()).resolves.toBe('alice')
   })
 
-  it('encodes id and username for KV path segments', async () => {
-    window.getCriblUser = vi.fn().mockResolvedValue({ id: 'a/b', username: 'x y' })
-    await expect(resolveNotebookLibraryKvRoot()).resolves.toBe(
-      `${NB_KV_PREFIX}/u/${encodeURIComponent('a/b')}/${encodeURIComponent('x y')}`,
-    )
-  })
-
-  it('returns legacy when id is empty', async () => {
-    window.getCriblUser = vi.fn().mockResolvedValue({ id: '', username: 'bob' })
-    await expect(resolveNotebookLibraryKvRoot()).resolves.toBe(NB_KV_PREFIX)
-  })
-
-  it('returns legacy when username is whitespace only', async () => {
+  it('returns null when username is whitespace only', async () => {
     window.getCriblUser = vi.fn().mockResolvedValue({ id: 'x', username: '  ' })
-    await expect(resolveNotebookLibraryKvRoot()).resolves.toBe(NB_KV_PREFIX)
+    await expect(resolveNotebookLibraryUsername()).resolves.toBeNull()
   })
 
-  it('returns legacy when getCriblUser rejects', async () => {
+  it('returns null when getCriblUser rejects', async () => {
     window.getCriblUser = vi.fn().mockRejectedValue(new Error('unavailable'))
-    await expect(resolveNotebookLibraryKvRoot()).resolves.toBe(NB_KV_PREFIX)
+    await expect(resolveNotebookLibraryUsername()).resolves.toBeNull()
   })
 
   it('calls getCriblUser only once while cache is warm', async () => {
     const fn = vi.fn().mockResolvedValue({ id: '1', username: 'a' })
     window.getCriblUser = fn
-    await resolveNotebookLibraryKvRoot()
-    await resolveNotebookLibraryKvRoot()
+    await resolveNotebookLibraryUsername()
+    await resolveNotebookLibraryUsername()
     expect(fn).toHaveBeenCalledTimes(1)
+  })
+
+  it('resolveNotebookLibraryKvRoot always returns legacy prefix', async () => {
+    window.getCriblUser = vi.fn().mockResolvedValue({ id: 'u1', username: 'alice' })
+    await expect(resolveNotebookLibraryKvRoot()).resolves.toBe(NB_KV_PREFIX)
   })
 })
