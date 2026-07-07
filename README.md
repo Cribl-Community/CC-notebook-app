@@ -15,7 +15,7 @@ In the Cribl UI, go to **Apps → Install App** and use one of the following met
 
 1. Choose **Import from Git**.
 2. Set **URL** to `https://github.com/Cribl-Community/CC-notebook-app.git`.
-3. Set **Branch or tag** to a release tag (e.g. `v1.4.3`). The tag is required — leaving it blank causes the import to fail.
+3. Set **Branch or tag** to `latest` (recommended — always the newest release) or a specific tag (e.g. `v1.4.3`). Leaving it blank causes the import to fail.
 
 
 ## Documentation

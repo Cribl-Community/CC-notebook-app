@@ -3,6 +3,7 @@
 #
 # Git install: after building the .tgz, CI materializes static/ + default/ on the tag
 # (same layout as the archive) so Import from Git serves /app-ui/{packId}/.
+# CI also moves the `latest` tag to that release so imports can use a stable ref.
 
 name: Release
 
@@ -43,10 +44,15 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           node scripts/prepare-git-pack.mjs --version "${GITHUB_REF_NAME#v}"
           git add -f static default
-          git diff --staged --quiet && echo "Pack layout unchanged; skipping tag update." && exit 0
-          git commit -m "chore(release): add Cribl pack layout for Git install"
-          git tag -f "${GITHUB_REF_NAME}"
-          git push origin "${GITHUB_REF_NAME}" --force
+          if ! git diff --staged --quiet; then
+            git commit -m "chore(release): add Cribl pack layout for Git install"
+            git tag -f "${GITHUB_REF_NAME}"
+            git push origin "${GITHUB_REF_NAME}" --force
+          else
+            echo "Pack layout unchanged on tag."
+          fi
+          git tag -f latest "${GITHUB_REF_NAME}"
+          git push origin latest --force
 
       - name: Write GitHub release notes
         run: node --experimental-strip-types scripts/emit-github-release-notes.ts "${GITHUB_REF_NAME#v}" > gh-release-notes.md

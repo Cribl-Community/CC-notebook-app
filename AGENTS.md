@@ -58,7 +58,7 @@ Cribl apps live in one of two GitHub orgs (coordinate with ProdEng / Chris Bresh
 4. Dry-run: `npm ci && npm run lint && npm run package -- --version X.Y.Z && ls build/*.tgz`
 5. Tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z`
 
-**Install from Git (Cribl UI):** Apps → Install App → Import From Git. Set URL to the repo HTTPS URL and "Branch or tag" to the release tag (e.g. `v1.2.9`). Leaving the tag field blank causes the import to fail. Release CI publishes the same pack layout as the `.tgz` (`static/`, `default/proxies.yml`) onto the tag after build — wait for the Release workflow to finish before importing. Do **not** commit `static/` or `default/` on `main`; they are generated artifacts (see `.gitignore`).
+**Install from Git (Cribl UI):** Apps → Install App → Import From Git. Set URL to the repo HTTPS URL and "Branch or tag" to `latest` (moved to each release by CI) or a specific tag (e.g. `v1.4.3`). Leaving the field blank causes the import to fail. Release CI publishes the same pack layout as the `.tgz` (`static/`, `default/proxies.yml`) onto the version tag and updates `latest`. Do **not** commit `static/` or `default/` on `main`; they are generated artifacts (see `.gitignore`).
 
 **Install from file:** Download `notebook-app-X.Y.Z.tgz` from GitHub Releases (or `npm run package`) and use Import from File.
 
