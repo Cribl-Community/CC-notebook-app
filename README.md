@@ -2,6 +2,22 @@
 
 React + TypeScript notebook UI for the **Cribl App Platform**: Jupyter-style cells, a Pyodide-backed Python kernel, Cribl Search and REST cell magics, and a KV-backed notebook library.
 
+## Installing in Cribl
+
+In the Cribl UI, go to **Apps → Install App** and use one of the following methods.
+
+### Install from file
+
+1. Open [GitHub Releases](https://github.com/Cribl-Community/CC-notebook-app/releases) and download `notebook-app-X.Y.Z.tgz` for the version you want.
+2. Choose **Import from File** and upload the `.tgz`.
+
+### Install from Git
+
+1. Choose **Import from Git**.
+2. Set **URL** to `https://github.com/Cribl-Community/CC-notebook-app.git`.
+3. Set **Branch or tag** to a release tag (e.g. `v1.4.3`). The tag is required — leaving it blank causes the import to fail.
+4. Wait for the [Release workflow](https://github.com/Cribl-Community/CC-notebook-app/actions/workflows/release.yml) to finish on that tag before importing; CI publishes the built app (`static/`, `default/proxies.yml`) with the same layout as the `.tgz`.
+
 ## Documentation
 
 | Document | Purpose |

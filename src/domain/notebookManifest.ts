@@ -23,6 +23,65 @@ export function notebookPayloadKey(libraryRoot: string, notebookId: string): str
   return `${normalizeLibraryRoot(libraryRoot)}/notebooks/${notebookId}`
 }
 
+/**
+ * URL-safe username prefix for notebook KV ids (`nb/v1/notebooks/{token}_{notebookId}`).
+ * Cribl Cloud only routes `nb/v1/notebooks/*` when the id segment has no spaces or `::`.
+ */
+export function usernameStorageToken(username: string): string {
+  const trimmed = username.trim()
+  if (!trimmed) return ''
+  const token = trimmed
+    .replace(/\s+/g, '_')
+    .replace(/\//g, '_')
+    .replace(/[^A-Za-z0-9._-]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+  return token || 'user'
+}
+
+/**
+ * Per-user notebook payload at `nb/v1/notebooks/{usernameToken}_{notebookId}`.
+ * Manifest notebook `id` stays a UUID; only the KV key embeds the owner.
+ */
+export function userNotebookPayloadKey(username: string, notebookId: string): string {
+  const token = usernameStorageToken(username)
+  return `${NB_KV_PREFIX}/notebooks/${token}_${notebookId}`
+}
+
+/** Read `ownerUsername` from a manifest item when present. */
+export function manifestItemOwnerUsername(item: ManifestItem): string | undefined {
+  const raw = (item as { ownerUsername?: unknown }).ownerUsername
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined
+}
+
+/**
+ * When `username` is set, keep only items owned by that user (legacy items without
+ * `ownerUsername` are hidden). When `username` is null, return all items.
+ */
+export function filterManifestItemsByOwner(
+  items: ManifestItem[],
+  username: string | null,
+): ManifestItem[] {
+  if (!username) return items
+  return items.filter((it) => manifestItemOwnerUsername(it) === username)
+}
+
+/**
+ * Replace one user's items in a shared manifest while preserving other owners.
+ */
+export function mergeManifestForOwner(
+  full: Manifest,
+  ownerItems: ManifestItem[],
+  username: string,
+): Manifest {
+  const others = full.items.filter((it) => manifestItemOwnerUsername(it) !== username)
+  return { version: 1, items: [...others, ...ownerItems] }
+}
+
+function parseOwnerUsernameField(raw: unknown): string | undefined {
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : undefined
+}
+
 /** Pack-wide manifest key; same as {@link manifestKey}({@link NB_KV_PREFIX}). */
 export const MANIFEST_KEY = manifestKey(NB_KV_PREFIX)
 
@@ -78,6 +137,7 @@ export function parseManifestJson(text: string): Manifest {
     if (!name.trim()) continue
     const trimmedName = name.trim()
     const ts = updatedAt || new Date(0).toISOString()
+    const ownerUsername = parseOwnerUsernameField(it.ownerUsername)
     if (type === 'folder') {
       out.push({
         id,
@@ -85,6 +145,7 @@ export function parseManifestJson(text: string): Manifest {
         parentId,
         name: trimmedName,
         updatedAt: ts,
+        ...(ownerUsername ? { ownerUsername } : {}),
       })
     } else {
       out.push({
@@ -94,6 +155,7 @@ export function parseManifestJson(text: string): Manifest {
         name: trimmedName,
         updatedAt: ts,
         tags: parseManifestTagsField(it.tags),
+        ...(ownerUsername ? { ownerUsername } : {}),
       })
     }
   }

@@ -7,38 +7,41 @@ type GlobalWindow = typeof globalThis & {
   }
 }
 
-let cachedRootPromise: Promise<string> | null = null
+let cachedUsernamePromise: Promise<string | null> | null = null
 
-/** Test hook: clear cached notebook library KV root. */
+/** Test hook: clear cached notebook library username. */
 export function resetNotebookLibraryKvRootCacheForTests(): void {
-  cachedRootPromise = null
+  cachedUsernamePromise = null
 }
 
 /**
- * Resolves the KV path prefix for the saved-notebook library.
- * When `window.getCriblUser` is available and returns a user with non-empty
- * `id` and `username`, notebooks are stored under
- * `{@link NB_KV_PREFIX}/u/{id}/{username}`. Otherwise uses {@link NB_KV_PREFIX}
- * (pack-wide legacy layout).
+ * Resolves the signed-in user's `username` for per-user KV keys, or `null` for the
+ * legacy pack-wide library layout.
  */
-export function resolveNotebookLibraryKvRoot(): Promise<string> {
-  if (cachedRootPromise) return cachedRootPromise
-  cachedRootPromise = resolveNotebookLibraryKvRootUncached()
-  return cachedRootPromise
+export function resolveNotebookLibraryUsername(): Promise<string | null> {
+  if (cachedUsernamePromise) return cachedUsernamePromise
+  cachedUsernamePromise = resolveNotebookLibraryUsernameUncached()
+  return cachedUsernamePromise
 }
 
-async function resolveNotebookLibraryKvRootUncached(): Promise<string> {
+async function resolveNotebookLibraryUsernameUncached(): Promise<string | null> {
   try {
     const w = (globalThis as GlobalWindow).window
-    if (!w) return NB_KV_PREFIX
+    if (!w) return null
     const fn = w.getCriblUser
-    if (typeof fn !== 'function') return NB_KV_PREFIX
+    if (typeof fn !== 'function') return null
     const user = await fn()
-    const id = typeof user?.id === 'string' ? user.id.trim() : ''
     const username = typeof user?.username === 'string' ? user.username.trim() : ''
-    if (!id || !username) return NB_KV_PREFIX
-    return `${NB_KV_PREFIX}/u/${encodeURIComponent(id)}/${encodeURIComponent(username)}`
+    return username || null
   } catch {
-    return NB_KV_PREFIX
+    return null
   }
+}
+
+/**
+ * Legacy library root (`nb/v1`). Prefer {@link resolveNotebookLibraryUsername} for
+ * per-user key scoping via {@link userManifestKey} / {@link userNotebookPayloadKey}.
+ */
+export function resolveNotebookLibraryKvRoot(): Promise<string> {
+  return Promise.resolve(NB_KV_PREFIX)
 }

@@ -5,6 +5,8 @@ export type ManifestItem =
       parentId: string | null
       name: string
       updatedAt: string
+      /** When set, item belongs to this `getCriblUser().username` (shared manifest). */
+      ownerUsername?: string
     }
   | {
       id: string
@@ -14,6 +16,8 @@ export type ManifestItem =
       updatedAt: string
       /** Library-only labels for sidebar filtering (comma-edited in UI). */
       tags: string[]
+      /** When set, item belongs to this `getCriblUser().username` (shared manifest). */
+      ownerUsername?: string
     }
 
 export interface Manifest {

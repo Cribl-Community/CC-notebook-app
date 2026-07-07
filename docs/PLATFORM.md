@@ -71,12 +71,18 @@ adapter is `src/platform/adapters/notebookKv.ts`.
 | List keys | POST | `CRIBL_API_URL + '/kvstore/keys'` | `{ prefix: 'my/key/prefix' }` |
 
 **Notebook library keys.** Saved notebooks (manifest + `.ipynb` payloads) use keys
-under `nb/v1/…`. When `window.getCriblUser` resolves to a user with non-empty `id`
-and `username`, the library is stored per-user under
-`nb/v1/u/{encodeURIComponent(id)}/{encodeURIComponent(username)}/…` so each user sees
-only their own notebooks. If `getCriblUser` is missing, throws, or returns incomplete
-data, the app falls back to the legacy pack-wide `nb/v1/…` paths. Existing pack-wide
-data is **not** migrated automatically.
+under `nb/v1/…`. Cribl Cloud routes only `nb/v1/manifest` and `nb/v1/notebooks/{id}`.
+When `window.getCriblUser` resolves to a user with non-empty `username`, the app:
+
+- Reads/writes the **shared** manifest at `nb/v1/manifest`, tagging each item with
+  `ownerUsername` and showing only that user's entries in the sidebar.
+- Stores notebook payloads at `nb/v1/notebooks/{usernameToken}_{notebookId}` where
+  `usernameToken` is a URL-safe form of `username` (spaces → `_`, etc.) and
+  `notebookId` is the manifest UUID.
+
+If `getCriblUser` is missing, throws, or returns incomplete data (no username), the
+app falls back to the legacy pack-wide `nb/v1/manifest` and `nb/v1/notebooks/{id}`
+layout. Existing pack-wide data is **not** migrated automatically.
 
 ## Config-group context
 
