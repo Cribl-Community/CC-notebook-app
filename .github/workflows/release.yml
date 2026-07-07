@@ -1,5 +1,8 @@
 # Publishes a GitHub Release when a tag matching v* is pushed (e.g. v1.2.3).
 # Version is stamped from the tag — no package.json bump required.
+#
+# Git install: after building the .tgz, CI materializes static/ + default/ on the tag
+# (same layout as the archive) so Import from Git serves /app-ui/{packId}/.
 
 name: Release
 
@@ -8,14 +11,22 @@ on:
     tags:
       - 'v*'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
 jobs:
   release:
+    # Skip the follow-up tag push that only adds generated pack layout.
+    if: ${{ !contains(github.event.head_commit.message, 'chore(release): add Cribl pack layout') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4.4.0
         with:
@@ -27,6 +38,17 @@ jobs:
       - run: npm run lint
 
       - run: npm run package -- --version "${GITHUB_REF_NAME#v}"
+
+      - name: Publish pack layout for Git install
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          node scripts/prepare-git-pack.mjs --version "${GITHUB_REF_NAME#v}"
+          git add -f static default
+          git diff --staged --quiet && echo "Pack layout unchanged; skipping tag update." && exit 0
+          git commit -m "chore(release): add Cribl pack layout for Git install"
+          git tag -f "${GITHUB_REF_NAME}"
+          git push origin "${GITHUB_REF_NAME}" --force
 
       - name: Write GitHub release notes
         run: node --experimental-strip-types scripts/emit-github-release-notes.ts "${GITHUB_REF_NAME#v}" > gh-release-notes.md
