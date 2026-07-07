@@ -52,44 +52,27 @@ async function pathExists(filePath) {
   }
 }
 
+const PACK_METADATA_KEYS = [
+  'name',
+  'version',
+  'displayName',
+  'description',
+  'author',
+  'license',
+  'navItems',
+];
+
 /**
- * @param {boolean} [dev]
- * @param {string} [versionOverride]
- * @returns {Promise<{ closePromise: Promise<void>; stdout: import('node:stream').Readable }>}
+ * @param {Record<string, unknown>} rootPackageJson
+ * @param {{ dev?: boolean, versionOverride?: string }} [options]
  */
-export async function createAppPack(dev = false, versionOverride = undefined) {
-  const rootDir = join(__dirname, '..');
-  const buildDir = join(rootDir, 'package-build');
-  const distDir = join(rootDir, 'dist');
-  const proxiesPath = join(rootDir, 'config', 'proxies.yml');
-
-  if (await pathExists(buildDir)) {
-    await rm(buildDir, { recursive: true });
-  }
-
-  await mkdir(buildDir, { recursive: true });
-  await mkdir(join(buildDir, 'static'), { recursive: true });
-  await mkdir(join(buildDir, 'default'), { recursive: true });
-
-  if (!dev) {
-    if (!(await pathExists(distDir))) {
-      throw new Error('dist folder not found. Run npm run build first.');
-    }
-    await cp(distDir, join(buildDir, 'static'), { recursive: true });
-  }
-
-  if (await pathExists(proxiesPath)) {
-    await cp(proxiesPath, join(buildDir, 'default', 'proxies.yml'));
-  }
-
-  const rootPackageJson = JSON.parse(
-    await readFile(join(rootDir, 'package.json'), 'utf8')
-  );
-
+function buildPackMetadata(rootPackageJson, options = {}) {
+  const { dev = false, versionOverride } = options;
   const packageInfo = Object.fromEntries(
-    ['name', 'version', 'displayName', 'description', 'author', 'license', 'navItems']
-      .filter((k) => rootPackageJson?.[k])
-      .map((k) => [k, rootPackageJson[k]])
+    PACK_METADATA_KEYS.filter((k) => rootPackageJson?.[k]).map((k) => [
+      k,
+      rootPackageJson[k],
+    ])
   );
 
   if (dev && packageInfo.name) {
@@ -101,10 +84,81 @@ export async function createAppPack(dev = false, versionOverride = undefined) {
     packageInfo.version = versionOverride;
   }
 
-  await writeFile(
-    join(buildDir, 'package.json'),
-    JSON.stringify(packageInfo, null, 2)
-  );
+  return packageInfo;
+}
+
+/**
+ * Shared pack layout used by `.tgz` packaging and Git-based installs.
+ *
+ * @param {string} rootDir
+ * @param {string} destDir
+ * @param {{ dev?: boolean, versionOverride?: string, includePackageJson?: boolean }} [options]
+ */
+export async function writeAppPackLayout(rootDir, destDir, options = {}) {
+  const { dev = false, versionOverride, includePackageJson = true } = options;
+  const distDir = join(rootDir, 'dist');
+  const proxiesPath = join(rootDir, 'config', 'proxies.yml');
+  const staticDir = join(destDir, 'static');
+  const defaultDir = join(destDir, 'default');
+
+  await mkdir(staticDir, { recursive: true });
+  await mkdir(defaultDir, { recursive: true });
+
+  if (!dev) {
+    if (!(await pathExists(distDir))) {
+      throw new Error('dist folder not found. Run npm run build first.');
+    }
+    await rm(staticDir, { recursive: true, force: true });
+    await cp(distDir, staticDir, { recursive: true });
+  }
+
+  if (await pathExists(proxiesPath)) {
+    await cp(proxiesPath, join(defaultDir, 'proxies.yml'));
+  }
+
+  if (includePackageJson) {
+    const rootPackageJson = JSON.parse(
+      await readFile(join(rootDir, 'package.json'), 'utf8')
+    );
+    const packageInfo = buildPackMetadata(rootPackageJson, {
+      dev,
+      versionOverride,
+    });
+    await writeFile(
+      join(destDir, 'package.json'),
+      `${JSON.stringify(packageInfo, null, 2)}\n`
+    );
+  }
+}
+
+/**
+ * Write `static/` and `default/` at the repo root for Cribl Import from Git.
+ *
+ * @param {string} [versionOverride]
+ */
+export async function prepareGitPackLayout(versionOverride = undefined) {
+  const rootDir = join(__dirname, '..');
+  await writeAppPackLayout(rootDir, rootDir, {
+    versionOverride,
+    includePackageJson: false,
+  });
+}
+
+/**
+ * @param {boolean} [dev]
+ * @param {string} [versionOverride]
+ * @returns {Promise<{ closePromise: Promise<void>; stdout: import('node:stream').Readable }>}
+ */
+export async function createAppPack(dev = false, versionOverride = undefined) {
+  const rootDir = join(__dirname, '..');
+  const buildDir = join(rootDir, 'package-build');
+
+  if (await pathExists(buildDir)) {
+    await rm(buildDir, { recursive: true });
+  }
+
+  await mkdir(buildDir, { recursive: true });
+  await writeAppPackLayout(rootDir, buildDir, { dev, versionOverride });
 
   const child = spawn(
     'tar',
