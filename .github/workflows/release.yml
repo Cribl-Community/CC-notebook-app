@@ -20,8 +20,6 @@ permissions:
 
 jobs:
   release:
-    # Skip the follow-up tag push that only adds generated pack layout.
-    if: ${{ !contains(github.event.head_commit.message, 'chore(release): add Cribl pack layout') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.0
@@ -41,6 +39,10 @@ jobs:
 
       - name: Publish pack layout for Git install
         run: |
+          if git ls-files --error-unmatch static/index.html >/dev/null 2>&1; then
+            echo "Pack layout already on tag; skipping tag update."
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           node scripts/prepare-git-pack.mjs --version "${GITHUB_REF_NAME#v}"
