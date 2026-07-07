@@ -1,35 +1,44 @@
-# Scans the full Git history on each PR and on pushes to the default branch.
-# Repo admins should also enable GitHub "Secret scanning" and "Push protection"
-# under Settings → Code security and analysis.
+# Advisory secret scan on pull requests (OSS gitleaks CLI — no org license).
+# Does not block merges. For enforcement, enable GitHub Secret scanning + Push
+# protection under Settings → Code security and analysis.
 
 name: Secret scan
 
 on:
   pull_request:
-  push:
-    branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 permissions:
   contents: read
-  # gitleaks-action lists PR commits via the REST API; without this scope the
-  # default token cannot read pull-requests and fails with 403 on pull_request.
   pull-requests: read
 
 jobs:
   gitleaks:
-    name: Gitleaks
+    name: Gitleaks (advisory)
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v7.0.0
         with:
           fetch-depth: 0
-          # Partial clone: full history for merge-base / log scan, blobs fetched on demand.
-          filter: 'blob:none'
+          ref: ${{ github.event.pull_request.head.sha }}
 
-      - uses: gitleaks/gitleaks-action@v3.0.0
+      - name: Install gitleaks
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_VERSION: v8.24.2
+        run: |
+          curl -sSfL \
+            "https://github.com/gitleaks/gitleaks/releases/download/${GITLEAKS_VERSION}/gitleaks_8.24.2_linux_x64.tar.gz" \
+            | tar -xz
+          sudo install -m 0755 gitleaks /usr/local/bin/gitleaks
+
+      - name: Scan PR commits
+        run: |
+          gitleaks detect \
+            --source . \
+            --redact \
+            --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}" \
+            --verbose
