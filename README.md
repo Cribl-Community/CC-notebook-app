@@ -16,7 +16,7 @@ In the Cribl UI, go to **Apps → Install App** and use one of the following met
 1. Choose **Import from Git**.
 2. Set **URL** to `https://github.com/Cribl-Community/CC-notebook-app.git`.
 3. Set **Branch or tag** to a release tag (e.g. `v1.4.3`). The tag is required — leaving it blank causes the import to fail.
-4. Wait for the [Release workflow](https://github.com/Cribl-Community/CC-notebook-app/actions/workflows/release.yml) to finish on that tag before importing; CI publishes the built app (`static/`, `default/proxies.yml`) with the same layout as the `.tgz`.
+
 
 ## Documentation
 
