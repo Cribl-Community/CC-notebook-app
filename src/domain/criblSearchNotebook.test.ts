@@ -70,6 +70,79 @@ describe('criblSearchNotebook normalizers', () => {
     })
   })
 
+  it('normalizes chart sections with sibling search object (live API shape)', () => {
+    const section = normalizeCriblSearchNotebookSection({
+      id: 'section-chart',
+      type: 'chart.column',
+      variant: 'chart',
+      config: {},
+      info: { title: 'Validate outbound C2 transfer' },
+      search: {
+        query:
+          'cribl dataset=criblcoffee_pan earliest=1781781181 latest=1781783881\n| where sourcetype == "cribl:access"',
+        earliest: 1781781181,
+        latest: 1781783881,
+        type: 'inline',
+      },
+      runInfo: {
+        jobId: 'job-123',
+        runQuery:
+          'cribl dataset=criblcoffee_pan earliest=1781781181 latest=1781783881\n| where sourcetype == "cribl:access"',
+      },
+    })
+    expect(section).toEqual({
+      kind: 'search',
+      title: 'Validate outbound C2 transfer',
+      query:
+        'cribl dataset=criblcoffee_pan earliest=1781781181 latest=1781783881\n| where sourcetype == "cribl:access"',
+      earliest: '1781781181',
+      latest: '1781783881',
+    })
+  })
+
+  it('normalizes full notebook with chart search sections', () => {
+    const nb = normalizeCriblSearchNotebookData({
+      items: [
+        {
+          id: 'notebook-pci',
+          info: { name: 'PCI Exfiltration' },
+          sections: [
+            {
+              type: 'markdown.default',
+              variant: 'markdown',
+              config: { markdown: '## Context\n\nReview outbound transfers.' },
+            },
+            {
+              type: 'chart.column',
+              variant: 'chart',
+              config: {},
+              info: { title: 'Outbound volume' },
+              search: {
+                query: 'cribl dataset=pan | stats count()',
+                earliest: 1781781181,
+                latest: 1781783881,
+              },
+            },
+          ],
+        },
+      ],
+    })
+    expect(nb).toEqual({
+      id: 'notebook-pci',
+      name: 'PCI Exfiltration',
+      cells: [
+        { kind: 'note', content: '## Context\n\nReview outbound transfers.' },
+        {
+          kind: 'search',
+          title: 'Outbound volume',
+          query: 'cribl dataset=pan | stats count()',
+          earliest: '1781781181',
+          latest: '1781783881',
+        },
+      ],
+    })
+  })
+
   it('normalizes full notebook with sections', () => {
     const nb = normalizeCriblSearchNotebookData({
       items: [

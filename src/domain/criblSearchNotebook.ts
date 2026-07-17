@@ -48,6 +48,16 @@ function readString(obj: Record<string, unknown>, ...keys: string[]): string | u
   return undefined
 }
 
+/** Read string or numeric API fields (e.g. epoch `earliest` / `latest`). */
+function readScalarString(obj: Record<string, unknown>, ...keys: string[]): string | undefined {
+  for (const key of keys) {
+    const v = obj[key]
+    if (typeof v === 'string' && v.trim()) return v.trim()
+    if (typeof v === 'number' && Number.isFinite(v)) return String(v)
+  }
+  return undefined
+}
+
 function readNotebookName(obj: Record<string, unknown>): string | undefined {
   const direct = readString(obj, 'name', 'title', 'displayName')
   if (direct) return direct
@@ -121,14 +131,32 @@ export function normalizeCriblSearchNotebookSection(raw: unknown): CriblSearchNo
 
   const config = asRecord(obj.config)
   const info = asRecord(obj.info)
+  const runInfo = asRecord(obj.runInfo)
+  const searchBlock = asRecord(obj.search)
   const variant = readString(obj, 'variant')?.toLowerCase()
   const type = readString(obj, 'type')?.toLowerCase()
   const title = info ? readString(info, 'title', 'name', 'label') : undefined
 
+  // Cribl Search API: chart sections store the query on a sibling `search` object.
+  if (searchBlock) {
+    const query =
+      readString(searchBlock, 'query') ??
+      (runInfo ? readString(runInfo, 'runQuery') : undefined)
+    if (query) {
+      return {
+        kind: 'search',
+        title,
+        query,
+        earliest: readScalarString(searchBlock, 'earliest', 'timeEarliest', 'time_earliest'),
+        latest: readScalarString(searchBlock, 'latest', 'timeLatest', 'time_latest'),
+      }
+    }
+  }
+
   const isMarkdown =
     variant === 'markdown' ||
     type?.includes('markdown') ||
-    (config != null && readString(config, 'markdown') != null && !readString(config, 'query'))
+    (config != null && readString(config, 'markdown') != null && !searchBlock)
   if (isMarkdown) {
     const content =
       (config ? readString(config, 'markdown', 'text', 'content') : undefined) ??
@@ -150,8 +178,10 @@ export function normalizeCriblSearchNotebookSection(raw: unknown): CriblSearchNo
       kind: 'search',
       title,
       query,
-      earliest: config ? readString(config, 'earliest', 'timeEarliest', 'time_earliest') : undefined,
-      latest: config ? readString(config, 'latest', 'timeLatest', 'time_latest') : undefined,
+      earliest: config
+        ? readScalarString(config, 'earliest', 'timeEarliest', 'time_earliest')
+        : undefined,
+      latest: config ? readScalarString(config, 'latest', 'timeLatest', 'time_latest') : undefined,
     }
   }
 

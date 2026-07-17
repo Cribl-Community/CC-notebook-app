@@ -25,6 +25,18 @@ describe('buildCriblSearchMagicSource', () => {
     })
     expect(source).toBe('%%cribl_search lang=kql\ncribl | limit 10')
   })
+
+  it('includes numeric epoch earliest/latest as strings', () => {
+    const source = buildCriblSearchMagicSource({
+      kind: 'search',
+      query: 'cribl dataset=pan | stats count()',
+      earliest: '1781781181',
+      latest: '1781783881',
+    })
+    expect(source).toBe(
+      '%%cribl_search lang=kql earliest=1781781181 latest=1781783881\ncribl dataset=pan | stats count()',
+    )
+  })
 })
 
 describe('convertCriblSearchNotebook', () => {
