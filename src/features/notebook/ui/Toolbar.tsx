@@ -10,6 +10,7 @@ interface ToolbarProps {
   onTitleChange: (title: string) => void
   onDownload: () => void
   onImportFile: (file: File) => void
+  onImportFromCriblSearch?: () => void
   onSave: () => void
   saveDisabled?: boolean
   dirty?: boolean
@@ -56,6 +57,7 @@ export function Toolbar({
   onTitleChange,
   onDownload,
   onImportFile,
+  onImportFromCriblSearch,
   onSave,
   saveDisabled = false,
   dirty = false,
@@ -113,6 +115,16 @@ export function Toolbar({
             >
               ⬆ Upload
             </button>
+            {onImportFromCriblSearch && (
+              <button
+                className="nb-btn"
+                type="button"
+                onClick={onImportFromCriblSearch}
+                title="Import a saved Cribl Search Notebook"
+              >
+                ↓ From Cribl Search
+              </button>
+            )}
             <input
               ref={fileRef}
               type="file"

@@ -1,6 +1,7 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { createEmptyTab } from '@features/notebook/reducer/tabWorkspace'
 import { useEnv, useNotebookRepo } from '@app/providers'
+import type { CriblSearchNotebookData, CriblSearchNotebookMeta } from '@/domain/criblSearchNotebook'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
 import type { NotebookLibraryController } from '@features/library'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
@@ -8,6 +9,7 @@ import {
   confirmMoveLibraryEntry,
   createFolderInManifest,
   deleteLibraryEntry,
+  importCriblSearchNotebookToTab,
   importNotebookFileToTab,
   loadExampleNotebookToTab,
   openNotebookFromKv,
@@ -16,6 +18,11 @@ import {
   setNotebookTagsInManifest,
 } from '@features/notebook/hooks/notebookLibraryAsyncCommands'
 
+export type CriblSearchNotebookImportFns = {
+  listNotebooks: (apiBase: string) => Promise<CriblSearchNotebookMeta[]>
+  fetchNotebook: (apiBase: string, notebookId: string) => Promise<CriblSearchNotebookData>
+}
+
 export interface NotebookLibraryActionsArgs {
   workspace: NotebookWorkspaceController
   runtime: TabRuntimeController
@@ -23,11 +30,12 @@ export interface NotebookLibraryActionsArgs {
   showAlert: (message: string) => void
   showConfirm: (message: string) => Promise<boolean>
   showPrompt: (title: string, label: string, defaultValue?: string) => Promise<string | null>
+  criblSearchNotebookImport?: CriblSearchNotebookImportFns
 }
 
 export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
-  const { workspace, runtime, library, showAlert, showConfirm, showPrompt } = args
-  const { staticAssetPrefix } = useEnv()
+  const { workspace, runtime, library, showAlert, showConfirm, showPrompt, criblSearchNotebookImport } = args
+  const { staticAssetPrefix, apiBase, isCriblHosted } = useEnv()
   const repo = useNotebookRepo()
   const {
     dispatch,
@@ -44,6 +52,10 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     reload: loadLibrary,
     setMovingId,
   } = library
+
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerNotebooks, setPickerNotebooks] = useState<CriblSearchNotebookMeta[] | null>(null)
+  const [pickerError, setPickerError] = useState<string | null>(null)
 
   const handleSave = useCallback(() => {
     const tabId = activeTabIdRef.current
@@ -237,6 +249,47 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     [dispatch, runtime, showAlert, staticAssetPrefix],
   )
 
+  const handleOpenCriblSearchPicker = useCallback(() => {
+    if (!isCriblHosted || !apiBase || !criblSearchNotebookImport) return
+    setPickerOpen(true)
+    setPickerNotebooks(null)
+    setPickerError(null)
+    void (async () => {
+      try {
+        const items = await criblSearchNotebookImport.listNotebooks(apiBase)
+        setPickerNotebooks(items)
+      } catch (e) {
+        setPickerError(e instanceof Error ? e.message : 'Failed to load Cribl Search notebooks')
+      }
+    })()
+  }, [apiBase, criblSearchNotebookImport, isCriblHosted])
+
+  const handlePickerClose = useCallback(() => {
+    setPickerOpen(false)
+    setPickerNotebooks(null)
+    setPickerError(null)
+  }, [])
+
+  const handlePickerSelect = useCallback(
+    (notebookId: string) => {
+      if (!apiBase || !criblSearchNotebookImport) return
+      setPickerOpen(false)
+      setPickerNotebooks(null)
+      setPickerError(null)
+      const tab = createEmptyTab()
+      dispatch({ type: 'ADD_TAB', tab })
+      void importCriblSearchNotebookToTab({
+        fetchNotebook: (id) => criblSearchNotebookImport.fetchNotebook(apiBase, id),
+        notebookId,
+        tabId: tab.id,
+        dispatch,
+        runtime,
+        showAlert,
+      })
+    },
+    [apiBase, criblSearchNotebookImport, dispatch, runtime, showAlert],
+  )
+
   return {
     handleSave,
     handleOpenNotebook,
@@ -247,6 +300,13 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
     handleConfirmMove,
     handleImportFile,
     handleOpenExample,
+    handleOpenCriblSearchPicker:
+      isCriblHosted && criblSearchNotebookImport ? handleOpenCriblSearchPicker : undefined,
+    handlePickerClose,
+    handlePickerSelect,
+    pickerOpen,
+    pickerNotebooks,
+    pickerError,
     saveDisabled: library.saveBusy || libraryLoading || !manifest,
   }
 }
