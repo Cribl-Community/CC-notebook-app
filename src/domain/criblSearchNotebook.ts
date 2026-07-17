@@ -1,7 +1,8 @@
 /**
  * Types and normalizers for Cribl Search Notebooks REST payloads.
- * API shape is inferred from product docs and list/get `/search/notebooks` responses;
- * normalizers accept field-name variants defensively.
+ * Shapes align with Cribl Search API (`GET /search/notebooks`, `GET /search/notebooks/{id}`):
+ * list items use `{ id, info: { name, created, modified }, sections? }`; detail GET may wrap
+ * `{ items: [notebook] }`.
  */
 
 /** One notebook in the list response (`GET /search/notebooks`). */
@@ -47,30 +48,50 @@ function readString(obj: Record<string, unknown>, ...keys: string[]): string | u
   return undefined
 }
 
+function readNotebookName(obj: Record<string, unknown>): string | undefined {
+  const direct = readString(obj, 'name', 'title', 'displayName')
+  if (direct) return direct
+  const info = asRecord(obj.info)
+  return info ? readString(info, 'name', 'title', 'displayName') : undefined
+}
+
+function readNotebookUpdatedAt(obj: Record<string, unknown>): number | undefined {
+  if (typeof obj.updatedAt === 'number') return obj.updatedAt
+  const info = asRecord(obj.info)
+  if (!info) return undefined
+  if (typeof info.modified === 'number') return info.modified
+  if (typeof info.updatedAt === 'number') return info.updatedAt
+  if (typeof info.created === 'number') return info.created
+  return undefined
+}
+
+/** Unwrap `{ items: [notebook] }` detail responses from GET /search/notebooks/{id}. */
+export function unwrapCriblSearchNotebookPayload(raw: unknown): Record<string, unknown> {
+  const obj = asRecord(raw)
+  if (!obj) throw new Error('Invalid Cribl Search notebook response.')
+  if (Array.isArray(obj.items) && obj.items.length > 0) {
+    const first = asRecord(obj.items[0])
+    if (first && readString(first, 'id') && (asRecord(first.info) || Array.isArray(first.sections))) {
+      return first
+    }
+  }
+  return obj
+}
+
 function readCellType(obj: Record<string, unknown>): 'search' | 'note' | null {
-  const raw = readString(obj, 'type', 'cellType', 'cell_type', 'kind')
+  const raw = readString(obj, 'type', 'cellType', 'cell_type', 'kind', 'variant')
   if (!raw) {
     if (readString(obj, 'query', 'search', 'kql')) return 'search'
     if (readString(obj, 'content', 'text', 'markdown', 'body', 'note')) return 'note'
     return null
   }
   const t = raw.toLowerCase()
-  if (t === 'search' || t === 'query') return 'search'
-  if (t === 'note' || t === 'markdown' || t === 'text') return 'note'
+  if (t === 'search' || t === 'query' || t.includes('search')) return 'search'
+  if (t === 'note' || t === 'markdown' || t === 'text' || t.includes('markdown')) return 'note'
   return null
 }
 
-export function normalizeCriblSearchNotebookMeta(raw: unknown): CriblSearchNotebookMeta | null {
-  const obj = asRecord(raw)
-  if (!obj) return null
-  const id = readString(obj, 'id')
-  const name = readString(obj, 'name', 'title', 'displayName')
-  if (!id || !name) return null
-  const updatedAt = typeof obj.updatedAt === 'number' ? obj.updatedAt : undefined
-  return { id, name, updatedAt }
-}
-
-export function normalizeCriblSearchNotebookCell(raw: unknown): CriblSearchNotebookCell | null {
+function normalizeLegacyCell(raw: unknown): CriblSearchNotebookCell | null {
   const obj = asRecord(raw)
   if (!obj) return null
   const kind = readCellType(obj)
@@ -93,21 +114,79 @@ export function normalizeCriblSearchNotebookCell(raw: unknown): CriblSearchNoteb
   return null
 }
 
-export function normalizeCriblSearchNotebookData(raw: unknown): CriblSearchNotebookData {
+/** Normalize a Cribl Search Notebook `sections[]` entry (or legacy cell shape). */
+export function normalizeCriblSearchNotebookSection(raw: unknown): CriblSearchNotebookCell | null {
   const obj = asRecord(raw)
-  if (!obj) throw new Error('Invalid Cribl Search notebook response.')
+  if (!obj) return null
+
+  const config = asRecord(obj.config)
+  const info = asRecord(obj.info)
+  const variant = readString(obj, 'variant')?.toLowerCase()
+  const type = readString(obj, 'type')?.toLowerCase()
+  const title = info ? readString(info, 'title', 'name', 'label') : undefined
+
+  const isMarkdown =
+    variant === 'markdown' ||
+    type?.includes('markdown') ||
+    (config != null && readString(config, 'markdown') != null && !readString(config, 'query'))
+  if (isMarkdown) {
+    const content =
+      (config ? readString(config, 'markdown', 'text', 'content') : undefined) ??
+      readString(obj, 'markdown', 'content', 'text')
+    if (!content) return null
+    return { kind: 'note', content }
+  }
+
+  const isSearch =
+    variant === 'search' ||
+    type?.includes('search') ||
+    (config != null && readString(config, 'query', 'search', 'kql') != null)
+  if (isSearch) {
+    const query =
+      (config ? readString(config, 'query', 'search', 'kql') : undefined) ??
+      readString(obj, 'query', 'search', 'kql')
+    if (!query) return null
+    return {
+      kind: 'search',
+      title,
+      query,
+      earliest: config ? readString(config, 'earliest', 'timeEarliest', 'time_earliest') : undefined,
+      latest: config ? readString(config, 'latest', 'timeLatest', 'time_latest') : undefined,
+    }
+  }
+
+  return normalizeLegacyCell(raw)
+}
+
+export function normalizeCriblSearchNotebookMeta(raw: unknown): CriblSearchNotebookMeta | null {
+  const obj = asRecord(raw)
+  if (!obj) return null
   const id = readString(obj, 'id')
-  const name = readString(obj, 'name', 'title', 'displayName')
+  const name = readNotebookName(obj)
+  if (!id || !name) return null
+  const updatedAt = readNotebookUpdatedAt(obj)
+  return updatedAt != null ? { id, name, updatedAt } : { id, name }
+}
+
+/** @deprecated Use normalizeCriblSearchNotebookSection for API sections. */
+export function normalizeCriblSearchNotebookCell(raw: unknown): CriblSearchNotebookCell | null {
+  return normalizeCriblSearchNotebookSection(raw)
+}
+
+export function normalizeCriblSearchNotebookData(raw: unknown): CriblSearchNotebookData {
+  const obj = unwrapCriblSearchNotebookPayload(raw)
+  const id = readString(obj, 'id')
+  const name = readNotebookName(obj)
   if (!id || !name) throw new Error('Cribl Search notebook response missing id or name.')
 
-  const rawCells = Array.isArray(obj.cells)
-    ? obj.cells
-    : Array.isArray(obj.items)
-      ? obj.items
+  const rawSections = Array.isArray(obj.sections)
+    ? obj.sections
+    : Array.isArray(obj.cells)
+      ? obj.cells
       : []
   const cells: CriblSearchNotebookCell[] = []
-  for (const c of rawCells) {
-    const normalized = normalizeCriblSearchNotebookCell(c)
+  for (const section of rawSections) {
+    const normalized = normalizeCriblSearchNotebookSection(section)
     if (normalized) cells.push(normalized)
   }
   return { id, name, cells }

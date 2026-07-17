@@ -23,16 +23,22 @@ describe('searchNotebooks', () => {
       status: 200,
       text: JSON.stringify({
         items: [
-          { id: 'nb-a', name: 'Alpha', updatedAt: 1000 },
-          { id: 'nb-b', title: 'Beta' },
+          {
+            id: 'notebook-a',
+            info: { name: 'Alpha', modified: 1000 },
+          },
+          {
+            id: 'notebook-b',
+            info: { name: 'Beta' },
+          },
         ],
       }),
       jsonValue: {},
     })
     const items = await listCriblSearchNotebooks(API_BASE)
     expect(items).toEqual([
-      { id: 'nb-a', name: 'Alpha', updatedAt: 1000 },
-      { id: 'nb-b', name: 'Beta' },
+      { id: 'notebook-a', name: 'Alpha', updatedAt: 1000 },
+      { id: 'notebook-b', name: 'Beta' },
     ])
     expect(criblApiFetch.callCriblApi).toHaveBeenCalledWith(
       'GET',
@@ -42,28 +48,37 @@ describe('searchNotebooks', () => {
     )
   })
 
-  it('fetches a single notebook with cells', async () => {
+  it('fetches a single notebook with sections', async () => {
     vi.mocked(criblApiFetch.callCriblApi).mockResolvedValue({
       ok: true,
       status: 200,
       text: JSON.stringify({
-        id: 'nb-a',
-        name: 'Alpha',
-        cells: [
-          { type: 'note', content: 'Hello' },
+        items: [
           {
-            type: 'search',
-            title: 'Q1',
-            query: 'cribl | limit 1',
-            earliest: '-1h',
-            latest: 'now',
+            id: 'notebook-a',
+            info: { name: 'Alpha' },
+            sections: [
+              {
+                variant: 'markdown',
+                config: { markdown: 'Hello' },
+              },
+              {
+                variant: 'search',
+                config: {
+                  query: 'cribl | limit 1',
+                  earliest: '-1h',
+                  latest: 'now',
+                },
+                info: { title: 'Q1' },
+              },
+            ],
           },
         ],
       }),
       jsonValue: {},
     })
-    const nb = await fetchCriblSearchNotebook(API_BASE, 'nb-a')
-    expect(nb.id).toBe('nb-a')
+    const nb = await fetchCriblSearchNotebook(API_BASE, 'notebook-a')
+    expect(nb.id).toBe('notebook-a')
     expect(nb.name).toBe('Alpha')
     expect(nb.cells).toHaveLength(2)
     expect(nb.cells[0].kind).toBe('note')

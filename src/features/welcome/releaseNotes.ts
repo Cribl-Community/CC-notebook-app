@@ -11,6 +11,14 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.4.4',
+    date: '2026-07-17',
+    highlights: [
+      'Import: **From Cribl Search** lists saved Cribl Search Notebooks and opens them as Jupyter tabs — search cells become `%%cribl_search` code cells; note cells become markdown.',
+      'Import: picker and toolbar button appear only when the app runs inside Cribl (`CRIBL_API_URL`); local dev is unchanged.',
+    ],
+  },
+  {
     version: '1.4.3',
     date: '2026-07-07',
     highlights: [
