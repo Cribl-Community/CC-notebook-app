@@ -14,6 +14,11 @@ import { TabWidgetManagerProvider } from '@features/notebook/widgets/tabWidgetMa
 import { useNotebookPageCompleteCode } from '@features/notebook/hooks/useNotebookPageCompleteCode'
 import { useNotebookPageAiGenerate } from '@features/notebook/hooks/useNotebookPageAiGenerate'
 import { useNotebookPageTabChrome } from '@features/notebook/hooks/useNotebookPageTabChrome'
+import { CriblSearchNotebookPickerModal } from '@features/notebook/ui/CriblSearchNotebookPickerModal'
+import {
+  fetchCriblSearchNotebook,
+  listCriblSearchNotebooks,
+} from '@app/criblSearchNotebookImport'
 
 export function NotebookPage() {
   const { appStyle, setAppStyle, codeMirrorLuma } = useTheme()
@@ -101,6 +106,12 @@ export function NotebookPage() {
     handleConfirmMove,
     handleImportFile,
     handleOpenExample,
+    handleOpenCriblSearchPicker,
+    handlePickerClose,
+    handlePickerSelect,
+    pickerOpen,
+    pickerNotebooks,
+    pickerError,
     saveDisabled,
   } = useNotebookLibraryActions({
     workspace: {
@@ -119,6 +130,10 @@ export function NotebookPage() {
     showAlert,
     showConfirm,
     showPrompt,
+    criblSearchNotebookImport: {
+      listNotebooks: listCriblSearchNotebooks,
+      fetchNotebook: fetchCriblSearchNotebook,
+    },
   })
 
   const tabLabels = useMemo(
@@ -137,6 +152,13 @@ export function NotebookPage() {
 
   return (
     <>
+      <CriblSearchNotebookPickerModal
+        open={pickerOpen}
+        notebooks={pickerNotebooks}
+        error={pickerError}
+        onClose={handlePickerClose}
+        onSelect={handlePickerSelect}
+      />
       <div className="nb-app-frame" data-testid="notebook-app-root">
         <div className="nb-page">
           {!ready ? (
@@ -181,6 +203,7 @@ export function NotebookPage() {
                         onTitleChange={(t) => dispatchNotebook({ type: 'SET_NOTEBOOK_TITLE', title: t })}
                         onDownload={handleDownload}
                         onImportFile={handleImportFile}
+                        onImportFromCriblSearch={handleOpenCriblSearchPicker}
                         onSave={handleSave}
                         saveDisabled={saveDisabled}
                         dirty={dirty}
@@ -202,6 +225,7 @@ export function NotebookPage() {
                             onOpenExample={handleOpenExample}
                             onNewNotebook={handleNewTab}
                             onImportFile={handleImportFile}
+                            onImportFromCriblSearch={handleOpenCriblSearchPicker}
                           />
                         </div>
                       </div>

@@ -25,6 +25,8 @@ import type { Manifest } from '@/domain/library'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { closeDeletedTabs, updateOpenTabTitles } from '@features/notebook/hooks/notebookLibraryWorkspaceSync'
+import { convertCriblSearchNotebook } from '@features/notebook/codec/criblSearchNotebookConverter'
+import type { CriblSearchNotebookData } from '@/domain/criblSearchNotebook'
 
 export async function saveCurrentTabNotebook(args: {
   repo: NotebookRepo
@@ -278,6 +280,36 @@ export async function importNotebookFileToTab(args: {
     runtime.restartKernelForTab(tabId)
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to open notebook'
+    showAlert(msg)
+    dispatch({ type: 'CLOSE_TAB', tabId })
+  }
+}
+
+export async function importCriblSearchNotebookToTab(args: {
+  fetchNotebook: (notebookId: string) => Promise<CriblSearchNotebookData>
+  notebookId: string
+  tabId: string
+  dispatch: Dispatch<WorkspaceAction>
+  runtime: TabRuntimeController
+  showAlert: (message: string) => void
+}): Promise<void> {
+  const { fetchNotebook, notebookId, tabId, dispatch, runtime, showAlert } = args
+  try {
+    const raw = await fetchNotebook(notebookId)
+    const { title, cells } = convertCriblSearchNotebook(raw)
+    const nextCells = cells.length > 0 ? cells : createEmptyNotebookCells()
+    assertMarkdownEmbedsWithinLimits({ ...initialState, title, cells: nextCells })
+    dispatch({
+      type: 'REPLACE_TAB_CONTENT',
+      tabId,
+      title,
+      cells: nextCells,
+      kvNotebookId: null,
+      collapseLongCodeCellsOnOpen: true,
+    })
+    runtime.restartKernelForTab(tabId)
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Failed to import Cribl Search notebook'
     showAlert(msg)
     dispatch({ type: 'CLOSE_TAB', tabId })
   }

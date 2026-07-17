@@ -9,9 +9,15 @@ export type WelcomePageProps = {
   onOpenExample: (filename: string) => void
   onNewNotebook: () => void
   onImportFile: (file: File) => void
+  onImportFromCriblSearch?: () => void
 }
 
-export function WelcomePage({ onOpenExample, onNewNotebook, onImportFile }: WelcomePageProps) {
+export function WelcomePage({
+  onOpenExample,
+  onNewNotebook,
+  onImportFile,
+  onImportFromCriblSearch,
+}: WelcomePageProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [top, ...rest] = RELEASE_NOTES
   const { state: examplesLoad, setSelected } = useExamples()
@@ -77,6 +83,16 @@ export function WelcomePage({ onOpenExample, onNewNotebook, onImportFile }: Welc
           >
             ⬆ Upload
           </button>
+          {onImportFromCriblSearch && (
+            <button
+              type="button"
+              className="nb-btn"
+              onClick={onImportFromCriblSearch}
+              title="Import a saved Cribl Search Notebook"
+            >
+              ↓ From Cribl Search
+            </button>
+          )}
           <input
             ref={fileRef}
             type="file"

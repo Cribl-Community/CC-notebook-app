@@ -202,6 +202,67 @@ body {
   min-width: 72px;
 }
 
+.nb-cribl-nb-picker {
+  width: min(100%, 520px);
+  max-height: min(90svh, 560px);
+}
+
+.nb-cribl-nb-picker-status {
+  margin: 0 0 12px;
+  color: var(--nb-text-muted);
+  font-size: 13px;
+}
+
+.nb-cribl-nb-picker-error {
+  margin: 0 0 12px;
+  color: var(--nb-error-text, #c0392b);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.nb-cribl-nb-picker-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  max-height: 320px;
+  overflow: auto;
+  border: 1px solid var(--nb-border);
+  border-radius: 4px;
+}
+
+.nb-cribl-nb-picker-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-bottom: 1px solid var(--nb-border);
+  background: var(--nb-bg-cell);
+  color: var(--nb-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nb-cribl-nb-picker-row:last-child {
+  border-bottom: none;
+}
+
+.nb-cribl-nb-picker-row:hover {
+  background: var(--nb-bg-hover);
+}
+
+.nb-cribl-nb-picker-name {
+  font-weight: 500;
+}
+
+.nb-cribl-nb-picker-meta {
+  font-size: 11px;
+  color: var(--nb-text-muted);
+}
+
 .nb-editor-shell {
   flex: 1;
   min-height: 0;
