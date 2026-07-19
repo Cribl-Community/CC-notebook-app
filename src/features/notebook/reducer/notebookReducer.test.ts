@@ -262,7 +262,7 @@ describe('notebookReducer ADD_CELL', () => {
 
   it('uses stable id and source when provided (double-apply safe)', () => {
     const cells = createEmptyNotebookCells()
-    let state = readyStateFromCells(cells)
+    const state = readyStateFromCells(cells)
     const action = {
       type: 'ADD_CELL' as const,
       cellType: 'code' as const,
