@@ -59,6 +59,23 @@ function appendCell(
   cellType: 'code' | 'markdown',
   source: string,
 ): { cellId: string; index: number } {
+  const before = host.workspaceRef.current.tabs.find((t) => t.id === notebookTabId)
+  const onlyEmptyCode =
+    before?.notebook.cells.length === 1 &&
+    before.notebook.cells[0]?.cell_type === 'code' &&
+    before.notebook.cells[0].source.trim() === ''
+
+  // Reuse the default empty code cell from createEmptyTab on the first write.
+  if (onlyEmptyCode && cellType === 'code' && before.notebook.cells[0]) {
+    const cellId = before.notebook.cells[0].id
+    host.dispatch({
+      type: 'TAB_NOTEBOOK',
+      tabId: notebookTabId,
+      action: { type: 'UPDATE_SOURCE', id: cellId, source },
+    })
+    return { cellId, index: 0 }
+  }
+
   host.dispatch({
     type: 'TAB_NOTEBOOK',
     tabId: notebookTabId,
@@ -78,6 +95,22 @@ function appendCell(
       type: 'TAB_NOTEBOOK',
       tabId: notebookTabId,
       action: { type: 'TOGGLE_MARKDOWN_EDIT', id: cellId },
+    })
+  }
+  // If we still have a leading empty code placeholder after adding markdown first, drop it.
+  const afterAdd = host.workspaceRef.current.tabs.find((t) => t.id === notebookTabId)
+  const lead = afterAdd?.notebook.cells[0]
+  if (
+    lead &&
+    lead.id !== cellId &&
+    lead.cell_type === 'code' &&
+    lead.source.trim() === '' &&
+    (afterAdd?.notebook.cells.length ?? 0) > 1
+  ) {
+    host.dispatch({
+      type: 'TAB_NOTEBOOK',
+      tabId: notebookTabId,
+      action: { type: 'DELETE_CELL', id: lead.id },
     })
   }
   const after = host.workspaceRef.current.tabs.find((t) => t.id === notebookTabId)
