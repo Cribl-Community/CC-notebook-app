@@ -1,4 +1,4 @@
-import { useEffect, useId } from 'react'
+import { Button, Modal, Spinner } from '@capra/core'
 import type { CriblSearchNotebookMeta } from '@/domain/criblSearchNotebook'
 
 export type CriblSearchNotebookPickerModalProps = {
@@ -17,73 +17,52 @@ export function CriblSearchNotebookPickerModal({
   onClose,
   onSelect,
 }: CriblSearchNotebookPickerModalProps) {
-  const titleId = useId()
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, onClose])
-
-  if (!open) return null
-
   const loading = notebooks === null && !error
 
   return (
-    <div
-      className="nb-dialog-backdrop"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
+    <Modal
+      isOpen={open}
+      onIsOpenChange={(next) => {
+        if (!next) onClose()
       }}
-    >
-      <div
-        className="nb-dialog-panel nb-cribl-nb-picker"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <h2 id={titleId} className="nb-dialog-title">
-          Import from Cribl Search
-        </h2>
-        <p className="nb-dialog-message nb-dialog-message--muted">
-          Select a saved Cribl Search Notebook. Search cells become <code>%%cribl_search</code> cells; notes
-          become markdown.
-        </p>
-        {loading && <p className="nb-cribl-nb-picker-status">Loading notebooks…</p>}
-        {error && <p className="nb-cribl-nb-picker-error">{error}</p>}
-        {!loading && !error && notebooks && notebooks.length === 0 && (
-          <p className="nb-cribl-nb-picker-status">No Cribl Search Notebooks found.</p>
-        )}
-        {!loading && !error && notebooks && notebooks.length > 0 && (
-          <ul className="nb-cribl-nb-picker-list">
-            {notebooks.map((nb) => (
-              <li key={nb.id}>
-                <button type="button" className="nb-cribl-nb-picker-row" onClick={() => onSelect(nb.id)}>
-                  <span className="nb-cribl-nb-picker-name">{nb.name}</span>
-                  {nb.updatedAt != null && (
-                    <span className="nb-cribl-nb-picker-meta">
-                      {new Date(nb.updatedAt).toLocaleString()}
-                    </span>
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="nb-dialog-actions">
-          <button type="button" className="nb-btn nb-dialog-btn-secondary" onClick={onClose}>
+      title="Import from Cribl Search"
+      size="md"
+      footer={
+        <Modal.FooterActions>
+          <Button variant="secondary" onClick={onClose}>
             Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </Modal.FooterActions>
+      }
+      onClose={onClose}
+    >
+      <p className="nb-dialog-message nb-dialog-message--muted">
+        Select a saved Cribl Search Notebook. Search cells become <code>%%cribl_search</code> cells; notes
+        become markdown.
+      </p>
+      {loading && (
+        <p className="nb-cribl-nb-picker-status">
+          <Spinner size="sm" title="Loading notebooks" /> Loading notebooks…
+        </p>
+      )}
+      {error && <p className="nb-cribl-nb-picker-error">{error}</p>}
+      {!loading && !error && notebooks && notebooks.length === 0 && (
+        <p className="nb-cribl-nb-picker-status">No Cribl Search Notebooks found.</p>
+      )}
+      {!loading && !error && notebooks && notebooks.length > 0 && (
+        <ul className="nb-cribl-nb-picker-list">
+          {notebooks.map((nb) => (
+            <li key={nb.id}>
+              <button type="button" className="nb-cribl-nb-picker-row" onClick={() => onSelect(nb.id)}>
+                <span className="nb-cribl-nb-picker-name">{nb.name}</span>
+                {nb.updatedAt != null && (
+                  <span className="nb-cribl-nb-picker-meta">{new Date(nb.updatedAt).toLocaleString()}</span>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Modal>
   )
 }
