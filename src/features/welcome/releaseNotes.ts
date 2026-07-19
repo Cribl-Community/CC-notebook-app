@@ -11,10 +11,16 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
-    version: '1.4.5',
+    version: '1.5.0',
     date: '2026-07-19',
     highlights: [
       'AI: **AI Chat** tab (Welcome → AI Chat) uses Cribl `open_investigator` with client tool calls to author linked notebooks — markdown, Python, `%%cribl_search`, `%%cribl_api`, and lookup magic cells.',
+    ],
+  },
+  {
+    version: '1.4.5',
+    date: '2026-07-19',
+    highlights: [
       'UI: restyle on Cribl **Capra** design system (`@capra/theme`, `@capra/core`, `@capra/icons` from public npm) — Capra light/dark via the toolbar Dark switch (`.dark` class), Capra fonts, and Capra components for dialogs, toolbar, sidebar, tags, and welcome actions.',
       'UI: **removed the ten-palette style picker** (Nord, Dracula, etc.). Former `nb-app-style` / `nb-theme` prefs migrate to Capra light/dark; CodeMirror syntax uses Capra-aligned light and dark token sets only.',
     ],
