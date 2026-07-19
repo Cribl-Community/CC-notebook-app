@@ -22,9 +22,7 @@ function mockChat(turns: Awaited<ReturnType<AiAgentChatService['runAgentTurn']>>
 
 describe('runChatToolLoop', () => {
   it('executes injected tools then finishes on a text turn', async () => {
-    const executeTool = vi.fn((_call: AgentToolCall) =>
-      JSON.stringify({ ok: true, cellId: 'c1' }),
-    )
+    const executeTool = vi.fn(() => JSON.stringify({ ok: true, cellId: 'c1' }))
     const chat = mockChat([
       {
         assistantText: '',
