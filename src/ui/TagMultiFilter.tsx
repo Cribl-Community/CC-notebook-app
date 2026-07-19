@@ -1,3 +1,5 @@
+import { Button } from '@capra/core'
+
 export type TagMultiFilterProps = {
   /** `<details>` summary text (collapsed label). */
   summary: string
@@ -26,23 +28,24 @@ export function TagMultiFilter({ summary, hint, allTags, selected, onToggle, onC
           {allTags.map((tag) => {
             const on = selected.includes(tag)
             return (
-              <button
+              <Button
                 key={tag}
                 type="button"
-                className={'nb-tag-filter-chip' + (on ? ' nb-tag-filter-chip--on' : '')}
+                size="xs"
+                variant={on ? 'primary' : 'secondary'}
+                appearance={on ? 'default' : 'neutral'}
                 aria-pressed={on}
-                title={tag}
                 onClick={() => onToggle(tag)}
               >
                 {tag}
-              </button>
+              </Button>
             )
           })}
         </div>
         {hasSelection && (
-          <button type="button" className="nb-tag-filter-clear" onClick={onClear}>
+          <Button type="button" size="xs" variant="tertiary" onClick={onClear}>
             Clear filter
-          </button>
+          </Button>
         )}
         <p className="nb-tag-filter-hint">{hint}</p>
       </div>

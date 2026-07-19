@@ -20,7 +20,7 @@ import { criblApiYamlHighlightPlugin } from '@features/cribl-api/editor/criblApi
 import { getCriblApiPathEditContext } from '@features/cribl-api/criblApiPathLine'
 import { criblSearchCompletionSource, criblSearchKqlHighlightPlugin } from '@features/cribl-search'
 
-/** Jupyter-like Python token colors (CSS vars in index.css). Lezer maps `as` and `print` to the same tag. */
+/** Capra light/dark Python token colors (`--nb-cm-*` from capra-nb-bridge.css). */
 const jupyterPythonHighlight = HighlightStyle.define([
   { tag: tags.moduleKeyword, color: 'var(--nb-cm-keyword-strong)', fontWeight: 'bold' },
   { tag: tags.controlKeyword, color: 'var(--nb-cm-keyword-strong)', fontWeight: 'bold' },

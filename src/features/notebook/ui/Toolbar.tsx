@@ -1,9 +1,10 @@
 import { useRef } from 'react'
-import { NOTEBOOK_STYLES, type AppStyleId } from '@app/providers'
+import { Button, Switch } from '@capra/core'
+import type { CapraThemeMode } from '@app/providers'
 import type { KernelStatus } from '@features/notebook/model/types'
 
 interface ToolbarProps {
-  /** Welcome tab: style only; notebook actions hidden. */
+  /** Welcome tab: theme toggle only; notebook actions hidden. */
   variant?: 'notebook' | 'welcome'
   kernelStatus: KernelStatus
   title: string
@@ -21,8 +22,8 @@ interface ToolbarProps {
   onStop: () => void
   stopEnabled: boolean
   onRestart: () => void
-  appStyle: AppStyleId
-  onAppStyleChange: (s: AppStyleId) => void
+  themeMode: CapraThemeMode
+  onThemeModeChange: (mode: CapraThemeMode) => void
 }
 
 function KernelIndicator({ status }: { status: KernelStatus }) {
@@ -68,8 +69,8 @@ export function Toolbar({
   onStop,
   stopEnabled,
   onRestart,
-  appStyle,
-  onAppStyleChange,
+  themeMode,
+  onThemeModeChange,
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
@@ -95,35 +96,19 @@ export function Toolbar({
       <div className="nb-toolbar-actions">
         {!welcome && (
           <>
-            <button
-              className="nb-btn nb-btn-primary"
-              type="button"
-              onClick={onSave}
-              disabled={saveDisabled}
-              title="Save notebook to Cribl storage"
-            >
+            <Button variant="primary" size="sm" onClick={onSave} disabled={saveDisabled}>
               Save
-            </button>
-            <button className="nb-btn" type="button" onClick={onDownload} title="Download as .ipynb">
-              ⬇ Download
-            </button>
-            <button
-              className="nb-btn"
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              title="Open a Jupyter notebook file"
-            >
-              ⬆ Upload
-            </button>
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onDownload}>
+              Download
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => fileRef.current?.click()}>
+              Upload
+            </Button>
             {onImportFromCriblSearch && (
-              <button
-                className="nb-btn"
-                type="button"
-                onClick={onImportFromCriblSearch}
-                title="Import a saved Cribl Search Notebook"
-              >
-                ↓ From Cribl Search
-              </button>
+              <Button variant="secondary" size="sm" onClick={onImportFromCriblSearch}>
+                From Cribl Search
+              </Button>
             )}
             <input
               ref={fileRef}
@@ -139,53 +124,43 @@ export function Toolbar({
               }}
             />
             <div className="nb-toolbar-divider" />
-            <button className="nb-btn" onClick={onAddCodeCell} title="Add code cell at end">
-              + Code
-            </button>
-            <button className="nb-btn nb-btn-md" onClick={onAddMarkdownCell} title="Add markdown cell at end">
-              + Markdown
-            </button>
+            <Button variant="secondary" size="sm" onClick={onAddCodeCell}>
+              Code
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onAddMarkdownCell}>
+              Markdown
+            </Button>
             <div className="nb-toolbar-divider" />
-            <button
-              className="nb-btn nb-btn-stop"
-              type="button"
+            <Button
+              variant="secondary"
+              appearance="danger"
+              size="sm"
               onClick={onStop}
               disabled={!stopEnabled}
-              title="Stop running execution (pending cells cleared; Python interrupted when supported)"
             >
-              ⏹ Stop
-            </button>
-            <button className="nb-btn" onClick={onRunAll} disabled={busy} title="Run all code cells">
-              ▶▶ Run All
-            </button>
-            <button
-              className="nb-btn"
-              type="button"
-              onClick={onClearAllOutputs}
-              disabled={busy}
-              title="Clear outputs from all code cells"
-            >
-              ⊗ Clear outputs
-            </button>
-            <button className="nb-btn" onClick={onRestart} title="Restart kernel and clear outputs">
-              ↺ Restart
-            </button>
+              Stop
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onRunAll} disabled={busy}>
+              Run All
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onClearAllOutputs} disabled={busy}>
+              Clear outputs
+            </Button>
+            <Button variant="secondary" size="sm" onClick={onRestart}>
+              Restart
+            </Button>
             <div className="nb-toolbar-divider" />
           </>
         )}
-        <select
-          className="nb-style-select"
-          value={appStyle}
-          onChange={(e) => onAppStyleChange(e.target.value as AppStyleId)}
-          title="Notebook color style"
-          aria-label="Notebook color style"
-        >
-          {NOTEBOOK_STYLES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <label className="nb-theme-toggle">
+          <span className="nb-theme-toggle-label">Dark</span>
+          <Switch
+            size="sm"
+            checked={themeMode === 'dark'}
+            onChange={(e) => onThemeModeChange(e.target.checked ? 'dark' : 'light')}
+            aria-label="Dark mode"
+          />
+        </label>
       </div>
       {!welcome && <KernelIndicator status={kernelStatus} />}
     </div>

@@ -1,11 +1,13 @@
 import { useCallback, useMemo, useState } from 'react'
+import { Button, EmptyState, IconButton, Spinner } from '@capra/core'
+import { ReloadOutlined } from '@capra/icons'
 import {
   buildTreeRows,
   filterManifestItemsByTagSelection,
   type TreeRow,
 } from '@features/library/manifest'
 import type { ManifestItem } from '@features/library/manifest'
-import { useEnv } from '@app/providers'
+import { useEnv, useTheme } from '@app/providers'
 import { TagMultiFilter } from '@ui/TagMultiFilter'
 interface NotebookSidebarProps {
   items: ManifestItem[]
@@ -80,6 +82,7 @@ export function NotebookSidebar({
   onEditNotebookTags,
 }: NotebookSidebarProps) {
   const { isKvMock } = useEnv()
+  const { themeMode } = useTheme()
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set())
   const [selectedFilterTags, setSelectedFilterTags] = useState<string[]>([])
 
@@ -159,15 +162,15 @@ export function NotebookSidebar({
     <aside className="nb-sidebar" aria-label="Saved notebooks">
       <div className="nb-sidebar-header">
         <span className="nb-sidebar-title">Notebooks</span>
-        <button
-          type="button"
-          className="nb-sidebar-icon-btn"
+        <IconButton
+          icon={ReloadOutlined}
+          size="sm"
+          variant="tertiary"
+          appearance="neutral"
+          aria-label="Refresh list"
           onClick={() => onRefresh()}
           disabled={loading}
-          title="Refresh list"
-        >
-          ↻
-        </button>
+        />
       </div>
       {isKvMock && (
         <div className="nb-sidebar-hint" title="KV store is simulated in this environment">
@@ -176,32 +179,20 @@ export function NotebookSidebar({
       )}
       {error && <div className="nb-sidebar-error">{error}</div>}
       <div className="nb-sidebar-toolbar">
-        <button
-          type="button"
-          className="nb-btn nb-btn-primary nb-btn-sidebar-primary"
-          onClick={onNewNotebook}
-        >
-          + New notebook
-        </button>
+        <Button variant="primary" size="sm" onClick={onNewNotebook} block>
+          New notebook
+        </Button>
         <div className="nb-sidebar-toolbar-row">
-          <button
-            type="button"
-            className="nb-btn nb-btn-sidebar"
-            onClick={() => onNewFolder(selectedParentId)}
-          >
+          <Button variant="secondary" size="sm" onClick={() => onNewFolder(selectedParentId)}>
             New folder
-          </button>
-          <button
-            type="button"
-            className={
-              'nb-btn nb-btn-sidebar' +
-              (selectedNotebookId === null && selectedParentId === null ? ' nb-btn-sidebar--sel' : '')
-            }
+          </Button>
+          <Button
+            variant={selectedNotebookId === null && selectedParentId === null ? 'primary' : 'secondary'}
+            size="sm"
             onClick={() => onSelectParent(null)}
-            title="Save new notebooks to the root"
           >
             Root
-          </button>
+          </Button>
         </div>
       </div>
       <nav className="nb-sidebar-breadcrumb" aria-label="Current folder">
@@ -247,15 +238,33 @@ export function NotebookSidebar({
       )}
       <div className="nb-sidebar-tree" role="tree">
         {loading && items.length === 0 && (
-          <div className="nb-sidebar-empty">Loading…</div>
+          <div className="nb-sidebar-empty">
+            <Spinner size="sm" title="Loading notebooks" />
+          </div>
         )}
         {!loading && visibleRows.length === 0 && (
           <div className="nb-sidebar-empty">
-            {items.length === 0
-              ? 'No saved notebooks yet.'
-              : effectiveFilterTags.length > 0
-                ? 'No notebooks match this tag filter.'
-                : 'No saved notebooks yet.'}
+            <EmptyState
+              size="md"
+              theme={themeMode}
+              illustration="EmptyFolder"
+              title={
+                effectiveFilterTags.length > 0 && items.length > 0
+                  ? 'No matching notebooks'
+                  : 'No saved notebooks yet'
+              }
+              description={
+                effectiveFilterTags.length > 0 && items.length > 0
+                  ? 'Try clearing the tag filter or picking different tags.'
+                  : 'Create a notebook to save it in this library.'
+              }
+            >
+              {items.length === 0 ? (
+                <Button variant="primary" size="sm" onClick={onNewNotebook}>
+                  New notebook
+                </Button>
+              ) : null}
+            </EmptyState>
           </div>
         )}
         {visibleRows.map(({ item, depth }) => {

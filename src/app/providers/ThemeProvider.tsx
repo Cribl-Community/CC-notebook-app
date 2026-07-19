@@ -1,74 +1,73 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
-  APP_STYLE_STORAGE_KEY,
-  DEFAULT_APP_STYLE,
+  CAPRA_THEME_STORAGE_KEY,
+  DEFAULT_CAPRA_THEME,
+  LEGACY_APP_STYLE_STORAGE_KEY,
   LEGACY_THEME_STORAGE_KEY,
-  type AppStyleId,
+  applyCapraThemeClass,
+  codeMirrorLumaForMode,
+  isCapraThemeMode,
+  type CapraThemeMode,
   type CodeMirrorLuma,
-  isAppStyleId,
-  migrateLegacyTheme,
-  NOTEBOOK_STYLES,
-  codeMirrorLumaForStyle,
-} from '@app/styles/nbStyles'
+  migrateStoredTheme,
+} from '@app/styles/capraTheme'
 
 export interface ThemeController {
-  /** Active notebook visual style (palettes in `nb-palettes.css`). */
-  appStyle: AppStyleId
-  setAppStyle: (s: AppStyleId) => void
-  /** Light vs dark for CodeMirror chrome; syntax colors use CSS variables. */
+  /** Capra visual mode (light default; dark via `.dark` on the document root). */
+  themeMode: CapraThemeMode
+  setThemeMode: (mode: CapraThemeMode) => void
+  /** Light vs dark for CodeMirror chrome; syntax colors use Capra-bridged CSS variables. */
   codeMirrorLuma: CodeMirrorLuma
-  /** Cycles through `NOTEBOOK_STYLES` order (for tests / power users). */
-  cycleAppStyle: () => void
+  /** Flip between light and dark (tests / power users). */
+  toggleThemeMode: () => void
 }
 
 const ThemeContext = createContext<ThemeController | null>(null)
 
-function readInitialAppStyle(): AppStyleId {
+function readInitialThemeMode(): CapraThemeMode {
   try {
-    const raw = localStorage.getItem(APP_STYLE_STORAGE_KEY)
-    if (isAppStyleId(raw)) return raw
-    const migrated = migrateLegacyTheme(localStorage.getItem(LEGACY_THEME_STORAGE_KEY))
-    if (migrated) return migrated
+    return migrateStoredTheme(
+      localStorage.getItem(CAPRA_THEME_STORAGE_KEY),
+      localStorage.getItem(LEGACY_APP_STYLE_STORAGE_KEY),
+      localStorage.getItem(LEGACY_THEME_STORAGE_KEY),
+    )
   } catch {
     /* localStorage unavailable */
   }
-  return DEFAULT_APP_STYLE
+  return DEFAULT_CAPRA_THEME
 }
 
 /**
- * Owns the notebook’s visual style and syncs `document.documentElement.dataset.nbStyle`
- * with `localStorage` so the choice survives reloads. Replaces the old two-option
- * light/dark `data-theme` switch.
+ * Owns Capra light/dark mode and syncs the `.dark` class + `localStorage`
+ * so the choice survives reloads. Replaces the former multi-palette `data-nb-style` system.
  */
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [appStyle, setAppStyleState] = useState<AppStyleId>(readInitialAppStyle)
+  const [themeMode, setThemeModeState] = useState<CapraThemeMode>(readInitialThemeMode)
 
   useEffect(() => {
-    document.documentElement.dataset.nbStyle = appStyle
+    applyCapraThemeClass(themeMode)
     try {
-      localStorage.setItem(APP_STYLE_STORAGE_KEY, appStyle)
+      localStorage.setItem(CAPRA_THEME_STORAGE_KEY, themeMode)
     } catch {
-      // sandboxed iframe — style may reset on reload
+      // sandboxed iframe — theme may reset on reload
     }
-  }, [appStyle])
+  }, [themeMode])
 
-  const setAppStyle = useCallback((s: AppStyleId) => setAppStyleState(s), [])
-
-  const cycleAppStyle = useCallback(() => {
-    setAppStyleState((prev) => {
-      const ids = NOTEBOOK_STYLES.map((x) => x.id)
-      const i = ids.indexOf(prev)
-      if (i < 0) return DEFAULT_APP_STYLE
-      return ids[(i + 1) % ids.length]!
-    })
+  const setThemeMode = useCallback((mode: CapraThemeMode) => {
+    if (!isCapraThemeMode(mode)) return
+    setThemeModeState(mode)
   }, [])
 
-  const codeMirrorLuma = useMemo(() => codeMirrorLumaForStyle(appStyle), [appStyle])
+  const toggleThemeMode = useCallback(() => {
+    setThemeModeState((prev) => (prev === 'light' ? 'dark' : 'light'))
+  }, [])
+
+  const codeMirrorLuma = useMemo(() => codeMirrorLumaForMode(themeMode), [themeMode])
 
   const value = useMemo<ThemeController>(
-    () => ({ appStyle, setAppStyle, codeMirrorLuma, cycleAppStyle }),
-    [appStyle, setAppStyle, codeMirrorLuma, cycleAppStyle],
+    () => ({ themeMode, setThemeMode, codeMirrorLuma, toggleThemeMode }),
+    [themeMode, setThemeMode, codeMirrorLuma, toggleThemeMode],
   )
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>

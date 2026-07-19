@@ -53,7 +53,7 @@ src/
     App.tsx      Provider nesting (Env → Theme → AiCode → Dialog → Search →
                  Lookup → NotebookRepo → Kernel → NotebookPage)
     providers/   Env, Theme, AiCode, Dialog, Search, Lookup, NotebookRepo, Kernel
-    styles/      Notebook visual-style palettes (nb-palettes.css, nbStyles.ts)
+    styles/      Capra theme helpers + --nb-* bridge (capraTheme.ts, capra-nb-bridge.css)
   domain/        Shared DTOs for port contracts (kernel messages, manifest, search)
   features/      Product features — one folder per vertical
     notebook/      model, reducer, codec, executor, hooks, ui, widgets (NotebookPage lives here)

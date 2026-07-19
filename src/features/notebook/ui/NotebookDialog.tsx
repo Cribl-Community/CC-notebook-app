@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useRef } from 'react'
+import { Button, Modal, TextField } from '@capra/core'
 
 export type NotebookDialogProps = {
   open: boolean
@@ -29,21 +30,7 @@ export function NotebookDialog({
   onPrimary,
   onSecondary,
 }: NotebookDialogProps) {
-  const titleId = useId()
   const promptInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        if (variant === 'alert') onPrimary()
-        else onSecondary?.()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, variant, onPrimary, onSecondary])
 
   useEffect(() => {
     if (open && variant === 'prompt') {
@@ -56,65 +43,60 @@ export function NotebookDialog({
     return undefined
   }, [open, variant])
 
-  if (!open) return null
+  const handleSecondary = () => {
+    onSecondary?.()
+  }
 
-  const showSecondary = variant !== 'alert'
+  /**
+   * Capra Modal calls `onClose` then `onIsOpenChange(false)` on every dismiss.
+   * Wire dismiss only through `onClose` so handlers do not run twice.
+   */
+  const handleDismiss = () => {
+    if (variant === 'alert') onPrimary()
+    else handleSecondary()
+  }
+
+  const promptFooter = (
+    <Modal.FooterActions>
+      <Button variant="secondary" onClick={handleSecondary}>
+        {secondaryLabel}
+      </Button>
+      <Button variant="primary" onClick={onPrimary}>
+        {primaryLabel}
+      </Button>
+    </Modal.FooterActions>
+  )
 
   return (
-    <div
-      className="nb-dialog-backdrop"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target !== e.currentTarget) return
-        if (variant === 'alert') onPrimary()
-        else onSecondary?.()
-      }}
+    <Modal
+      isOpen={open}
+      title={title}
+      size="sm"
+      isDismissible={variant !== 'alert'}
+      confirmButtonText={variant === 'prompt' ? undefined : primaryLabel}
+      cancelButtonText={variant === 'alert' ? null : variant === 'prompt' ? null : secondaryLabel}
+      onConfirm={variant === 'prompt' ? undefined : onPrimary}
+      onClose={handleDismiss}
+      footer={variant === 'prompt' ? promptFooter : undefined}
     >
-      <div
-        className="nb-dialog-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? titleId : undefined}
-        tabIndex={-1}
-      >
-        {title && (
-          <h2 id={titleId} className="nb-dialog-title">
-            {title}
-          </h2>
-        )}
-        {variant !== 'prompt' && <p className="nb-dialog-message">{message}</p>}
-        {variant === 'prompt' && (
-          <>
-            {message ? <p className="nb-dialog-message nb-dialog-message--muted">{message}</p> : null}
-            <label className="nb-dialog-field">
-              <span className="nb-dialog-label">{promptLabel}</span>
-              <input
-                ref={promptInputRef}
-                type="text"
-                className="nb-dialog-input"
-                value={promptValue}
-                onChange={(e) => onPromptValueChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    onPrimary()
-                  }
-                }}
-              />
-            </label>
-          </>
-        )}
-        <div className="nb-dialog-actions">
-          {showSecondary && (
-            <button type="button" className="nb-btn nb-dialog-btn-secondary" onClick={onSecondary}>
-              {secondaryLabel}
-            </button>
-          )}
-          <button type="button" className="nb-btn nb-btn-primary nb-dialog-btn-primary" onClick={onPrimary}>
-            {primaryLabel}
-          </button>
+      {variant !== 'prompt' && message ? <p className="nb-dialog-message">{message}</p> : null}
+      {variant === 'prompt' && (
+        <div className="nb-dialog-prompt">
+          {message ? <p className="nb-dialog-message nb-dialog-message--muted">{message}</p> : null}
+          <TextField
+            ref={promptInputRef}
+            label={promptLabel ?? 'Value'}
+            value={promptValue}
+            onChange={onPromptValueChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                onPrimary()
+              }
+            }}
+          />
         </div>
-      </div>
-    </div>
+      )}
+    </Modal>
   )
 }

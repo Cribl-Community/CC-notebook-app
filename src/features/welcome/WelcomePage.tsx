@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Button, Text } from '@capra/core'
 import { filterItemsByAnyTag } from '@domain/tagFilter'
 import { exampleNotebookDisplayLabel, useExamples, type ExampleNotebook } from '@features/examples'
 import { RELEASE_NOTES } from '@features/welcome/releaseNotes'
@@ -64,34 +65,34 @@ export function WelcomePage({
   return (
     <div className="nb-welcome">
       <header className="nb-welcome-hero">
-        <p className="nb-welcome-kicker">Cribl · In-browser notebooks</p>
-        <h1 className="nb-welcome-title">Notebook app</h1>
+        <p className="nb-welcome-kicker">
+          <Text as="span" variant="body-sm-semibold" color="subtle">
+            Cribl · In-browser notebooks
+          </Text>
+        </p>
+        <h1 className="nb-welcome-title">
+          <Text as="span" variant="heading-lg">
+            Notebook app
+          </Text>
+        </h1>
         <p className="nb-welcome-lead">
-          Run Python with Pyodide in your browser: pandas, Matplotlib, Cribl Search and Cribl REST API magic
-          cells, and saved notebooks backed by your pack&apos;s KV store—styled like Jupyter, tuned for
-          observability workflows.
+          <Text as="span" variant="body-md-normal" color="subtle">
+            Run Python with Pyodide in your browser: pandas, Matplotlib, Cribl Search and Cribl REST API magic
+            cells, and saved notebooks backed by your pack&apos;s KV store—styled like Jupyter, tuned for
+            observability workflows.
+          </Text>
         </p>
         <div className="nb-welcome-hero-actions">
-          <button type="button" className="nb-btn nb-btn-primary" onClick={onNewNotebook}>
+          <Button variant="primary" onClick={onNewNotebook}>
             New notebook
-          </button>
-          <button
-            type="button"
-            className="nb-btn"
-            onClick={() => fileRef.current?.click()}
-            title="Open a Jupyter notebook file"
-          >
-            ⬆ Upload
-          </button>
+          </Button>
+          <Button variant="secondary" onClick={() => fileRef.current?.click()}>
+            Upload
+          </Button>
           {onImportFromCriblSearch && (
-            <button
-              type="button"
-              className="nb-btn"
-              onClick={onImportFromCriblSearch}
-              title="Import a saved Cribl Search Notebook"
-            >
-              ↓ From Cribl Search
-            </button>
+            <Button variant="secondary" onClick={onImportFromCriblSearch}>
+              From Cribl Search
+            </Button>
           )}
           <input
             ref={fileRef}
