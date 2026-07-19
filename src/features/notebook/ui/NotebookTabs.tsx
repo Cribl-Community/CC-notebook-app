@@ -1,3 +1,6 @@
+import { IconButton } from '@capra/core'
+import { CloseOutlined, Plus } from '@capra/icons'
+
 export interface NotebookTabLabel {
   id: string
   title: string
@@ -33,24 +36,28 @@ export function NotebookTabs({ tabs, activeTabId, onSelectTab, onCloseTab, onNew
               <span className="nb-tab-title">{tab.title || 'Untitled'}</span>
               {tab.dirty && <span className="nb-tab-dirty" aria-hidden />}
             </button>
-            <button
-              type="button"
-              className="nb-tab-close"
+            <IconButton
+              icon={CloseOutlined}
+              size="xs"
+              variant="tertiary"
+              appearance="neutral"
+              aria-label={`Close ${tab.title || 'Untitled'}`}
               onClick={(e) => {
                 e.stopPropagation()
                 onCloseTab(tab.id)
               }}
-              aria-label={`Close ${tab.title || 'Untitled'}`}
-              title="Close tab"
-            >
-              ×
-            </button>
+            />
           </div>
         )
       })}
-      <button type="button" className="nb-tab-new" onClick={onNewTab} title="New notebook tab">
-        +
-      </button>
+      <IconButton
+        icon={Plus}
+        size="sm"
+        variant="tertiary"
+        appearance="neutral"
+        aria-label="New notebook tab"
+        onClick={onNewTab}
+      />
     </div>
   )
 }
