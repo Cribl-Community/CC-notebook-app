@@ -47,8 +47,11 @@ export function NotebookDialog({
     onSecondary?.()
   }
 
-  const handleOpenChange = (next: boolean) => {
-    if (next) return
+  /**
+   * Capra Modal calls `onClose` then `onIsOpenChange(false)` on every dismiss.
+   * Wire dismiss only through `onClose` so handlers do not run twice.
+   */
+  const handleDismiss = () => {
     if (variant === 'alert') onPrimary()
     else handleSecondary()
   }
@@ -67,14 +70,13 @@ export function NotebookDialog({
   return (
     <Modal
       isOpen={open}
-      onIsOpenChange={handleOpenChange}
       title={title}
       size="sm"
       isDismissible={variant !== 'alert'}
       confirmButtonText={variant === 'prompt' ? undefined : primaryLabel}
       cancelButtonText={variant === 'alert' ? null : variant === 'prompt' ? null : secondaryLabel}
       onConfirm={variant === 'prompt' ? undefined : onPrimary}
-      onClose={variant === 'alert' ? onPrimary : handleSecondary}
+      onClose={handleDismiss}
       footer={variant === 'prompt' ? promptFooter : undefined}
     >
       {variant !== 'prompt' && message ? <p className="nb-dialog-message">{message}</p> : null}

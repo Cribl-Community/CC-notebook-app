@@ -22,9 +22,6 @@ export function CriblSearchNotebookPickerModal({
   return (
     <Modal
       isOpen={open}
-      onIsOpenChange={(next) => {
-        if (!next) onClose()
-      }}
       title="Import from Cribl Search"
       size="md"
       footer={

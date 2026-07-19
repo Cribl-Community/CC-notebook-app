@@ -29,7 +29,8 @@
 
   --nb-border: var(--cds2-color-border-neutral-default);
   --nb-border-hover: var(--cds2-color-border-neutral-strong);
-  --nb-border-cell: var(--cds2-color-border-neutral-subtle);
+  /* Match default border so resting cell chrome stays visible (subtle was too faint). */
+  --nb-border-cell: var(--cds2-color-border-neutral-default);
   --nb-border-dashed: var(--cds2-color-border-neutral-default);
 
   --nb-accent: var(--cds2-color-foreground-brand-default);

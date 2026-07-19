@@ -951,20 +951,21 @@ body {
   display: flex;
   gap: 0;
   border-radius: 4px;
-  border: 1px solid transparent;
+  /* Always-visible Capra surface chrome (not hover-only). */
+  border: 1px solid var(--nb-border);
+  box-shadow: var(--nb-shadow-elev-1);
   overflow: hidden;
   cursor: pointer;
-  transition: border-color 0.1s;
+  transition: border-color 0.1s, box-shadow 0.1s;
 }
 
 .nb-cell--selected {
-  border-color: var(--nb-border-cell);
+  border-color: var(--nb-list-selection-ring);
   box-shadow: var(--nb-shadow-elev-2);
 }
 
 .nb-cell:not(.nb-cell--selected):hover {
-  border-color: var(--nb-border-cell);
-  box-shadow: var(--nb-shadow-elev-1);
+  border-color: var(--nb-border-hover);
 }
 
 .nb-cell-gutter {
@@ -977,6 +978,8 @@ body {
   text-align: right;
   user-select: none;
   white-space: nowrap;
+  background: var(--nb-bg-cell-alt);
+  border-right: 1px solid var(--nb-border);
 }
 
 .nb-cell-body {
@@ -998,8 +1001,7 @@ body {
   padding: 4px 6px;
   border-bottom: 1px solid var(--nb-border);
   min-height: 28px;
-  opacity: 0;
-  transition: opacity 0.1s;
+  background: var(--nb-bg-cell-alt);
 }
 
 .nb-cell-toolbar-group {
@@ -1016,11 +1018,6 @@ body {
 
 .nb-cell-toolbar-group--end {
   margin-left: auto;
-}
-
-.nb-cell:hover .nb-cell-toolbar,
-.nb-cell--selected .nb-cell-toolbar {
-  opacity: 1;
 }
 
 .nb-cell--disabled {
@@ -1087,12 +1084,6 @@ body {
 .nb-btn-code-fold {
   font-size: 11px;
   padding: 2px 8px;
-  opacity: 0.85;
-}
-
-.nb-cell:hover .nb-btn-code-fold,
-.nb-cell--selected .nb-btn-code-fold {
-  opacity: 1;
 }
 
 .nb-btn-cell-enabled {
@@ -1661,25 +1652,21 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 18px;
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.nb-add-between:hover {
-  opacity: 1;
+  gap: 6px;
+  min-height: 28px;
+  padding-block: 4px;
 }
 
 .nb-add-between-btn {
-  background: transparent;
+  background: var(--nb-bg-cell);
   border: 1px dashed var(--nb-border-dashed);
   border-radius: var(--space-2);
   color: var(--nb-text-muted);
   cursor: pointer;
   font-size: 14px;
-  padding: 0 24px;
-  line-height: 14px;
-  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s;
+  padding: 2px 24px;
+  line-height: 18px;
+  transition: background 0.1s, border-color 0.1s, box-shadow 0.1s, color 0.1s;
 }
 
 .nb-add-between-btn:hover {
