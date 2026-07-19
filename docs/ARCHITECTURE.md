@@ -108,9 +108,11 @@ The exact nesting lives in [`src/App.tsx`](../src/App.tsx). Per-tab widget state
 - `app/providers/` — React Context providers that expose ports.
   - `EnvProvider` / `useEnv` — current `EnvService` snapshot (Cribl
     API base, KV-mock flag, hosted-or-local flag).
-  - `ThemeProvider` / `useTheme` — notebook **visual style** (10 palettes) with
-    `localStorage` + `document.documentElement.dataset.nbStyle` sync; CodeMirror
-    still receives a `light`/`dark` luma hint for its built-in theme chrome.
+  - `ThemeProvider` / `useTheme` — Capra **light/dark** mode: toggles the
+    `.dark` class on `document.documentElement`, persists `nb-capra-theme`, and
+    migrates legacy `nb-app-style` / `nb-theme` prefs. Notebook surfaces use
+    `--nb-*` tokens bridged from Capra (`capra-nb-bridge.css`). CodeMirror
+    receives a matching `light`/`dark` luma hint for editor chrome.
   - `DialogProvider` / `useDialogs` — imperative alert/confirm/prompt
     built on `NotebookDialog`. Replaces the old inline dialog state
     inside `NotebookPage`.
