@@ -43,15 +43,19 @@ export function NotebookDialog({
     return undefined
   }, [open, variant])
 
+  const handleSecondary = () => {
+    onSecondary?.()
+  }
+
   const handleOpenChange = (next: boolean) => {
     if (next) return
     if (variant === 'alert') onPrimary()
-    else onSecondary?.()
+    else handleSecondary()
   }
 
   const promptFooter = (
     <Modal.FooterActions>
-      <Button variant="secondary" onClick={onSecondary}>
+      <Button variant="secondary" onClick={handleSecondary}>
         {secondaryLabel}
       </Button>
       <Button variant="primary" onClick={onPrimary}>
@@ -70,7 +74,7 @@ export function NotebookDialog({
       confirmButtonText={variant === 'prompt' ? undefined : primaryLabel}
       cancelButtonText={variant === 'alert' ? null : variant === 'prompt' ? null : secondaryLabel}
       onConfirm={variant === 'prompt' ? undefined : onPrimary}
-      onClose={variant === 'alert' ? onPrimary : onSecondary}
+      onClose={variant === 'alert' ? onPrimary : handleSecondary}
       footer={variant === 'prompt' ? promptFooter : undefined}
     >
       {variant !== 'prompt' && message ? <p className="nb-dialog-message">{message}</p> : null}
