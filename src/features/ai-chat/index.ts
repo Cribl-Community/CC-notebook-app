@@ -12,5 +12,10 @@ export {
   toolCallSummary,
   type NotebookToolHost,
 } from '@features/ai-chat/notebookCellTools'
-export { runChatToolLoop, type ChatUiMessage } from '@features/ai-chat/toolLoop'
+export {
+  runChatToolLoop,
+  type ChatToolExecutor,
+  type ChatToolSummarizer,
+  type ChatUiMessage,
+} from '@features/ai-chat/toolLoop'
 export { AiChatTab } from '@features/ai-chat/ui/AiChatTab'

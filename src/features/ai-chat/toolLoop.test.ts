@@ -1,67 +1,48 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { AiAgentChatService } from '@ports/AiAgentChatService'
-import {
-  createEmptyTab,
-  createInitialWorkspace,
-  tabWorkspaceReducer,
-  type WorkspaceState,
-} from '@features/notebook/reducer/tabWorkspace'
+import type { AgentToolCall, AiAgentChatService } from '@ports/AiAgentChatService'
+import { AI_CHAT_MAX_TOOL_ROUNDS } from '@features/ai-chat/agentNdjson'
 import { NOTEBOOK_CELL_TOOLS } from '@features/ai-chat/tools'
 import { runChatToolLoop } from '@features/ai-chat/toolLoop'
-import { syncWorkspaceDispatch } from '@features/ai-chat/notebookCellTools'
+
+function toolCall(name: string, args = '{}'): AgentToolCall {
+  return { id: `call_${name}`, function: { name, arguments: args } }
+}
+
+function mockChat(turns: Awaited<ReturnType<AiAgentChatService['runAgentTurn']>>[]): AiAgentChatService {
+  let i = 0
+  return {
+    isAvailable: () => true,
+    runAgentTurn: vi.fn(async () => {
+      const turn = turns[i] ?? turns[turns.length - 1]!
+      i += 1
+      return turn
+    }),
+  }
+}
 
 describe('runChatToolLoop', () => {
-  it('executes tool_calls then finishes on a text turn', async () => {
-    let state: WorkspaceState = createInitialWorkspace()
-    const nbTab = createEmptyTab()
-    state = tabWorkspaceReducer(state, { type: 'ADD_TAB', tab: nbTab })
-    const workspaceRef = { current: state }
-    // Production shape: React applies the same action on a separate state tree.
-    const dispatch = syncWorkspaceDispatch(workspaceRef, (action) => {
-      state = tabWorkspaceReducer(state, action)
-    })
-
-    let turn = 0
-    const chat: AiAgentChatService = {
-      isAvailable: () => true,
-      runAgentTurn: vi.fn(async () => {
-        turn += 1
-        if (turn === 1) {
-          return {
-            assistantText: '',
-            toolCalls: [
-              {
-                id: 'call_md',
-                function: {
-                  name: 'create_markdown_cell',
-                  arguments: JSON.stringify({ source: '# Hi' }),
-                },
-              },
-            ],
-            assistantMessage: {
-              id: 'a1',
-              role: 'assistant' as const,
-              content: '',
-              reqId: 0,
-              tool_calls: [
-                {
-                  id: 'call_md',
-                  function: {
-                    name: 'create_markdown_cell',
-                    arguments: JSON.stringify({ source: '# Hi' }),
-                  },
-                },
-              ],
-            },
-          }
-        }
-        return {
-          assistantText: 'Created an intro cell.',
-          toolCalls: [],
-          assistantMessage: { id: 'a2', role: 'assistant' as const, content: '', reqId: 1 },
-        }
-      }),
-    }
+  it('executes injected tools then finishes on a text turn', async () => {
+    const executeTool = vi.fn((_call: AgentToolCall) =>
+      JSON.stringify({ ok: true, cellId: 'c1' }),
+    )
+    const chat = mockChat([
+      {
+        assistantText: '',
+        toolCalls: [toolCall('create_markdown_cell', JSON.stringify({ source: '# Hi' }))],
+        assistantMessage: {
+          id: 'a1',
+          role: 'assistant',
+          content: '',
+          reqId: 0,
+          tool_calls: [toolCall('create_markdown_cell', JSON.stringify({ source: '# Hi' }))],
+        },
+      },
+      {
+        assistantText: 'Created an intro cell.',
+        toolCalls: [],
+        assistantMessage: { id: 'a2', role: 'assistant', content: '', reqId: 1 },
+      },
+    ])
 
     const result = await runChatToolLoop({
       chat,
@@ -69,15 +50,63 @@ describe('runChatToolLoop', () => {
       priorApiMessages: [],
       userText: 'Make a short notebook',
       tools: NOTEBOOK_CELL_TOOLS,
-      toolHost: { workspaceRef, dispatch },
+      executeTool,
+      summarizeTool: () => 'Created markdown cell',
     })
 
     expect(result.assistantText).toContain('Created an intro')
     expect(result.uiToolEvents).toEqual([{ summary: 'Created markdown cell', ok: true }])
     expect(chat.runAgentTurn).toHaveBeenCalledTimes(2)
-    const nb = workspaceRef.current.tabs.find((t) => t.id === nbTab.id)
-    expect(nb?.notebook.cells.some((c) => c.cell_type === 'markdown' && c.source.includes('# Hi'))).toBe(
-      true,
-    )
+    expect(executeTool).toHaveBeenCalledTimes(1)
+  })
+
+  it('stops after the maximum number of tool rounds', async () => {
+    const executeTool = vi.fn(() => JSON.stringify({ ok: true }))
+    const toolTurn = {
+      assistantText: '',
+      toolCalls: [toolCall('create_python_cell', '{"source":"x=1"}')],
+      assistantMessage: {
+        id: 'a',
+        role: 'assistant' as const,
+        content: '',
+        reqId: 0,
+        tool_calls: [toolCall('create_python_cell', '{"source":"x=1"}')],
+      },
+    }
+    const chat = mockChat(Array.from({ length: AI_CHAT_MAX_TOOL_ROUNDS }, () => toolTurn))
+
+    const result = await runChatToolLoop({
+      chat,
+      sessionId: 's1',
+      priorApiMessages: [],
+      userText: 'keep going',
+      tools: NOTEBOOK_CELL_TOOLS,
+      executeTool,
+    })
+
+    expect(chat.runAgentTurn).toHaveBeenCalledTimes(AI_CHAT_MAX_TOOL_ROUNDS)
+    expect(executeTool).toHaveBeenCalledTimes(AI_CHAT_MAX_TOOL_ROUNDS)
+    expect(result.assistantText).toMatch(/maximum number of tool rounds/i)
+    expect(result.uiToolEvents).toHaveLength(AI_CHAT_MAX_TOOL_ROUNDS)
+  })
+
+  it('throws AbortError when signal is aborted before a round', async () => {
+    const ac = new AbortController()
+    ac.abort()
+    const chat = mockChat([])
+
+    await expect(
+      runChatToolLoop({
+        chat,
+        sessionId: 's1',
+        priorApiMessages: [],
+        userText: 'hi',
+        tools: NOTEBOOK_CELL_TOOLS,
+        executeTool: () => JSON.stringify({ ok: true }),
+        signal: ac.signal,
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+
+    expect(chat.runAgentTurn).not.toHaveBeenCalled()
   })
 })

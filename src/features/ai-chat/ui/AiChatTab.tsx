@@ -5,9 +5,11 @@ import { useAiChatService } from '@app/providers'
 import {
   AI_CHAT_SYSTEM_PREAMBLE,
   NOTEBOOK_CELL_TOOLS,
+  executeNotebookTool,
   newAgentMessageId,
   runChatToolLoop,
   syncWorkspaceDispatch,
+  toolCallSummary,
   type ChatUiMessage,
 } from '@features/ai-chat'
 import type { AgentChatMessage } from '@ports/AiAgentChatService'
@@ -104,7 +106,8 @@ export function AiChatTab({ targetNotebookTitle, workspaceRef, dispatch }: AiCha
         priorApiMessages: apiMessagesRef.current,
         userText: text,
         tools: NOTEBOOK_CELL_TOOLS,
-        toolHost,
+        executeTool: (call) => executeNotebookTool(toolHost, call),
+        summarizeTool: toolCallSummary,
         signal: ac.signal,
         callbacks: {
           onAssistantDelta: (t) => setStreaming(t),
