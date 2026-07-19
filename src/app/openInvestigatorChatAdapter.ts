@@ -1,6 +1,6 @@
 import type { AiAgentChatService } from '@ports/AiAgentChatService'
 import { getCriblApiBase } from '@platform/env/env'
-import { postOpenInvestigatorTurn } from '@features/ai-chat/agentNdjson'
+import { postOpenInvestigatorTurn } from '@app/openInvestigatorChatHttp'
 
 /**
  * AiAgentChatService adapter: multi-turn open_investigator with client tools.

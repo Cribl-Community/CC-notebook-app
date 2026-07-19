@@ -1,6 +1,5 @@
 export {
   parseAgentNdjsonBody,
-  postOpenInvestigatorTurn,
   AI_CHAT_MAX_TOOL_ROUNDS,
   AI_CHAT_TIMEOUT_MS,
   newAgentMessageId,
