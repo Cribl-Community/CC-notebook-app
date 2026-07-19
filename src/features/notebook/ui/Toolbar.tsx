@@ -24,6 +24,9 @@ interface ToolbarProps {
   onRestart: () => void
   themeMode: CapraThemeMode
   onThemeModeChange: (mode: CapraThemeMode) => void
+  /** When set, shows a control to show/hide the left Notebooks / AI Chat panel. */
+  leftPanelOpen?: boolean
+  onToggleLeftPanel?: () => void
 }
 
 function KernelIndicator({ status }: { status: KernelStatus }) {
@@ -71,6 +74,8 @@ export function Toolbar({
   onRestart,
   themeMode,
   onThemeModeChange,
+  leftPanelOpen,
+  onToggleLeftPanel,
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
@@ -78,6 +83,17 @@ export function Toolbar({
 
   return (
     <div className={`nb-toolbar${chromeOnly ? ' nb-toolbar--welcome' : ''}`}>
+      {onToggleLeftPanel && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onToggleLeftPanel}
+          aria-pressed={leftPanelOpen}
+          aria-label={leftPanelOpen ? 'Hide left panel' : 'Show left panel'}
+        >
+          {leftPanelOpen ? 'Hide panel' : 'Show panel'}
+        </Button>
+      )}
       <input
         type="text"
         className="nb-toolbar-title-input"

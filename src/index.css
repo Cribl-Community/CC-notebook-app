@@ -400,8 +400,18 @@ body {
   flex-shrink: 0;
   min-height: 0;
   align-self: stretch;
+  position: relative;
   background: var(--nb-bg-toolbar);
   border-right: 1px solid var(--nb-border);
+}
+
+.nb-left--collapsed {
+  width: 0 !important;
+  min-width: 0;
+  overflow: hidden;
+  border-right: none;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .nb-left-rail {
@@ -445,11 +455,11 @@ body {
 }
 
 .nb-left-body {
-  width: 280px;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .nb-left-panel {
@@ -466,6 +476,32 @@ body {
 
 .nb-left-panel--chat {
   overflow: hidden;
+}
+
+.nb-left-resize {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 2;
+  touch-action: none;
+}
+
+.nb-left-resize:hover,
+.nb-left-resize:active {
+  background: color-mix(in srgb, var(--nb-accent, #3b82f6) 35%, transparent);
+}
+
+body.nb-left-resizing {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+body.nb-left-resizing iframe,
+body.nb-left-resizing .cm-editor {
+  pointer-events: none !important;
 }
 
 /* ─── File browser sidebar (Jupyter-inspired) ───────────────────── */

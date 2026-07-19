@@ -9,7 +9,6 @@ import { TagMultiFilter } from '@ui/TagMultiFilter'
 export type WelcomePageProps = {
   onOpenExample: (filename: string) => void
   onNewNotebook: () => void
-  onOpenAiChat?: () => void
   onImportFile: (file: File) => void
   onImportFromCriblSearch?: () => void
 }
@@ -17,7 +16,6 @@ export type WelcomePageProps = {
 export function WelcomePage({
   onOpenExample,
   onNewNotebook,
-  onOpenAiChat,
   onImportFile,
   onImportFromCriblSearch,
 }: WelcomePageProps) {
@@ -88,11 +86,6 @@ export function WelcomePage({
           <Button variant="primary" onClick={onNewNotebook}>
             New notebook
           </Button>
-          {onOpenAiChat && (
-            <Button variant="secondary" onClick={onOpenAiChat}>
-              AI Chat
-            </Button>
-          )}
           <Button variant="secondary" onClick={() => fileRef.current?.click()}>
             Upload
           </Button>

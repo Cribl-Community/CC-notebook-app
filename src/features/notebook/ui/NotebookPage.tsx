@@ -20,6 +20,7 @@ import {
   WorkspaceLeftPanel,
   type LeftPanelMode,
 } from '@features/notebook/ui/WorkspaceLeftPanel'
+import { useLeftPanelLayout } from '@features/notebook/hooks/useLeftPanelLayout'
 import {
   fetchCriblSearchNotebook,
   listCriblSearchNotebooks,
@@ -29,6 +30,7 @@ export function NotebookPage() {
   const { themeMode, setThemeMode, codeMirrorLuma } = useTheme()
   const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useDialogs()
   const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('library')
+  const leftPanel = useLeftPanelLayout()
 
   const {
     workspace,
@@ -101,8 +103,6 @@ export function NotebookPage() {
     activeTab,
     state,
   })
-
-  const openAiChat = () => setLeftPanelMode('chat')
 
   const {
     handleSave,
@@ -182,6 +182,9 @@ export function NotebookPage() {
               <WorkspaceLeftPanel
                 mode={leftPanelMode}
                 onModeChange={setLeftPanelMode}
+                open={leftPanel.open}
+                bodyWidth={leftPanel.bodyWidth}
+                onResizePointerDown={leftPanel.onResizePointerDown}
                 library={
                   <NotebookSidebar
                     items={manifest?.items ?? []}
@@ -243,6 +246,8 @@ export function NotebookPage() {
                         onRestart={restartKernel}
                         themeMode={themeMode}
                         onThemeModeChange={setThemeMode}
+                        leftPanelOpen={leftPanel.open}
+                        onToggleLeftPanel={leftPanel.toggleOpen}
                       />
                     </div>
                     {isWelcome ? (
@@ -251,7 +256,6 @@ export function NotebookPage() {
                           <WelcomePage
                             onOpenExample={handleOpenExample}
                             onNewNotebook={handleNewTab}
-                            onOpenAiChat={openAiChat}
                             onImportFile={handleImportFile}
                             onImportFromCriblSearch={handleOpenCriblSearchPicker}
                           />
