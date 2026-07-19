@@ -56,7 +56,14 @@ Notes:
 - **`messages`**: Conversation turns; extend for multi-turn by appending prior assistant/user messages as the product does.
 - **`sessionId`**: Correlates a conversation; keep stable across turns in one chat.
 - **`context.resources`**: Optional catalog injection (datasets/lookups). The notebook client currently sends empty arrays; extend with notebook-specific context if useful.
-- **`tools`**: Optional remote tool schemas executed by the client. The notebook client sends `[]` and relies on streamed assistant text (no tool-call loop).
+- **`tools`**: Optional remote tool schemas executed by the client. Shape is **Cribl**, not OpenAI nested `function.name`:
+
+  ```json
+  { "id": "create_python_cell", "description": "…", "schema": { "type": "object", "properties": { … } } }
+  ```
+
+  - **Per-cell Riptide / Suggest Fix** (`riptideService.ts`) still sends `tools: []` and only concatenates assistant text.
+  - **AI Chat tab** (`src/features/ai-chat/`) sends notebook-authoring tools and runs a client tool loop: on `tool_calls`, execute locally, append assistant (`content: ""`) + `role: "tool"` messages, re-POST until text-only (max 8 rounds).
 
 ## Response: NDJSON stream
 
@@ -74,7 +81,7 @@ Typical line shapes:
 
    `{"name":"agent:open_investigator","role":"assistant","content":null,"tool_calls":[{"id":"...","function":{"name":"<toolName>","arguments":"<JSON string>"}}]}`
 
-   The notebook Python path does not execute tool calls; it only extracts text / fenced Python.
+   The per-cell Python path does not execute tool calls; it only extracts text / fenced Python. The AI Chat tab executes matching client tools (create markdown/Python/magic cells on a linked notebook).
 
 Timeouts: use `AbortController` and an appropriate limit for long streams (the KQL client uses ~60s for translation in `src/platform/cribl/aiTranslate.ts`; interactive chat may need longer).
 
@@ -110,7 +117,9 @@ Adjust **`context`** and **`tools`** if you add a client-side tool loop later.
 | File | Relevance |
 |------|-----------|
 | `src/platform/cribl/aiTranslate.ts` | Same API family for `/ai/q/agents/kql`: POST JSON, `stream: true`, parsing text/JSON from the response body |
-| `src/features/ai-riptide/riptideService.ts` | Agent request/response helpers used by the notebook AI adapter (`AI_RIPTIDE_AGENT_PATH`) |
+| `src/features/ai-riptide/riptideService.ts` | One-shot agent helpers for per-cell codegen / fix (`AI_RIPTIDE_AGENT_PATH`, `tools: []`) |
+| `src/features/ai-chat/` | Multi-turn chat tab + tool loop + notebook cell tools (`AiAgentChatService`) |
+| `src/app/openInvestigatorChatAdapter.ts` | Chat port adapter (composition root) |
 | [`docs/PLATFORM.md`](./PLATFORM.md) | `CRIBL_API_URL`, fetch proxy, auth behavior |
 
 ## See also

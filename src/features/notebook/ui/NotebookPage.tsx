@@ -6,6 +6,7 @@ import { NotebookSidebar, useNotebookLibrary } from '@features/library'
 import { tabIsDirty } from '@features/notebook/reducer/tabWorkspace'
 import { useNotebookWorkspace } from '@features/notebook/hooks/useNotebookWorkspace'
 import { WelcomePage } from '@features/welcome'
+import { AiChatTab } from '@features/ai-chat'
 import { useAiCodeService, useDialogs, useTheme } from '@app/providers'
 import { useTabNotebookRuntime } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useCellRunner } from '@features/notebook/hooks/useCellRunner'
@@ -88,6 +89,7 @@ export function NotebookPage() {
     handleNewTab,
     handleSelectTab,
     handleNewNotebook,
+    handleNewChatTab,
   } = useNotebookPageTabChrome({
     workspaceRef,
     dispatch,
@@ -140,7 +142,8 @@ export function NotebookPage() {
     () =>
       workspace.tabs.map((t) => ({
         id: t.id,
-        title: t.kind === 'welcome' ? 'Welcome' : t.notebook.title,
+        title:
+          t.kind === 'welcome' ? 'Welcome' : t.kind === 'chat' ? 'AI Chat' : t.notebook.title,
         dirty: tabIsDirty(t),
       })),
     [workspace.tabs],
@@ -148,6 +151,8 @@ export function NotebookPage() {
 
   const ready = Boolean(state && activeTab)
   const isWelcome = activeTab?.kind === 'welcome'
+  const isChat = activeTab?.kind === 'chat'
+  const toolbarVariant = isWelcome ? 'welcome' : isChat ? 'chat' : 'notebook'
   const kernelInit = state?.kernelInit
 
   return (
@@ -197,7 +202,7 @@ export function NotebookPage() {
                   <div className="nb-editor-shell">
                     <div className="nb-toolbar-rail">
                       <Toolbar
-                        variant={isWelcome ? 'welcome' : 'notebook'}
+                        variant={toolbarVariant}
                         kernelStatus={state.kernelStatus}
                         title={state.title}
                         onTitleChange={(t) => dispatchNotebook({ type: 'SET_NOTEBOOK_TITLE', title: t })}
@@ -224,8 +229,30 @@ export function NotebookPage() {
                           <WelcomePage
                             onOpenExample={handleOpenExample}
                             onNewNotebook={handleNewTab}
+                            onOpenAiChat={handleNewChatTab}
                             onImportFile={handleImportFile}
                             onImportFromCriblSearch={handleOpenCriblSearchPicker}
+                          />
+                        </div>
+                      </div>
+                    ) : isChat && activeTab ? (
+                      <div className="nb-main">
+                        <div className="nb-scroll nb-scroll--ai-chat">
+                          <AiChatTab
+                            chatTabId={activeTab.id}
+                            linkedNotebookTabId={activeTab.linkedNotebookTabId ?? null}
+                            linkedNotebookTitle={
+                              activeTab.linkedNotebookTabId
+                                ? (workspace.tabs.find((t) => t.id === activeTab.linkedNotebookTabId)
+                                    ?.notebook.title ?? null)
+                                : null
+                            }
+                            workspaceRef={workspaceRef}
+                            dispatch={dispatch}
+                            onOpenLinkedNotebook={() => {
+                              const id = activeTab.linkedNotebookTabId
+                              if (id) handleSelectTab(id)
+                            }}
                           />
                         </div>
                       </div>

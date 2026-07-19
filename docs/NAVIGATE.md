@@ -4,7 +4,7 @@ Task-oriented map for humans. For layering rules, port tables, and recipes in de
 
 ## Five-minute orientation
 
-1. **Composition root:** [`src/App.tsx`](../src/App.tsx) nests providers (env, theme, AI, dialogs, search, lookup, notebook repo, kernel) then mounts [`NotebookPage`](../src/features/notebook/ui/NotebookPage.tsx).
+1. **Composition root:** [`src/App.tsx`](../src/App.tsx) nests providers (env, theme, AI code, AI chat, dialogs, search, lookup, notebook repo, kernel) then mounts [`NotebookPage`](../src/features/notebook/ui/NotebookPage.tsx).
 2. **Main page:** `NotebookPage` composes toolbar, tabs, cells; orchestration lives in hooks next to the page (`useNotebookPage*`, `useNotebookLibraryActions`, `useCellRunner`).
 3. **State:** Tab workspace and notebook content are driven by reducers under [`src/features/notebook/reducer/`](../src/features/notebook/reducer/).
 4. **Execution:** [`useCellRunner`](../src/features/notebook/hooks/useCellRunner.ts) queues work per tab; [`runNotebookCell`](../src/features/notebook/executor/runNotebookCell.ts) picks an executor from [`executorRegistry.ts`](../src/features/notebook/executor/executorRegistry.ts) (order: `%%cribl_api` → `%%cribl_save_search_lookup` / `%%cribl_load_search_lookup` / `%%cribl_delete_search_lookup` → `%%cribl_search` → Python).
@@ -54,7 +54,8 @@ flowchart TB
 | `library/` | Saved notebooks + manifest in KV, sidebar | `notebookLibrary.ts`, `hooks/useNotebookLibrary.ts`, `ui/NotebookSidebar.tsx` |
 | `cribl-search/` | `%%cribl_search`, lookup save/load/delete magics, KQL editor, output | `criblSearchMagic.ts`, `criblSearchLookupMagic.ts`, `editor/criblSearchEditor.ts`, `ui/CriblSearchOutput.tsx` |
 | `cribl-api/` | `%%cribl_api` magic, OpenAPI catalog + completions, HTTP from cells | `criblApiMagic.ts`, `criblApiCatalog.ts`, `editor/criblApiCompletions.ts`, `generated/criblApiOpenApiIndex.json` |
-| `ai-riptide/` | Riptide client helpers | `riptideService.ts` (adapter: `app/riptideAiCodeAdapter.ts`) |
+| `ai-riptide/` | Riptide client helpers (one-shot codegen) | `riptideService.ts` (adapter: `app/riptideAiCodeAdapter.ts`) |
+| `ai-chat/` | AI Chat tab + `open_investigator` tool loop | `ui/AiChatTab.tsx`, `toolLoop.ts`, `notebookCellTools.ts` (adapter: `app/openInvestigatorChatAdapter.ts`) |
 | `examples/` | Bundled example notebooks manifest + loading | `useExamples.ts`, `examplesManifest.ts` |
 | `welcome/` | Welcome / release notes + proxy smoke check (uses examples) | `WelcomePage.tsx`, `releaseNotes.ts` |
 
