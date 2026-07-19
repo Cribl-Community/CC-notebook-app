@@ -32,6 +32,30 @@ describe('postOpenInvestigatorTurn', () => {
     expect(result.toolCalls[0]?.function.name).toBe('create_markdown_cell')
   })
 
+  it('preserves AbortError when the caller aborts (Stop)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) => {
+        return new Promise((_resolve, reject) => {
+          const signal = init?.signal
+          const onAbort = () => reject(new DOMException('Aborted', 'AbortError'))
+          if (signal?.aborted) onAbort()
+          else signal?.addEventListener('abort', onAbort, { once: true })
+        })
+      }),
+    )
+    const ac = new AbortController()
+    const pending = postOpenInvestigatorTurn({
+      apiBase: '/api/v1',
+      sessionId: 's1',
+      messages: [],
+      tools: [],
+      signal: ac.signal,
+    })
+    ac.abort()
+    await expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
   it('maps not-registered agent errors', async () => {
     vi.stubGlobal(
       'fetch',

@@ -40,7 +40,11 @@ export async function postOpenInvestigatorTurn(args: {
   const url = `${base}${OPEN_INVESTIGATOR_AGENT_PATH}`
   const ac = new AbortController()
   const external = args.signal
-  const timer = globalThis.setTimeout(() => ac.abort(), AI_CHAT_TIMEOUT_MS)
+  let timedOut = false
+  const timer = globalThis.setTimeout(() => {
+    timedOut = true
+    ac.abort()
+  }, AI_CHAT_TIMEOUT_MS)
   const mergeExternalAbort = () => ac.abort()
   if (external) {
     if (external.aborted) ac.abort()
@@ -84,7 +88,10 @@ export async function postOpenInvestigatorTurn(args: {
     const name =
       typeof e === 'object' && e !== null && 'name' in e ? String((e as { name: unknown }).name) : ''
     if (name === 'AbortError') {
-      throw new Error(`AI chat timed out after ${Math.round(AI_CHAT_TIMEOUT_MS / 1000)}s.`)
+      if (timedOut) {
+        throw new Error(`AI chat timed out after ${Math.round(AI_CHAT_TIMEOUT_MS / 1000)}s.`)
+      }
+      throw new DOMException('Aborted', 'AbortError')
     }
     throw e
   } finally {
