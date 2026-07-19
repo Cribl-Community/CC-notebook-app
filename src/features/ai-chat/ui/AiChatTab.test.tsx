@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { AiChatProvider } from '@app/providers'
-import type { AiAgentChatService } from '@ports/AiAgentChatService'
+import type { AgentTurnResult, AiAgentChatService } from '@ports/AiAgentChatService'
 import {
   createEmptyTab,
   createInitialWorkspace,
@@ -53,7 +53,7 @@ describe('AiChatTab', () => {
     let turn = 0
     const chat: AiAgentChatService = {
       isAvailable: () => true,
-      runAgentTurn: vi.fn(async () => {
+      runAgentTurn: vi.fn(async (): Promise<AgentTurnResult> => {
         turn += 1
         if (turn === 1) {
           return {
@@ -120,7 +120,7 @@ describe('AiChatTab', () => {
     const host = workspaceHost()
     const chat: AiAgentChatService = {
       isAvailable: () => true,
-      runAgentTurn: vi.fn(async () => ({
+      runAgentTurn: vi.fn(async (): Promise<AgentTurnResult> => ({
         assistantText: 'Done.',
         toolCalls: [],
         assistantMessage: { id: 'a', role: 'assistant', content: '', reqId: 0 },
@@ -154,7 +154,7 @@ describe('AiChatTab', () => {
     const chat: AiAgentChatService = {
       isAvailable: () => true,
       runAgentTurn: vi.fn(
-        ({ signal }) =>
+        ({ signal }): Promise<AgentTurnResult> =>
           new Promise((_resolve, reject) => {
             rejectTurn = reject
             const onAbort = () => {
