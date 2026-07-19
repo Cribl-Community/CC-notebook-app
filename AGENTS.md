@@ -15,7 +15,8 @@ src/
                 cribl-api, ai-riptide, examples, welcome)
   platform/    Real-world adapters (pyodide, cribl, env, staticAssets, adapters)
   ports/       Interfaces features depend on (KernelPort, NotebookRepo,
-                AiCodeService, SearchService, LookupService, DialogService, EnvService)
+                AiCodeService, AiAgentChatService, SearchService,
+                LookupService, DialogService, EnvService)
   ui/          Framework-agnostic UI primitives
   testing/     Vitest setup + smoke tests
 ```

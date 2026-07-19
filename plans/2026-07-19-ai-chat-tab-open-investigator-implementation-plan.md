@@ -1,5 +1,10 @@
 # Plan: AI Chat tab (`open_investigator` + notebook cell tools)
 
+> **Superseded.** AI Chat shipped as a **left-panel** mode (not a workspace `TabKind: 'chat'`).
+> For the coupling/cohesion refactor and current architecture, see
+> [`plans/2026-07-19-ai-chat-refactor-coupling-coverage-implementation-plan.md`](./2026-07-19-ai-chat-refactor-coupling-coverage-implementation-plan.md).
+> This file is kept as historical design notes only.
+
 ## Context
 
 Users want a multi-turn LLM chat that can **author notebooks** (markdown, Python, `%%cribl_search` / `%%cribl_api` / lookup magics) via Cribl agent tool calls. Today AI is one-shot cell codegen with `tools: []`. Live API supports client tools on `open_investigator`. Inspiration: [jupyterlite/ai](https://github.com/jupyterlite/ai) chat + tool registry (adapted to our reducer).

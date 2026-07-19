@@ -1,8 +1,10 @@
 import type { Dispatch, MutableRefObject } from 'react'
 import { flushSync } from 'react-dom'
-import { parseCriblApiMagic } from '@features/cribl-api/criblApiMagic'
-import { parseCriblSearchMagic } from '@features/cribl-search/criblSearchMagic'
-import { parseCriblSearchLookupMagic } from '@features/cribl-search/criblSearchLookupMagic'
+import { parseCriblApiMagic } from '@features/cribl-api'
+import {
+  parseCriblSearchLookupMagic,
+  parseCriblSearchMagic,
+} from '@features/cribl-search'
 import {
   createEmptyTab,
   isNotebookTabKind,

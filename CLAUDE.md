@@ -50,9 +50,9 @@ For a task-oriented map of directories and entry files, see [`docs/NAVIGATE.md`]
 ```
 src/
   app/           Composition root + cross-cutting React providers
-    App.tsx      Provider nesting (Env → Theme → AiCode → Dialog → Search →
+    App.tsx      Provider nesting (Env → Theme → AiCode → AiChat → Dialog → Search →
                  Lookup → NotebookRepo → Kernel → NotebookPage)
-    providers/   Env, Theme, AiCode, Dialog, Search, Lookup, NotebookRepo, Kernel
+    providers/   Env, Theme, AiCode, AiChat, Dialog, Search, Lookup, NotebookRepo, Kernel
     styles/      Capra theme helpers + --nb-* bridge (capraTheme.ts, capra-nb-bridge.css)
   domain/        Shared DTOs for port contracts (kernel messages, manifest, search)
   features/      Product features — one folder per vertical
@@ -61,13 +61,14 @@ src/
     cribl-search/  %%cribl_search + lookup magics, KQL editor + output
     cribl-api/     %%cribl_api cell magic + OpenAPI catalog/completions
     ai-riptide/    Riptide AI code gen + AiCodeService adapter
+    ai-chat/       Left-panel AI Chat + AiAgentChatService (open_investigator tools)
     examples/      Examples manifest + useExamples hook
     welcome/       WelcomePage + release notes + proxy smoke check
   platform/    Adapters for real I/O (Pyodide, Cribl KV/Search/AI clients,
                env detection, static assets, port adapters)
   ports/       Interfaces features depend on
-               (KernelPort, NotebookRepo, AiCodeService, SearchService,
-                LookupService, DialogService, EnvService)
+               (KernelPort, NotebookRepo, AiCodeService, AiAgentChatService,
+               SearchService, LookupService, DialogService, EnvService)
   ui/          Framework-agnostic UI primitives
                (currently CodeMirror python/KQL highlighting)
   testing/     Test setup + shared smoke tests

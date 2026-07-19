@@ -1,3 +1,5 @@
+import { OPEN_INVESTIGATOR_AGENT_PATH } from '@/domain/openInvestigatorAgent'
+
 /**
  * Hosted agent used for notebook Python generation / error fixes.
  *
@@ -6,7 +8,8 @@
  * code-gen sends no client tools and needs a text reply, so we call `open_investigator`
  * (registered agent for external clients with caller-supplied tools/context).
  */
-export const AI_RIPTIDE_AGENT_PATH = '/ai/q/agents/open_investigator' as const
+/** @deprecated Prefer {@link OPEN_INVESTIGATOR_AGENT_PATH} from `@/domain/openInvestigatorAgent`. */
+export const AI_RIPTIDE_AGENT_PATH = OPEN_INVESTIGATOR_AGENT_PATH
 export const AI_RIPTIDE_TIMEOUT_MS = 28_000
 export const AI_RIPTIDE_FIX_TIMEOUT_MS = 20_000
 
@@ -138,7 +141,7 @@ export async function generatePythonFromPrompt(
   if (!prompt) throw new Error('Description cannot be empty.')
 
   const base = apiBase.trim() || '/api/v1'
-  const url = `${base}${AI_RIPTIDE_AGENT_PATH}`
+  const url = `${base}${OPEN_INVESTIGATOR_AGENT_PATH}`
   const ac = new AbortController()
   const external = options?.signal
   const timer = globalThis.setTimeout(() => ac.abort(), AI_RIPTIDE_TIMEOUT_MS)
@@ -205,7 +208,7 @@ export async function suggestErrorFix(
   const source = cellSource.trim()
   if (!source) throw new Error('Cell source cannot be empty.')
   const base = apiBase.trim() || '/api/v1'
-  const url = `${base}${AI_RIPTIDE_AGENT_PATH}`
+  const url = `${base}${OPEN_INVESTIGATOR_AGENT_PATH}`
   const ac = new AbortController()
   const external = options?.signal
   const timer = globalThis.setTimeout(() => ac.abort(), AI_RIPTIDE_FIX_TIMEOUT_MS)

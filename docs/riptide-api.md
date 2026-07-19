@@ -63,7 +63,7 @@ Notes:
   ```
 
   - **Per-cell Riptide / Suggest Fix** (`riptideService.ts`) still sends `tools: []` and only concatenates assistant text.
-  - **AI Chat** (left panel, `src/features/ai-chat/`) sends notebook-authoring tools and runs a client tool loop: on `tool_calls`, execute locally against the open notebook (insert after the selected cell), append assistant (`content: ""`) + `role: "tool"` messages, re-POST until text-only (max 8 rounds).
+  - **AI Chat** (left panel, `src/features/ai-chat/`) sends notebook-authoring tools and runs a client tool loop: on `tool_calls`, `runChatToolLoop` invokes an **injected** executor (`executeNotebookTool`) against the **active** notebook (insert after the selected cell; creates a notebook tab from Welcome if needed), appends assistant (`content: ""`) + `role: "tool"` messages, and re-POSTs until text-only (max 8 rounds). HTTP for chat turns lives in `app/openInvestigatorChatHttp.ts`; the feature keeps NDJSON parsing and tool defs. Both clients share `OPEN_INVESTIGATOR_AGENT_PATH` from `domain/openInvestigatorAgent.ts`.
 
 ## Response: NDJSON stream
 
@@ -117,9 +117,11 @@ Adjust **`context`** and **`tools`** if you add a client-side tool loop later.
 | File | Relevance |
 |------|-----------|
 | `src/platform/cribl/aiTranslate.ts` | Same API family for `/ai/q/agents/kql`: POST JSON, `stream: true`, parsing text/JSON from the response body |
-| `src/features/ai-riptide/riptideService.ts` | One-shot agent helpers for per-cell codegen / fix (`AI_RIPTIDE_AGENT_PATH`, `tools: []`) |
-| `src/features/ai-chat/` | Multi-turn chat tab + tool loop + notebook cell tools (`AiAgentChatService`) |
-| `src/app/openInvestigatorChatAdapter.ts` | Chat port adapter (composition root) |
+| `src/domain/openInvestigatorAgent.ts` | Shared `OPEN_INVESTIGATOR_AGENT_PATH` |
+| `src/features/ai-riptide/riptideService.ts` | One-shot agent helpers for per-cell codegen / fix (`tools: []`) |
+| `src/features/ai-chat/` | Left-panel chat: session hook, injected tool loop, cell tools, NDJSON parse |
+| `src/app/openInvestigatorChatHttp.ts` | Chat HTTP POST + timeout (composition root) |
+| `src/app/openInvestigatorChatAdapter.ts` | `AiAgentChatService` adapter |
 | [`docs/PLATFORM.md`](./PLATFORM.md) | `CRIBL_API_URL`, fetch proxy, auth behavior |
 
 ## See also

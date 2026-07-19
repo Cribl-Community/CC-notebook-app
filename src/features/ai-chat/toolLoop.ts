@@ -5,11 +5,6 @@ import type {
   CriblAgentToolDef,
 } from '@ports/AiAgentChatService'
 import { AI_CHAT_MAX_TOOL_ROUNDS, newAgentMessageId } from '@features/ai-chat/agentNdjson'
-import {
-  executeNotebookTool,
-  toolCallSummary,
-  type NotebookToolHost,
-} from '@features/ai-chat/notebookCellTools'
 
 export type ChatUiMessage =
   | { id: string; kind: 'user'; content: string }
@@ -17,13 +12,27 @@ export type ChatUiMessage =
   | { id: string; kind: 'tool'; summary: string; ok: boolean }
   | { id: string; kind: 'error'; content: string }
 
+export type ChatToolExecutor = (call: AgentToolCall) => string
+
+export type ChatToolSummarizer = (call: AgentToolCall, resultJson: string) => string
+
 export type ChatLoopCallbacks = {
   onAssistantDelta?: (text: string) => void
   onToolResult?: (summary: string, ok: boolean) => void
 }
 
+function defaultToolSummary(call: AgentToolCall, resultJson: string): string {
+  let ok = false
+  try {
+    ok = Boolean((JSON.parse(resultJson) as { ok?: boolean }).ok)
+  } catch {
+    /* ignore */
+  }
+  return ok ? `Ran ${call.function.name}` : `Tool ${call.function.name} failed`
+}
+
 /**
- * Multi-round open_investigator turn: stream text and/or execute client tools until done.
+ * Multi-round open_investigator turn: stream text and/or execute injected client tools until done.
  */
 export async function runChatToolLoop(args: {
   chat: AiAgentChatService
@@ -32,7 +41,8 @@ export async function runChatToolLoop(args: {
   priorApiMessages: AgentChatMessage[]
   userText: string
   tools: CriblAgentToolDef[]
-  toolHost: NotebookToolHost
+  executeTool: ChatToolExecutor
+  summarizeTool?: ChatToolSummarizer
   signal?: AbortSignal
   callbacks?: ChatLoopCallbacks
 }): Promise<{
@@ -40,6 +50,7 @@ export async function runChatToolLoop(args: {
   assistantText: string
   uiToolEvents: { summary: string; ok: boolean }[]
 }> {
+  const summarize = args.summarizeTool ?? defaultToolSummary
   const userMsg: AgentChatMessage = {
     id: newAgentMessageId(),
     role: 'user',
@@ -79,14 +90,14 @@ export async function runChatToolLoop(args: {
 
     const toolMsgs: AgentChatMessage[] = []
     for (const call of turn.toolCalls) {
-      const resultJson = executeNotebookTool(args.toolHost, call)
+      const resultJson = args.executeTool(call)
       let ok = false
       try {
         ok = Boolean((JSON.parse(resultJson) as { ok?: boolean }).ok)
       } catch {
         ok = false
       }
-      const summary = toolCallSummary(call, resultJson)
+      const summary = summarize(call, resultJson)
       uiToolEvents.push({ summary, ok })
       args.callbacks?.onToolResult?.(summary, ok)
       toolMsgs.push({

@@ -1,6 +1,5 @@
 export {
   parseAgentNdjsonBody,
-  postOpenInvestigatorTurn,
   AI_CHAT_MAX_TOOL_ROUNDS,
   AI_CHAT_TIMEOUT_MS,
   newAgentMessageId,
@@ -12,5 +11,11 @@ export {
   toolCallSummary,
   type NotebookToolHost,
 } from '@features/ai-chat/notebookCellTools'
-export { runChatToolLoop, type ChatUiMessage } from '@features/ai-chat/toolLoop'
+export {
+  runChatToolLoop,
+  type ChatToolExecutor,
+  type ChatToolSummarizer,
+  type ChatUiMessage,
+} from '@features/ai-chat/toolLoop'
+export { useAiChatSession } from '@features/ai-chat/hooks/useAiChatSession'
 export { AiChatTab } from '@features/ai-chat/ui/AiChatTab'

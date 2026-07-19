@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { notebookReducer } from '@features/notebook/reducer/notebookReducer'
 import {
-  createChatTab,
   createEmptyTab,
   createInitialWorkspace,
   createWelcomeTab,
@@ -46,27 +45,15 @@ describe('tabWorkspaceReducer', () => {
     expect(s1.tabs[0].notebook.title).toBe('Welcome')
   })
 
-  it('ADD_TAB chat + SET_CHAT_LINK; TAB_NOTEBOOK skips chat', () => {
+  it('TAB_NOTEBOOK skips welcome tabs', () => {
     const s0 = createInitialWorkspace()
-    const chat = createChatTab()
-    const s1 = tabWorkspaceReducer(s0, { type: 'ADD_TAB', tab: chat })
-    expect(s1.tabs[1].kind).toBe('chat')
-    expect(tabIsDirty(s1.tabs[1])).toBe(false)
-    const s2 = tabWorkspaceReducer(s1, {
+    const welcomeId = s0.tabs[0]!.id
+    const s1 = tabWorkspaceReducer(s0, {
       type: 'TAB_NOTEBOOK',
-      tabId: chat.id,
+      tabId: welcomeId,
       action: { type: 'SET_NOTEBOOK_TITLE', title: 'Nope' },
     })
-    expect(s2.tabs[1].notebook.title).toBe('AI Chat')
-    const nb = createEmptyTab()
-    const s3 = tabWorkspaceReducer(s2, { type: 'ADD_TAB', tab: nb })
-    const s4 = tabWorkspaceReducer(s3, {
-      type: 'SET_CHAT_LINK',
-      chatTabId: chat.id,
-      linkedNotebookTabId: nb.id,
-    })
-    const chatTab = s4.tabs.find((t) => t.id === chat.id)
-    expect(chatTab?.linkedNotebookTabId).toBe(nb.id)
+    expect(s1.tabs[0]!.notebook.title).toBe('Welcome')
   })
 
   it('CLOSE_TAB removes tab and selects another', () => {

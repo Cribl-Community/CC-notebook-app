@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.5.1',
+    date: '2026-07-19',
+    highlights: [
+      'AI Chat: refactor for looser coupling — injected tool loop, session hook, composition-root HTTP adapter, shared `open_investigator` path; remove unused workspace chat-tab model; expand unit/RTL coverage.',
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-07-19',
     highlights: [
