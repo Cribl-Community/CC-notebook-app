@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { createEmptyTab } from '@features/notebook/reducer/tabWorkspace'
+import { createEmptyTab, isNotebookTabKind } from '@features/notebook/reducer/tabWorkspace'
 import { useEnv, useNotebookRepo } from '@app/providers'
 import type { CriblSearchNotebookData, CriblSearchNotebookMeta } from '@/domain/criblSearchNotebook'
 import type { NotebookWorkspaceController } from '@features/notebook/hooks/useNotebookWorkspace'
@@ -60,7 +60,7 @@ export function useNotebookLibraryActions(args: NotebookLibraryActionsArgs) {
   const handleSave = useCallback(() => {
     const tabId = activeTabIdRef.current
     const tab0 = workspaceRef.current.tabs.find((t) => t.id === tabId)
-    if (tab0?.kind === 'welcome') return
+    if (tab0 && !isNotebookTabKind(tab0.kind)) return
     if (!manifest) {
       void loadLibrary()
       return

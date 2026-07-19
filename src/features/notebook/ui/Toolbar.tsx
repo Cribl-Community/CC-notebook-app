@@ -4,8 +4,8 @@ import type { CapraThemeMode } from '@app/providers'
 import type { KernelStatus } from '@features/notebook/model/types'
 
 interface ToolbarProps {
-  /** Welcome tab: theme toggle only; notebook actions hidden. */
-  variant?: 'notebook' | 'welcome'
+  /** Welcome/chat tabs: theme toggle only; notebook actions hidden. */
+  variant?: 'notebook' | 'welcome' | 'chat'
   kernelStatus: KernelStatus
   title: string
   onTitleChange: (title: string) => void
@@ -74,27 +74,27 @@ export function Toolbar({
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
-  const welcome = variant === 'welcome'
+  const chromeOnly = variant === 'welcome' || variant === 'chat'
 
   return (
-    <div className={`nb-toolbar${welcome ? ' nb-toolbar--welcome' : ''}`}>
+    <div className={`nb-toolbar${chromeOnly ? ' nb-toolbar--welcome' : ''}`}>
       <input
         type="text"
         className="nb-toolbar-title-input"
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
         spellCheck={false}
-        readOnly={welcome}
+        readOnly={chromeOnly}
         aria-label="Notebook title"
         title="Notebook title"
       />
-      {!welcome && dirty && (
+      {!chromeOnly && dirty && (
         <span className="nb-toolbar-dirty" title="Unsaved changes">
           ●
         </span>
       )}
       <div className="nb-toolbar-actions">
-        {!welcome && (
+        {!chromeOnly && (
           <>
             <Button variant="primary" size="sm" onClick={onSave} disabled={saveDisabled}>
               Save
@@ -162,7 +162,7 @@ export function Toolbar({
           />
         </label>
       </div>
-      {!welcome && <KernelIndicator status={kernelStatus} />}
+      {!chromeOnly && <KernelIndicator status={kernelStatus} />}
     </div>
   )
 }
