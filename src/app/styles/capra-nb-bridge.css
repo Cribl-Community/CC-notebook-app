@@ -1,0 +1,84 @@
+/*
+ * Adapter bridge: map notebook `--nb-*` tokens onto Capra `--cds2-*` variables.
+ * Keep raw Capra var names confined to this file (token() PostCSS not wired yet).
+ * Capra `.dark` on the document root re-resolves the underlying Capra tokens.
+ */
+
+:root {
+  --nb-ui-font: var(--cds2-core-font-family-sans);
+  --mono: var(--cds2-core-font-family-mono);
+
+  --nb-shadow-elev-1: var(--cds2-shadow-low-down);
+  --nb-shadow-elev-2: var(--cds2-shadow-medium-down);
+  --nb-shadow-elev-3: var(--cds2-shadow-high-down);
+  --nb-shadow-frame: var(--cds2-shadow-low-down);
+
+  --nb-bg: var(--cds2-color-background-application);
+  --nb-bg-tab-bar: var(--cds2-color-background-application);
+  --nb-bg-toolbar: var(--cds2-color-background-application);
+  --nb-bg-cell: var(--cds2-color-background-neutral-surface);
+  --nb-bg-cell-alt: var(--cds2-color-background-neutral-subtle);
+  --nb-bg-hover: var(--cds2-color-background-neutral-hover);
+  --nb-bg-input: var(--cds2-color-background-neutral-surface);
+
+  --nb-text: var(--cds2-color-foreground-default);
+  --nb-text-heading: var(--cds2-color-foreground-default);
+  --nb-text-muted: var(--cds2-color-foreground-subtle);
+  --nb-text-dim: var(--cds2-color-foreground-disabled);
+  --nb-placeholder: var(--cds2-color-foreground-placeholder);
+
+  --nb-border: var(--cds2-color-border-neutral-default);
+  --nb-border-hover: var(--cds2-color-border-neutral-strong);
+  --nb-border-cell: var(--cds2-color-border-neutral-subtle);
+  --nb-border-dashed: var(--cds2-color-border-neutral-default);
+
+  --nb-accent: var(--cds2-color-foreground-brand-default);
+  --nb-accent-focus: var(--cds2-brand-alpha-primary-20);
+  --nb-brand: var(--cds2-color-foreground-brand-default);
+  --nb-brand-focus: var(--cds2-brand-alpha-primary-20);
+  --nb-focus-ring: var(--cds2-color-border-focus);
+  --nb-list-selection-bg: var(--cds2-color-background-brand-subtle);
+  --nb-list-selection-ring: var(--cds2-color-border-brand-default);
+
+  --nb-code-caret: var(--cds2-color-foreground-accent-default);
+  --nb-code-selection-bg: var(--cds2-brand-alpha-primary-10);
+  --nb-cell-prompt: var(--cds2-color-foreground-brand-default);
+
+  --nb-success: var(--cds2-color-foreground-success-default);
+  --nb-warn: var(--cds2-color-foreground-warning-default);
+  --nb-error: var(--cds2-color-foreground-danger-default);
+  --nb-error-muted: var(--cds2-color-foreground-danger-strong);
+  --nb-error-bg: var(--cds2-color-background-danger-subtle);
+  --nb-error-border: var(--cds2-color-border-danger-subtle);
+
+  --nb-link: var(--cds2-color-foreground-link);
+  --nb-link-visited: var(--cds2-color-foreground-accent-default);
+  --nb-md-accent: var(--cds2-color-foreground-brand-default);
+
+  /* Capra-aligned light syntax (refined further in editor work) */
+  --nb-cm-keyword-strong: var(--cds2-color-foreground-brand-strong);
+  --nb-cm-keyword: var(--cds2-color-foreground-brand-default);
+  --nb-cm-operator-keyword: var(--cds2-color-foreground-accent-default);
+  --nb-cm-string: var(--cds2-color-foreground-danger-default);
+  --nb-cm-comment: var(--cds2-color-foreground-subtle);
+  --nb-cm-number: var(--cds2-color-foreground-success-default);
+  --nb-cm-bool-null: var(--cds2-color-foreground-brand-default);
+  --nb-cm-name: var(--cds2-color-foreground-default);
+  --nb-cm-def-name: var(--cds2-color-foreground-accent-strong);
+  --nb-cm-function: var(--cds2-color-foreground-accent-default);
+  --nb-cm-property: var(--cds2-color-foreground-default);
+  --nb-cm-operator: var(--cds2-color-foreground-default);
+  --nb-cm-punctuation: var(--cds2-color-foreground-subtle);
+  --nb-cm-meta: var(--cds2-color-foreground-accent-default);
+  --nb-cm-bracket-match-bg: var(--cds2-brand-alpha-primary-20);
+  --nb-cm-bracket-match-outline: var(--cds2-color-border-brand-default);
+  --nb-cm-invalid: var(--cds2-color-foreground-danger-strong);
+
+  --nb-cm-kql-keyword: var(--cds2-color-foreground-accent-strong);
+  --nb-cm-kql-pipe: var(--cds2-color-foreground-accent-default);
+  --nb-cm-kql-string: var(--cds2-color-foreground-danger-default);
+  --nb-cm-kql-number: var(--cds2-color-foreground-success-default);
+  --nb-cm-kql-identifier: var(--cds2-color-foreground-default);
+  --nb-cm-kql-operator: var(--cds2-color-foreground-default);
+  --nb-cm-kql-comment: var(--cds2-color-foreground-subtle);
+}
