@@ -146,10 +146,7 @@ export function NotebookPage() {
 
   const tabLabels = useMemo(
     () =>
-      workspace.tabs
-        // Legacy chat workspace tabs (if any) are not shown; AI Chat lives in the left panel.
-        .filter((t) => t.kind !== 'chat')
-        .map((t) => ({
+      workspace.tabs.map((t) => ({
           id: t.id,
           title: t.kind === 'welcome' ? 'Welcome' : t.notebook.title,
           dirty: tabIsDirty(t),

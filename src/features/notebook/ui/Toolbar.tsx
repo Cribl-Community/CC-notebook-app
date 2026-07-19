@@ -4,8 +4,8 @@ import type { CapraThemeMode } from '@app/providers'
 import type { KernelStatus } from '@features/notebook/model/types'
 
 interface ToolbarProps {
-  /** Welcome/chat tabs: theme toggle only; notebook actions hidden. */
-  variant?: 'notebook' | 'welcome' | 'chat'
+  /** Welcome tab: theme toggle only; notebook actions hidden. */
+  variant?: 'notebook' | 'welcome'
   kernelStatus: KernelStatus
   title: string
   onTitleChange: (title: string) => void
@@ -79,7 +79,7 @@ export function Toolbar({
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
-  const chromeOnly = variant === 'welcome' || variant === 'chat'
+  const chromeOnly = variant === 'welcome'
 
   return (
     <div className={`nb-toolbar${chromeOnly ? ' nb-toolbar--welcome' : ''}`}>

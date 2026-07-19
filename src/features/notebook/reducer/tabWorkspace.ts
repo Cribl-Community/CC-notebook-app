@@ -3,7 +3,7 @@ import type { Cell, NotebookAction, NotebookState } from '@features/notebook/mod
 import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
 import { applyExampleDefaultCodeFold } from '@features/notebook/codeCellFold'
 
-export type TabKind = 'welcome' | 'notebook' | 'chat'
+export type TabKind = 'welcome' | 'notebook'
 
 /** True for tabs that own a runnable notebook + Pyodide kernel. */
 export function isNotebookTabKind(kind: TabKind): kind is 'notebook' {
@@ -19,8 +19,6 @@ export interface NotebookTab {
   lastSavedJson: string
   /** Cribl KV manifest entry id when this tab is linked to a saved notebook. */
   kvNotebookId: string | null
-  /** Chat tabs only: notebook tab that AI cell tools write into. */
-  linkedNotebookTabId?: string | null
 }
 
 function welcomeNotebookState(): NotebookState {
@@ -52,37 +50,6 @@ export function createWelcomeTab(): NotebookTab {
   }
 }
 
-function chatNotebookState(): NotebookState {
-  return {
-    title: 'AI Chat',
-    cells: [],
-    selectedId: null,
-    executionCounter: 0,
-    kernelStatus: 'ready',
-    kernelInit: {
-      phase: 'ready',
-      message: 'AI Chat tab does not use a kernel',
-      progressPercent: 100,
-      startedAtMs: null,
-      errorSummary: null,
-      errorDetail: null,
-    },
-  }
-}
-
-/** Workspace tab for multi-turn LLM chat that authors a linked notebook via tools. */
-export function createChatTab(): NotebookTab {
-  const notebook = chatNotebookState()
-  return {
-    id: crypto.randomUUID(),
-    kind: 'chat',
-    notebook,
-    lastSavedJson: serializeNotebookToIpynbJson(notebook),
-    kvNotebookId: null,
-    linkedNotebookTabId: null,
-  }
-}
-
 export interface WorkspaceState {
   tabs: NotebookTab[]
   activeTabId: string
@@ -107,11 +74,6 @@ export type WorkspaceAction =
       tabId: string
       lastSavedJson?: string
       kvNotebookId?: string | null
-    }
-  | {
-      type: 'SET_CHAT_LINK'
-      chatTabId: string
-      linkedNotebookTabId: string | null
     }
 
 export function createEmptyTab(): NotebookTab {
@@ -210,18 +172,6 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
         ...cur,
         lastSavedJson: action.lastSavedJson ?? cur.lastSavedJson,
         kvNotebookId: action.kvNotebookId !== undefined ? action.kvNotebookId : cur.kvNotebookId,
-      }
-      return { ...state, tabs: nextTabs }
-    }
-
-    case 'SET_CHAT_LINK': {
-      const idx = state.tabs.findIndex((t) => t.id === action.chatTabId)
-      if (idx === -1) return state
-      if (state.tabs[idx].kind !== 'chat') return state
-      const nextTabs = [...state.tabs]
-      nextTabs[idx] = {
-        ...state.tabs[idx],
-        linkedNotebookTabId: action.linkedNotebookTabId,
       }
       return { ...state, tabs: nextTabs }
     }
