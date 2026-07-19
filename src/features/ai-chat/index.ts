@@ -18,4 +18,5 @@ export {
   type ChatToolSummarizer,
   type ChatUiMessage,
 } from '@features/ai-chat/toolLoop'
+export { useAiChatSession } from '@features/ai-chat/hooks/useAiChatSession'
 export { AiChatTab } from '@features/ai-chat/ui/AiChatTab'
