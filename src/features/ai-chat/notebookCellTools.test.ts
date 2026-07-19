@@ -7,16 +7,22 @@ import {
 } from '@features/notebook/reducer/tabWorkspace'
 import { executeNotebookTool, syncWorkspaceDispatch } from '@features/ai-chat/notebookCellTools'
 
+/** Mirrors production: sync wrapper updates ref immediately; React applies the same action separately. */
 function hostWithChat() {
-  let state: WorkspaceState = createInitialWorkspace()
+  let reactState: WorkspaceState = createInitialWorkspace()
   const chat = createChatTab()
-  state = tabWorkspaceReducer(state, { type: 'ADD_TAB', tab: chat })
-  const workspaceRef = { current: state }
+  reactState = tabWorkspaceReducer(reactState, { type: 'ADD_TAB', tab: chat })
+  const workspaceRef = { current: reactState }
   const dispatch = syncWorkspaceDispatch(workspaceRef, (action) => {
-    state = tabWorkspaceReducer(state, action)
-    workspaceRef.current = state
+    reactState = tabWorkspaceReducer(reactState, action)
   })
-  return { workspaceRef, dispatch, chatTabId: chat.id, getState: () => workspaceRef.current }
+  return {
+    workspaceRef,
+    dispatch,
+    chatTabId: chat.id,
+    getState: () => workspaceRef.current,
+    getReactState: () => reactState,
+  }
 }
 
 describe('executeNotebookTool', () => {
@@ -59,6 +65,32 @@ describe('executeNotebookTool', () => {
     const src = nb?.notebook.cells.find((c) => c.id === result.cellId)?.source ?? ''
     expect(src).toMatch(/^%%cribl_search/)
     expect(src).toContain('limit 10')
+  })
+
+  it('keeps React state in sync when adding markdown then code (double-apply)', () => {
+    const host = hostWithChat()
+    executeNotebookTool(host, {
+      id: 'm1',
+      function: {
+        name: 'create_markdown_cell',
+        arguments: JSON.stringify({ source: '# Hits' }),
+      },
+    })
+    executeNotebookTool(host, {
+      id: 'p1',
+      function: {
+        name: 'create_python_cell',
+        arguments: JSON.stringify({ source: 'print(df)' }),
+      },
+    })
+    const chat = host.getState().tabs.find((t) => t.id === host.chatTabId)
+    const refNb = host.getState().tabs.find((t) => t.id === chat?.linkedNotebookTabId)?.notebook
+    const reactNb = host.getReactState().tabs.find((t) => t.id === chat?.linkedNotebookTabId)?.notebook
+    expect(reactNb?.cells.map((c) => ({ id: c.id, source: c.source }))).toEqual(
+      refNb?.cells.map((c) => ({ id: c.id, source: c.source })),
+    )
+    expect(reactNb?.cells.some((c) => c.source.includes('# Hits'))).toBe(true)
+    expect(reactNb?.cells.some((c) => c.source.includes('print(df)'))).toBe(true)
   })
 
   it('rejects invalid api path', () => {

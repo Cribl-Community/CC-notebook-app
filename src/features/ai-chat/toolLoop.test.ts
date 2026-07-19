@@ -16,9 +16,9 @@ describe('runChatToolLoop', () => {
     const chatTab = createChatTab()
     state = tabWorkspaceReducer(state, { type: 'ADD_TAB', tab: chatTab })
     const workspaceRef = { current: state }
+    // Production shape: React applies the same action on a separate state tree.
     const dispatch = syncWorkspaceDispatch(workspaceRef, (action) => {
       state = tabWorkspaceReducer(state, action)
-      workspaceRef.current = state
     })
 
     let turn = 0

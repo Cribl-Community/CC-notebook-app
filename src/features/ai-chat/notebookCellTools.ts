@@ -20,6 +20,9 @@ export type NotebookToolHost = {
 /**
  * Wrap workspace dispatch so {@link workspaceRef} stays in sync during a synchronous
  * tool loop (React only mirrors state into the ref after paint).
+ *
+ * Actions must be deterministic when applied twice (ref + React). Prefer stable
+ * ids on `ADD_CELL` (`id` + `source`) so UUID generation does not diverge.
  */
 export function syncWorkspaceDispatch(
   workspaceRef: MutableRefObject<WorkspaceState>,
@@ -76,18 +79,14 @@ function appendCell(
     return { cellId, index: 0 }
   }
 
+  // Stable id+source so syncWorkspaceDispatch (ref + React) applies identically.
+  // Without this, ADD_CELL generates a new UUID per reducer call and UPDATE_SOURCE
+  // targets the ref-only id, leaving React cells empty.
+  const cellId = crypto.randomUUID()
   host.dispatch({
     type: 'TAB_NOTEBOOK',
     tabId: notebookTabId,
-    action: { type: 'ADD_CELL', cellType },
-  })
-  const nb = host.workspaceRef.current.tabs.find((t) => t.id === notebookTabId)
-  const cellId = nb?.notebook.selectedId
-  if (!cellId) throw new Error('Failed to create cell.')
-  host.dispatch({
-    type: 'TAB_NOTEBOOK',
-    tabId: notebookTabId,
-    action: { type: 'UPDATE_SOURCE', id: cellId, source },
+    action: { type: 'ADD_CELL', cellType, id: cellId, source },
   })
   // Exit markdown edit mode for readability when opening later
   if (cellType === 'markdown') {

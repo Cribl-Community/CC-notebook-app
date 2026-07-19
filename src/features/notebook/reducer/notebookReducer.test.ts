@@ -259,6 +259,23 @@ describe('notebookReducer ADD_CELL', () => {
     expect(added?.cell_type).toBe('code')
     expect(state.selectedId).toBe(added?.id)
   })
+
+  it('uses stable id and source when provided (double-apply safe)', () => {
+    const cells = createEmptyNotebookCells()
+    let state = readyStateFromCells(cells)
+    const action = {
+      type: 'ADD_CELL' as const,
+      cellType: 'code' as const,
+      id: 'fixed-cell-id',
+      source: 'print(1)',
+    }
+    const a = notebookReducer(state, action)
+    const b = notebookReducer(state, action)
+    expect(a.cells[1]?.id).toBe('fixed-cell-id')
+    expect(a.cells[1]?.source).toBe('print(1)')
+    expect(b.cells[1]?.id).toBe(a.cells[1]?.id)
+    expect(b.cells[1]?.source).toBe(a.cells[1]?.source)
+  })
 })
 
 describe('notebookReducer kernel init lifecycle', () => {
