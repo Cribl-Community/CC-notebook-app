@@ -190,7 +190,8 @@ The exact nesting lives in [`src/App.tsx`](../src/App.tsx). Per-tab widget state
   in `ui/editor/`.
 - `cribl-api/` — `%%cribl_api` cell magic: OpenAPI-backed path completion,
   HTTP execution, and integration with notebook Jinja helpers.
-- `ai-riptide/` — Cribl Riptide integration.
+- `ai-riptide/` — Cribl Riptide integration (one-shot Python generate / fix).
+- `ai-chat/` — AI Chat left-panel mode; multi-turn `open_investigator` with client tools that insert cells into the active notebook (or create one).
   - `riptideService.ts` — raw request/response helpers.
   - `app/riptideAiCodeAdapter.ts` — `riptideAiCodeService` implementing the
     `AiCodeService` port (and reporting `isAvailable()` based on the
@@ -340,7 +341,8 @@ is split across focused modules under `features/notebook/hooks/` so
 | Tab chrome (close / select / new / download) | `useNotebookPageTabChrome.ts` |
 
 Cross-feature imports should use each slice’s `index.ts` barrel (`@features/library`,
-`@features/welcome`, `@features/examples`, `@features/cribl-search`, `@features/ai-riptide`)
+`@features/welcome`, `@features/examples`, `@features/cribl-search`, `@features/ai-riptide`,
+`@features/ai-chat`)
 instead of deep paths into another feature’s `ui/` or `hooks/` folders. ESLint also
 discourages deep `@features/<slice>/...` imports from `src/app/` and `src/ui/` so
 composition and shared editor code stay coupled to public surfaces only.

@@ -3,7 +3,12 @@ import type { Dispatch, MutableRefObject } from 'react'
 import type { CellId, NotebookState } from '@features/notebook/model/types'
 import { createDefaultCellExecutors } from '@features/notebook/executor/executorRegistry'
 import { RunQueueAbortedError } from '@features/notebook/executor/runQueueAbort'
-import type { WorkspaceAction, WorkspaceState, NotebookTab } from '@features/notebook/reducer/tabWorkspace'
+import {
+  isNotebookTabKind,
+  type WorkspaceAction,
+  type WorkspaceState,
+  type NotebookTab,
+} from '@features/notebook/reducer/tabWorkspace'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
 import { useEnv, useLookupService, useSearchService } from '@app/providers'
 import { runQueuedNotebookCell } from '@features/notebook/hooks/cellRunnerQueue'
@@ -62,7 +67,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
     (id: CellId, runAllBatch?: number) => {
       const tid = activeTabIdRef.current
       const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-      if (!tab || tab.kind === 'welcome') return
+      if (!tab || !isNotebookTabKind(tab.kind)) return
       const kernel = runtime.kernelFor(tid)
       if (!kernel) return
 
@@ -109,7 +114,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
       runCell(id)
       const tid = activeTabIdRef.current
       const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-      if (!tab || tab.kind === 'welcome') return
+      if (!tab || !isNotebookTabKind(tab.kind)) return
       const cells = tab.notebook.cells
       if (cellIndex < cells.length - 1) {
         dispatch({
@@ -131,7 +136,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
   const runAll = useCallback(() => {
     const tid = activeTabIdRef.current
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-    if (!tab || tab.kind === 'welcome') return
+    if (!tab || !isNotebookTabKind(tab.kind)) return
     const batchId = runtime.beginRunAllBatch(tid)
     tab.notebook.cells
       .filter((c) => c.cell_type === 'code')
@@ -141,14 +146,14 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
   const restartKernel = useCallback(() => {
     const tid = activeTabIdRef.current
     const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-    if (tab?.kind === 'welcome') return
+    if (tab && !isNotebookTabKind(tab.kind)) return
     runtime.restartKernelForTab(tid)
   }, [runtime, workspaceRef, activeTabIdRef])
 
   const stopExecution = useCallback(() => {
     const tid = activeTabIdRef.current
     const tab0 = workspaceRef.current.tabs.find((t) => t.id === tid)
-    if (tab0?.kind === 'welcome') return
+    if (tab0 && !isNotebookTabKind(tab0.kind)) return
     runtime.bumpGeneration(tid)
     runtime.scheduledSetOf(tid).clear()
     dispatch({ type: 'TAB_NOTEBOOK', tabId: tid, action: { type: 'CLEAR_ALL_PENDING' } })
@@ -184,7 +189,7 @@ export function useCellRunner(args: UseCellRunnerArgs): CellRunnerController {
   }, [runtime, workspaceRef, activeTabIdRef, dispatch])
 
   const canStopExecution = useMemo(() => {
-    if (!activeTab || activeTab.kind === 'welcome') return false
+    if (!activeTab || !isNotebookTabKind(activeTab.kind)) return false
     if (!state) return false
     if (state.kernelStatus === 'loading' || state.kernelStatus === 'error') return false
     if (state.kernelStatus === 'busy') return true

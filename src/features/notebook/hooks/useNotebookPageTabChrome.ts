@@ -1,10 +1,15 @@
 import { useCallback } from 'react'
 import type { Dispatch } from 'react'
 import { serializeNotebookToIpynbJson, titleToDownloadFilename } from '@features/notebook/codec/ipynb'
-import { tabIsDirty } from '@features/notebook/reducer/tabWorkspace'
+import {
+  isNotebookTabKind,
+  tabIsDirty,
+  type NotebookTab,
+  type WorkspaceAction,
+  type WorkspaceState,
+} from '@features/notebook/reducer/tabWorkspace'
 import type { NotebookState } from '@features/notebook/model/types'
 import type { MutableRefObject } from 'react'
-import type { NotebookTab, WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 
 export interface UseNotebookPageTabChromeArgs {
   workspaceRef: MutableRefObject<WorkspaceState>
@@ -18,7 +23,7 @@ export function useNotebookPageTabChrome(args: UseNotebookPageTabChromeArgs) {
   const { workspaceRef, dispatch, showConfirm, activeTab, state } = args
 
   const handleDownload = useCallback(() => {
-    if (!state || activeTab?.kind === 'welcome') return
+    if (!state || !activeTab || !isNotebookTabKind(activeTab.kind)) return
     const json = serializeNotebookToIpynbJson(state)
     const blob = new Blob([json], { type: 'application/x-ipynb+json' })
     const url = URL.createObjectURL(blob)

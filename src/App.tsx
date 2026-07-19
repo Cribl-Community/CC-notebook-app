@@ -1,5 +1,6 @@
 import { NotebookPage } from '@features/notebook/ui/NotebookPage'
 import {
+  AiChatProvider,
   AiCodeProvider,
   DialogProvider,
   EnvProvider,
@@ -15,17 +16,19 @@ export default function App() {
     <EnvProvider>
       <ThemeProvider>
         <AiCodeProvider>
-          <DialogProvider>
-            <SearchProvider>
-              <LookupProvider>
-                <NotebookRepoProvider>
-                  <KernelProvider>
-                    <NotebookPage />
-                  </KernelProvider>
-                </NotebookRepoProvider>
-              </LookupProvider>
-            </SearchProvider>
-          </DialogProvider>
+          <AiChatProvider>
+            <DialogProvider>
+              <SearchProvider>
+                <LookupProvider>
+                  <NotebookRepoProvider>
+                    <KernelProvider>
+                      <NotebookPage />
+                    </KernelProvider>
+                  </NotebookRepoProvider>
+                </LookupProvider>
+              </SearchProvider>
+            </DialogProvider>
+          </AiChatProvider>
         </AiCodeProvider>
       </ThemeProvider>
     </EnvProvider>

@@ -28,6 +28,10 @@ vi.mock('@app/providers', () => ({
     generatePythonFromPrompt: vi.fn(),
     suggestErrorFix: vi.fn(),
   }),
+  useAiChatService: () => ({
+    isAvailable: () => false,
+    runAgentTurn: vi.fn(),
+  }),
   useEnv: () => ({ apiBase: '', isCriblHosted: false, isKvMock: true, staticAssetPrefix: '/' }),
   useSearchService: () => ({
     runSearch: vi.fn(),
@@ -120,6 +124,9 @@ vi.mock('@features/notebook/ui/NotebookTabs', () => ({
 }))
 vi.mock('@features/welcome/WelcomePage', () => ({
   WelcomePage: () => <div data-testid="welcome" />,
+}))
+vi.mock('@features/ai-chat', () => ({
+  AiChatTab: () => <div data-testid="ai-chat" />,
 }))
 
 describe('NotebookPage kernel banner', () => {

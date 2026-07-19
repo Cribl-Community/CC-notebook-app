@@ -6,7 +6,7 @@ import { filterPyodidePackageChatter } from '@features/cribl-search'
 import { formatGeneratedPythonSource } from '@features/ai-riptide'
 import { runRiptidePromptJinjaInKernel } from '@features/notebook/jinjaInKernel'
 import { looksLikeJinjaTemplate } from '@features/notebook/jinjaTemplateHeuristic'
-import type { WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
+import { isNotebookTabKind, type WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 import type { TabRuntimeController } from '@features/notebook/hooks/useTabNotebookRuntime'
 
 export interface UseNotebookPageAiGenerateArgs {
@@ -38,7 +38,7 @@ export function useNotebookPageAiGenerate(args: UseNotebookPageAiGenerateArgs) {
         if (looksLikeJinjaTemplate(trimmed)) {
           const tid = activeTabIdRef.current
           const tab = workspaceRef.current.tabs.find((t) => t.id === tid)
-          if (!tab || tab.kind === 'welcome') {
+          if (!tab || !isNotebookTabKind(tab.kind)) {
             showAlert('Open a notebook tab to use Jinja in the Riptide prompt.')
             return
           }

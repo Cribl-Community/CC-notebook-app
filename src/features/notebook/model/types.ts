@@ -91,7 +91,15 @@ export interface NotebookState {
  * move up/down, toggle markdown edit) plus source edits.
  */
 export type CellStructureAction =
-  | { type: 'ADD_CELL'; afterId?: CellId; cellType?: 'code' | 'markdown' }
+  | {
+      type: 'ADD_CELL'
+      afterId?: CellId
+      cellType?: 'code' | 'markdown'
+      /** When set, reducer uses this id (required for double-apply / synced ref+React dispatch). */
+      id?: CellId
+      /** Optional initial source for the new cell. */
+      source?: string
+    }
   | { type: 'DELETE_CELL'; id: CellId }
   | { type: 'DUPLICATE_CELL'; id: CellId }
   | { type: 'MOVE_CELL'; id: CellId; direction: 'up' | 'down' }

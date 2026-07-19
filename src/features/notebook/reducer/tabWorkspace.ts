@@ -3,7 +3,12 @@ import type { Cell, NotebookAction, NotebookState } from '@features/notebook/mod
 import { serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
 import { applyExampleDefaultCodeFold } from '@features/notebook/codeCellFold'
 
-export type TabKind = 'welcome' | 'notebook'
+export type TabKind = 'welcome' | 'notebook' | 'chat'
+
+/** True for tabs that own a runnable notebook + Pyodide kernel. */
+export function isNotebookTabKind(kind: TabKind): kind is 'notebook' {
+  return kind === 'notebook'
+}
 
 /** One open notebook in the workspace; each tab has its own Pyodide kernel in the UI layer. */
 export interface NotebookTab {
@@ -14,6 +19,8 @@ export interface NotebookTab {
   lastSavedJson: string
   /** Cribl KV manifest entry id when this tab is linked to a saved notebook. */
   kvNotebookId: string | null
+  /** Chat tabs only: notebook tab that AI cell tools write into. */
+  linkedNotebookTabId?: string | null
 }
 
 function welcomeNotebookState(): NotebookState {
@@ -45,6 +52,37 @@ export function createWelcomeTab(): NotebookTab {
   }
 }
 
+function chatNotebookState(): NotebookState {
+  return {
+    title: 'AI Chat',
+    cells: [],
+    selectedId: null,
+    executionCounter: 0,
+    kernelStatus: 'ready',
+    kernelInit: {
+      phase: 'ready',
+      message: 'AI Chat tab does not use a kernel',
+      progressPercent: 100,
+      startedAtMs: null,
+      errorSummary: null,
+      errorDetail: null,
+    },
+  }
+}
+
+/** Workspace tab for multi-turn LLM chat that authors a linked notebook via tools. */
+export function createChatTab(): NotebookTab {
+  const notebook = chatNotebookState()
+  return {
+    id: crypto.randomUUID(),
+    kind: 'chat',
+    notebook,
+    lastSavedJson: serializeNotebookToIpynbJson(notebook),
+    kvNotebookId: null,
+    linkedNotebookTabId: null,
+  }
+}
+
 export interface WorkspaceState {
   tabs: NotebookTab[]
   activeTabId: string
@@ -70,6 +108,11 @@ export type WorkspaceAction =
       lastSavedJson?: string
       kvNotebookId?: string | null
     }
+  | {
+      type: 'SET_CHAT_LINK'
+      chatTabId: string
+      linkedNotebookTabId: string | null
+    }
 
 export function createEmptyTab(): NotebookTab {
   const notebook: NotebookState = { ...initialState, cells: createEmptyNotebookCells() }
@@ -83,7 +126,7 @@ export function createEmptyTab(): NotebookTab {
 }
 
 export function tabIsDirty(tab: NotebookTab): boolean {
-  if (tab.kind === 'welcome') return false
+  if (!isNotebookTabKind(tab.kind)) return false
   return serializeNotebookToIpynbJson(tab.notebook) !== tab.lastSavedJson
 }
 
@@ -126,7 +169,7 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
     case 'TAB_NOTEBOOK': {
       const idx = state.tabs.findIndex((t) => t.id === action.tabId)
       if (idx === -1) return state
-      if (state.tabs[idx].kind === 'welcome') return state
+      if (!isNotebookTabKind(state.tabs[idx].kind)) return state
       const nextNotebook = notebookReducer(state.tabs[idx].notebook, action.action)
       const nextTabs = [...state.tabs]
       nextTabs[idx] = { ...state.tabs[idx], notebook: nextNotebook }
@@ -136,7 +179,7 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
     case 'REPLACE_TAB_CONTENT': {
       const idx = state.tabs.findIndex((t) => t.id === action.tabId)
       if (idx === -1) return state
-      if (state.tabs[idx].kind === 'welcome') return state
+      if (!isNotebookTabKind(state.tabs[idx].kind)) return state
       let cells = action.cells.length > 0 ? action.cells : createEmptyNotebookCells()
       if (action.collapseLongCodeCellsOnOpen) {
         cells = applyExampleDefaultCodeFold(cells)
@@ -160,13 +203,25 @@ export function tabWorkspaceReducer(state: WorkspaceState, action: WorkspaceActi
     case 'SET_TAB_META': {
       const idx = state.tabs.findIndex((t) => t.id === action.tabId)
       if (idx === -1) return state
-      if (state.tabs[idx].kind === 'welcome') return state
+      if (!isNotebookTabKind(state.tabs[idx].kind)) return state
       const nextTabs = [...state.tabs]
       const cur = state.tabs[idx]
       nextTabs[idx] = {
         ...cur,
         lastSavedJson: action.lastSavedJson ?? cur.lastSavedJson,
         kvNotebookId: action.kvNotebookId !== undefined ? action.kvNotebookId : cur.kvNotebookId,
+      }
+      return { ...state, tabs: nextTabs }
+    }
+
+    case 'SET_CHAT_LINK': {
+      const idx = state.tabs.findIndex((t) => t.id === action.chatTabId)
+      if (idx === -1) return state
+      if (state.tabs[idx].kind !== 'chat') return state
+      const nextTabs = [...state.tabs]
+      nextTabs[idx] = {
+        ...state.tabs[idx],
+        linkedNotebookTabId: action.linkedNotebookTabId,
       }
       return { ...state, tabs: nextTabs }
     }

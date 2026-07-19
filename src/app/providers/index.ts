@@ -1,4 +1,5 @@
 export { AiCodeProvider, useAiCodeService } from './AiCodeProvider'
+export { AiChatProvider, useAiChatService } from './AiChatProvider'
 export { DialogProvider, useDialogs } from './DialogProvider'
 export { EnvProvider, useEnv } from './EnvProvider'
 export {

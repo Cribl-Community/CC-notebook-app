@@ -159,7 +159,7 @@ export function NotebookSidebar({
   const showTableHead = items.length > 0
 
   return (
-    <aside className="nb-sidebar" aria-label="Saved notebooks">
+    <aside className="nb-sidebar nb-sidebar--embedded" aria-label="Saved notebooks">
       <div className="nb-sidebar-header">
         <span className="nb-sidebar-title">Notebooks</span>
         <IconButton

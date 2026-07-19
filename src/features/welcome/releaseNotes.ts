@@ -11,6 +11,13 @@ export type ReleaseEntry = {
 
 export const RELEASE_NOTES: ReleaseEntry[] = [
   {
+    version: '1.5.0',
+    date: '2026-07-19',
+    highlights: [
+      'AI: **AI Chat** left-panel mode (vertical tab beside Notebooks; resizable / show-hide via toolbar) uses Cribl `open_investigator` with client tools that insert cells into the open notebook after the selection — markdown, Python, `%%cribl_search`, `%%cribl_api`, and lookup magic cells.',
+    ],
+  },
+  {
     version: '1.4.5',
     date: '2026-07-19',
     highlights: [

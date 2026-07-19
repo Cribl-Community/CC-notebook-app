@@ -2,22 +2,22 @@ import type { NotebookState, NotebookAction, CodeCell, MarkdownCell, Cell } from
 import { isLongCodeCellForDefaultFold } from '@features/notebook/codeCellFold'
 import { applyIOPub } from '@/domain/iopubOutputArea'
 
-function makeCodeCell(): CodeCell {
+function makeCodeCell(id?: string, source = ''): CodeCell {
   return {
-    id: crypto.randomUUID(),
+    id: id ?? crypto.randomUUID(),
     cell_type: 'code',
-    source: '',
+    source,
     outputs: [],
     execution_count: null,
     execution_state: 'idle',
   }
 }
 
-function makeMarkdownCell(): MarkdownCell {
+function makeMarkdownCell(id?: string, source = ''): MarkdownCell {
   return {
-    id: crypto.randomUUID(),
+    id: id ?? crypto.randomUUID(),
     cell_type: 'markdown',
-    source: '',
+    source,
     editing: true,
   }
 }
@@ -63,7 +63,9 @@ export function notebookReducer(state: NotebookState, action: NotebookAction): N
   switch (action.type) {
     case 'ADD_CELL': {
       const newCell: Cell =
-        action.cellType === 'markdown' ? makeMarkdownCell() : makeCodeCell()
+        action.cellType === 'markdown'
+          ? makeMarkdownCell(action.id, action.source ?? '')
+          : makeCodeCell(action.id, action.source ?? '')
       if (!action.afterId) {
         return { ...state, cells: [...state.cells, newCell], selectedId: newCell.id }
       }

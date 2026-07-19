@@ -2,6 +2,13 @@ export type { KernelPort, KernelFactory, CompletionItem, IOPubMessage, KernelRes
 export type { NotebookRepo } from './NotebookRepo'
 export type { AiCodeService } from './AiCodeService'
 export type {
+  AiAgentChatService,
+  AgentChatMessage,
+  AgentToolCall,
+  AgentTurnResult,
+  CriblAgentToolDef,
+} from './AiAgentChatService'
+export type {
   SearchService,
   SearchRunOptions,
   CriblSearchJobResult,

@@ -1,7 +1,11 @@
 import type { Dispatch, MutableRefObject } from 'react'
 import { createEmptyNotebookCells, initialState } from '@features/notebook/reducer/notebookReducer'
 import { parseIpynbJson, serializeNotebookToIpynbJson } from '@features/notebook/codec/ipynb'
-import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
+import {
+  isNotebookTabKind,
+  type WorkspaceAction,
+  type WorkspaceState,
+} from '@features/notebook/reducer/tabWorkspace'
 import {
   createNotebookWithPayload,
   deleteNotebookPayloads,
@@ -51,7 +55,7 @@ export async function saveCurrentTabNotebook(args: {
     showAlert,
   } = args
   const tab0 = workspaceRef.current.tabs.find((t) => t.id === tabId)
-  if (!tab0 || tab0.kind === 'welcome') return
+  if (!tab0 || !isNotebookTabKind(tab0.kind)) return
   try {
     assertNotebookPersistable(tab0.notebook)
     if (tab0.kvNotebookId) {

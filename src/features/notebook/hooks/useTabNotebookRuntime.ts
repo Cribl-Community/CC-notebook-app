@@ -3,7 +3,11 @@ import type { Dispatch, MutableRefObject } from 'react'
 import type { KernelFactory, KernelPort } from '@ports/KernelPort'
 import { useOptionalKernelFactory } from '@app/providers'
 import type { CellId } from '@features/notebook/model/types'
-import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
+import {
+  isNotebookTabKind,
+  type WorkspaceAction,
+  type WorkspaceState,
+} from '@features/notebook/reducer/tabWorkspace'
 import type { NotebookWidgetManager } from '@features/notebook/widgets/notebookWidgetManager'
 
 /**
@@ -238,7 +242,7 @@ export function useTabNotebookRuntime(
       if (!ids.has(id)) disposeTab(id)
     }
     for (const tab of tabs) {
-      if (tab.kind === 'welcome') continue
+      if (!isNotebookTabKind(tab.kind)) continue
       if (!runtimesRef.current.get(tab.id)?.kernel) {
         initKernelForTab(tab.id)
       }
