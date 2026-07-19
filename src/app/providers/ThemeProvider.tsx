@@ -7,6 +7,7 @@ import {
   LEGACY_THEME_STORAGE_KEY,
   applyCapraThemeClass,
   codeMirrorLumaForMode,
+  isCapraThemeMode,
   type CapraThemeMode,
   type CodeMirrorLuma,
   migrateStoredTheme,
@@ -53,7 +54,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   }, [themeMode])
 
-  const setThemeMode = useCallback((mode: CapraThemeMode) => setThemeModeState(mode), [])
+  const setThemeMode = useCallback((mode: CapraThemeMode) => {
+    if (!isCapraThemeMode(mode)) return
+    setThemeModeState(mode)
+  }, [])
 
   const toggleThemeMode = useCallback(() => {
     setThemeModeState((prev) => (prev === 'light' ? 'dark' : 'light'))
