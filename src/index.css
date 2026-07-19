@@ -1,8 +1,7 @@
 /*
- * App layout + component structure. Per-notebook **visual styles** (colors,
- * surfaces, code tokens) live in `nb-palettes.css` and are keyed by
- * `data-nb-style` on the root element (see `src/app/styles/nbStyles.ts`).
- * Code cells: `--nb-cm-*` + `--mono` follow the active palette.
+ * App layout + component structure. Capra light/dark owns color surfaces via
+ * `@capra/theme` + the notebook token bridge (`capra-nb-bridge.css`).
+ * Code cells: `--nb-cm-*` + `--mono` follow Capra mode.
  */
 
 :root {
@@ -2210,24 +2209,19 @@ body {
 
 /* ─── Style selector (notebook visual theme) ───────────────────── */
 
-.nb-style-select {
-  min-width: 8.5rem;
-  max-width: 14rem;
-  background: var(--nb-bg-toolbar);
-  border: 1px solid var(--nb-border);
-  border-radius: 4px;
+.nb-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--nb-text-muted);
-  cursor: pointer;
   font-family: var(--nb-ui-font);
-  font-size: 11px;
-  padding: 3px 6px;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  font-size: var(--nb-text-ui-xs);
+  cursor: pointer;
+  user-select: none;
 }
 
-.nb-style-select:hover {
-  background: var(--nb-bg-hover);
-  border-color: var(--nb-border-hover);
-  color: var(--nb-text);
+.nb-theme-toggle-label {
+  line-height: 1;
 }
 
 /* ─── Cribl Search cell output ─────────────────────────────────── */

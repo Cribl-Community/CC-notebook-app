@@ -1,9 +1,10 @@
 import { useRef } from 'react'
-import { NOTEBOOK_STYLES, type AppStyleId } from '@app/providers'
+import { Switch } from '@capra/core'
+import type { CapraThemeMode } from '@app/providers'
 import type { KernelStatus } from '@features/notebook/model/types'
 
 interface ToolbarProps {
-  /** Welcome tab: style only; notebook actions hidden. */
+  /** Welcome tab: theme toggle only; notebook actions hidden. */
   variant?: 'notebook' | 'welcome'
   kernelStatus: KernelStatus
   title: string
@@ -21,8 +22,8 @@ interface ToolbarProps {
   onStop: () => void
   stopEnabled: boolean
   onRestart: () => void
-  appStyle: AppStyleId
-  onAppStyleChange: (s: AppStyleId) => void
+  themeMode: CapraThemeMode
+  onThemeModeChange: (mode: CapraThemeMode) => void
 }
 
 function KernelIndicator({ status }: { status: KernelStatus }) {
@@ -68,8 +69,8 @@ export function Toolbar({
   onStop,
   stopEnabled,
   onRestart,
-  appStyle,
-  onAppStyleChange,
+  themeMode,
+  onThemeModeChange,
 }: ToolbarProps) {
   const fileRef = useRef<HTMLInputElement>(null)
   const busy = kernelStatus === 'busy' || kernelStatus === 'loading'
@@ -173,19 +174,16 @@ export function Toolbar({
             <div className="nb-toolbar-divider" />
           </>
         )}
-        <select
-          className="nb-style-select"
-          value={appStyle}
-          onChange={(e) => onAppStyleChange(e.target.value as AppStyleId)}
-          title="Notebook color style"
-          aria-label="Notebook color style"
-        >
-          {NOTEBOOK_STYLES.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        <label className="nb-theme-toggle">
+          <span className="nb-theme-toggle-label">Dark</span>
+          <Switch
+            size="sm"
+            checked={themeMode === 'dark'}
+            onChange={(e) => onThemeModeChange(e.target.checked ? 'dark' : 'light')}
+            aria-label="Dark mode"
+            title="Toggle Capra dark mode"
+          />
+        </label>
       </div>
       {!welcome && <KernelIndicator status={kernelStatus} />}
     </div>

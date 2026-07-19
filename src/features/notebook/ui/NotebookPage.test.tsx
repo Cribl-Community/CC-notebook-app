@@ -16,7 +16,12 @@ let currentKernelInit: NotebookState['kernelInit'] = {
 }
 
 vi.mock('@app/providers', () => ({
-  useTheme: () => ({ appStyle: 'default', setAppStyle: vi.fn(), codeMirrorLuma: false }),
+  useTheme: () => ({
+    themeMode: 'light',
+    setThemeMode: vi.fn(),
+    codeMirrorLuma: 'light',
+    toggleThemeMode: vi.fn(),
+  }),
   useDialogs: () => ({ alert: vi.fn(), confirm: vi.fn().mockResolvedValue(true), prompt: vi.fn() }),
   useAiCodeService: () => ({
     isAvailable: () => false,

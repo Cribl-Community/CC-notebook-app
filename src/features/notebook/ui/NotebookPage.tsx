@@ -21,7 +21,7 @@ import {
 } from '@app/criblSearchNotebookImport'
 
 export function NotebookPage() {
-  const { appStyle, setAppStyle, codeMirrorLuma } = useTheme()
+  const { themeMode, setThemeMode, codeMirrorLuma } = useTheme()
   const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useDialogs()
 
   const {
@@ -214,8 +214,8 @@ export function NotebookPage() {
                         onStop={stopExecution}
                         stopEnabled={canStopExecution}
                         onRestart={restartKernel}
-                        appStyle={appStyle}
-                        onAppStyleChange={setAppStyle}
+                        themeMode={themeMode}
+                        onThemeModeChange={setThemeMode}
                       />
                     </div>
                     {isWelcome ? (
