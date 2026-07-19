@@ -1,6 +1,32 @@
-export const AI_RIPTIDE_AGENT_PATH = '/ai/q/agents/riptide' as const
+/**
+ * Hosted agent used for notebook Python generation / error fixes.
+ *
+ * Cribl renamed the former Search Copilot Investigation agent `riptide` → `local_search`
+ * (Jan 2026). That agent is Search-investigation-oriented (built-in KQL tools). Notebook
+ * code-gen sends no client tools and needs a text reply, so we call `open_investigator`
+ * (registered agent for external clients with caller-supplied tools/context).
+ */
+export const AI_RIPTIDE_AGENT_PATH = '/ai/q/agents/open_investigator' as const
 export const AI_RIPTIDE_TIMEOUT_MS = 28_000
 export const AI_RIPTIDE_FIX_TIMEOUT_MS = 20_000
+
+function formatRiptideHttpError(status: number, body: string, statusText: string): Error {
+  const raw = body || statusText
+  let reason = ''
+  try {
+    const parsed = JSON.parse(body) as { reason?: unknown }
+    if (typeof parsed.reason === 'string') reason = parsed.reason
+  } catch {
+    /* keep raw body */
+  }
+  if (/is not registered/i.test(reason) || /is not registered/i.test(raw)) {
+    return new Error(
+      `AI agent is not available on this Cribl deployment (${reason || raw}). ` +
+        'Notebook code generation needs a registered agent (open_investigator).',
+    )
+  }
+  return new Error(`Riptide request failed (${status}): ${raw}`)
+}
 
 function randomId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -146,7 +172,7 @@ export async function generatePythonFromPrompt(
 
     const body = await res.text()
     if (!res.ok) {
-      throw new Error(`Riptide request failed (${res.status}): ${body || res.statusText}`)
+      throw formatRiptideHttpError(res.status, body, res.statusText)
     }
     const text = parseRiptideNdjsonBody(body)
     const code = extractPythonFromRiptideText(text)
@@ -243,7 +269,7 @@ export async function suggestErrorFix(
 
     const body = await res.text()
     if (!res.ok) {
-      throw new Error(`Riptide request failed (${res.status}): ${body || res.statusText}`)
+      throw formatRiptideHttpError(res.status, body, res.statusText)
     }
     const text = parseRiptideNdjsonBody(body).trim()
     if (!text) {

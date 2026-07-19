@@ -111,6 +111,16 @@ describe('generatePythonFromPrompt', () => {
     await expect(generatePythonFromPrompt('', 'x')).rejects.toThrow(/Riptide request failed \(503\)/)
   })
 
+  it('surfaces a clearer error when the agent is not registered', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ reason: 'Agent riptide is not registered' }), { status: 500 }),
+      ),
+    )
+    await expect(generatePythonFromPrompt('', 'x')).rejects.toThrow(/AI agent is not available/)
+  })
+
   it('throws when no code in response', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ ok: true }), { status: 200 })))
     await expect(generatePythonFromPrompt('', 'x')).rejects.toThrow(/did not return usable Python/)
