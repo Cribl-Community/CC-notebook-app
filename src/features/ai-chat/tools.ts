@@ -3,6 +3,7 @@ import type { CriblAgentToolDef } from '@ports/AiAgentChatService'
 /** System preamble describing notebook cell formats for open_investigator. */
 export const AI_CHAT_SYSTEM_PREAMBLE = `You are an assistant that builds Cribl notebook-app notebooks by calling tools.
 Prefer tools over dumping code in chat. Create cells in a sensible order (intro markdown, then search/api, then Python analysis).
+Insert each new cell after the currently selected cell in the open notebook (cells appear as you call tools).
 
 Magic cell formats (code cells):
 - Search: first line \`%%cribl_search var=df lang=kql dataset=cribl_search_sample earliest=-1h latest=now\` then KQL body (e.g. \`dataset=cribl_search_sample | limit 100\`).
@@ -17,7 +18,7 @@ Plain Python cells have no magic header. Markdown cells are for explanations.`
 export const NOTEBOOK_CELL_TOOLS: CriblAgentToolDef[] = [
   {
     id: 'set_notebook_title',
-    description: 'Set the title of the linked notebook tab.',
+    description: 'Set the title of the open notebook (creates a notebook if none is open).',
     schema: {
       type: 'object',
       properties: {
@@ -28,7 +29,7 @@ export const NOTEBOOK_CELL_TOOLS: CriblAgentToolDef[] = [
   },
   {
     id: 'create_markdown_cell',
-    description: 'Append a markdown cell to the linked notebook.',
+    description: 'Insert a markdown cell after the selected cell in the open notebook.',
     schema: {
       type: 'object',
       properties: {
@@ -39,7 +40,7 @@ export const NOTEBOOK_CELL_TOOLS: CriblAgentToolDef[] = [
   },
   {
     id: 'create_python_cell',
-    description: 'Append a plain Python code cell (no cell magics).',
+    description: 'Insert a plain Python code cell after the selected cell (no cell magics).',
     schema: {
       type: 'object',
       properties: {
@@ -51,7 +52,7 @@ export const NOTEBOOK_CELL_TOOLS: CriblAgentToolDef[] = [
   {
     id: 'create_search_cell',
     description:
-      'Append a %%cribl_search magic code cell. Provide headerParams (space-separated key=value after %%cribl_search) and the query body.',
+      'Insert a %%cribl_search magic code cell after the selected cell. Provide headerParams (space-separated key=value after %%cribl_search) and the query body.',
     schema: {
       type: 'object',
       properties: {
@@ -66,7 +67,7 @@ export const NOTEBOOK_CELL_TOOLS: CriblAgentToolDef[] = [
   },
   {
     id: 'create_api_cell',
-    description: 'Append a %%cribl_api magic code cell.',
+    description: 'Insert a %%cribl_api magic code cell after the selected cell.',
     schema: {
       type: 'object',
       properties: {
@@ -86,7 +87,7 @@ export const NOTEBOOK_CELL_TOOLS: CriblAgentToolDef[] = [
   },
   {
     id: 'create_lookup_cell',
-    description: 'Append a Cribl Search lookup magic cell (save, load, or delete).',
+    description: 'Insert a Cribl Search lookup magic cell (save, load, or delete) after the selected cell.',
     schema: {
       type: 'object',
       properties: {

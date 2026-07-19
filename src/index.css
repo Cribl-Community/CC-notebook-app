@@ -392,6 +392,82 @@ body {
   background: var(--nb-bg-hover);
 }
 
+/* ─── Left column: vertical mode rail + panel ───────────────────── */
+
+.nb-left {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  min-height: 0;
+  align-self: stretch;
+  background: var(--nb-bg-toolbar);
+  border-right: 1px solid var(--nb-border);
+}
+
+.nb-left-rail {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 36px;
+  padding: 6px 0;
+  gap: 4px;
+  border-right: 1px solid var(--nb-border);
+  background: color-mix(in srgb, var(--nb-bg-toolbar) 92%, var(--nb-text) 8%);
+}
+
+.nb-left-rail-tab {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  align-self: stretch;
+  margin: 0;
+  padding: 10px 4px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  color: var(--nb-text-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  text-align: center;
+}
+
+.nb-left-rail-tab:hover {
+  color: var(--nb-text);
+  background: var(--nb-bg-hover);
+}
+
+.nb-left-rail-tab--active {
+  color: var(--nb-text-heading);
+  background: var(--nb-bg-cell);
+  box-shadow: inset 2px 0 0 var(--nb-accent, #3b82f6);
+}
+
+.nb-left-body {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.nb-left-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.nb-left-panel[hidden] {
+  display: none !important;
+}
+
+.nb-left-panel--chat {
+  overflow: hidden;
+}
+
 /* ─── File browser sidebar (Jupyter-inspired) ───────────────────── */
 
 .nb-sidebar {
@@ -403,6 +479,12 @@ body {
   background: var(--nb-bg-toolbar);
   border-right: 1px solid var(--nb-border);
   font-size: 12px;
+}
+
+.nb-sidebar--embedded {
+  width: 100%;
+  border-right: none;
+  flex: 1;
 }
 
 .nb-sidebar-header {
@@ -2842,65 +2924,65 @@ body {
   background: transparent;
 }
 
-/* AI Chat tab */
-.nb-scroll--ai-chat {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
+/* AI Chat (left panel) */
 .nb-ai-chat {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: min(70vh, 640px);
-  max-width: 880px;
-  margin: 0 auto;
-  padding: var(--space-4) var(--space-5) var(--space-6);
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  padding: 8px 10px 10px;
   font-family: var(--nb-ui-font);
   color: var(--nb-text);
   box-sizing: border-box;
+  font-size: 12px;
 }
 
 .nb-ai-chat-header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-shrink: 0;
+}
+
+.nb-ai-chat-title {
+  margin: 0;
 }
 
 .nb-ai-chat-header-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2);
+  gap: 6px;
 }
 
 .nb-ai-chat-unavailable {
-  margin-bottom: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--space-2);
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 4px;
   background: var(--nb-bg-cell-alt);
+  flex-shrink: 0;
 }
 
 .nb-ai-chat-messages {
   flex: 1;
-  min-height: 200px;
+  min-height: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  padding: var(--space-3);
-  margin-bottom: var(--space-4);
-  border-radius: var(--space-2);
+  gap: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
   background: var(--nb-bg-cell-alt);
 }
 
 .nb-ai-chat-bubble {
-  max-width: min(100%, 40rem);
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--space-2);
+  max-width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -2933,15 +3015,17 @@ body {
 .nb-ai-chat-composer {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .nb-ai-chat-input {
   width: 100%;
   box-sizing: border-box;
   resize: vertical;
-  min-height: 4.5rem;
-  padding: var(--space-3);
+  min-height: 3.5rem;
+  max-height: 10rem;
+  padding: 8px;
   border: 1px solid var(--nb-border, color-mix(in srgb, var(--nb-text) 18%, transparent));
   border-radius: var(--space-2);
   background: var(--nb-bg-cell);

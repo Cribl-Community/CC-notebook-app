@@ -14,12 +14,10 @@ import type { AgentChatMessage } from '@ports/AiAgentChatService'
 import type { WorkspaceAction, WorkspaceState } from '@features/notebook/reducer/tabWorkspace'
 
 export type AiChatTabProps = {
-  chatTabId: string
-  linkedNotebookTabId: string | null
-  linkedNotebookTitle: string | null
+  /** Title of the notebook currently receiving cells, if a notebook tab is active. */
+  targetNotebookTitle: string | null
   workspaceRef: MutableRefObject<WorkspaceState>
   dispatch: Dispatch<WorkspaceAction>
-  onOpenLinkedNotebook: () => void
 }
 
 function seedApiMessages(): AgentChatMessage[] {
@@ -39,14 +37,7 @@ function seedApiMessages(): AgentChatMessage[] {
   ]
 }
 
-export function AiChatTab({
-  chatTabId,
-  linkedNotebookTabId,
-  linkedNotebookTitle,
-  workspaceRef,
-  dispatch,
-  onOpenLinkedNotebook,
-}: AiChatTabProps) {
+export function AiChatTab({ targetNotebookTitle, workspaceRef, dispatch }: AiChatTabProps) {
   const chat = useAiChatService()
   const available = chat.isAvailable()
   const [sessionId] = useState(() => newAgentMessageId())
@@ -56,7 +47,7 @@ export function AiChatTab({
       id: 'welcome',
       kind: 'assistant',
       content:
-        'Describe the notebook you want. I can add markdown, Python, %%cribl_search, %%cribl_api, and lookup magic cells.',
+        'Describe the notebook you want. I can add markdown, Python, %%cribl_search, %%cribl_api, and lookup magic cells into the open notebook (or create one).',
     },
   ])
   const [draft, setDraft] = useState('')
@@ -104,11 +95,7 @@ export function AiChatTab({
     abortRef.current = ac
 
     const syncedDispatch = syncWorkspaceDispatch(workspaceRef, dispatch)
-    const toolHost = {
-      workspaceRef,
-      dispatch: syncedDispatch,
-      chatTabId,
-    }
+    const toolHost = { workspaceRef, dispatch: syncedDispatch }
 
     try {
       const result = await runChatToolLoop({
@@ -141,7 +128,7 @@ export function AiChatTab({
           {
             id: newAgentMessageId(),
             kind: 'assistant',
-            content: 'Done — check the linked notebook for new cells.',
+            content: 'Done — new cells are in the notebook.',
           },
         ])
       }
@@ -160,7 +147,7 @@ export function AiChatTab({
       setBusy(false)
       setStreaming('')
     }
-  }, [available, busy, chat, chatTabId, dispatch, draft, sessionId, workspaceRef])
+  }, [available, busy, chat, dispatch, draft, sessionId, workspaceRef])
 
   return (
     <div className="nb-ai-chat" data-testid="ai-chat-tab">
@@ -172,20 +159,12 @@ export function AiChatTab({
             </Text>
           </h2>
           <Text as="p" variant="body-sm-normal" color="subtle">
-            {linkedNotebookTabId
-              ? `Writing to notebook: ${linkedNotebookTitle ?? 'Untitled'}`
-              : 'No linked notebook yet — cells will create one automatically.'}
+            {targetNotebookTitle
+              ? `Editing: ${targetNotebookTitle}`
+              : 'No notebook open — first cell creates one.'}
           </Text>
         </div>
         <div className="nb-ai-chat-header-actions">
-          <Button
-            variant="secondary"
-            size="sm"
-            disabled={!linkedNotebookTabId}
-            onClick={onOpenLinkedNotebook}
-          >
-            Open notebook
-          </Button>
           <Button variant="secondary" size="sm" onClick={clearChat} disabled={busy}>
             Clear
           </Button>
@@ -257,7 +236,7 @@ export function AiChatTab({
           rows={3}
           value={draft}
           disabled={!available || busy}
-          placeholder="e.g. Build a notebook that searches cribl_search_sample and plots top srcaddr by bytes"
+          placeholder="e.g. Search cribl_search_sample and plot top IPs"
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {

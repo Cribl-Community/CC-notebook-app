@@ -1,4 +1,5 @@
 import type { Dispatch, MutableRefObject } from 'react'
+import { flushSync } from 'react-dom'
 import { parseCriblApiMagic } from '@features/cribl-api/criblApiMagic'
 import { parseCriblSearchMagic } from '@features/cribl-search/criblSearchMagic'
 import { parseCriblSearchLookupMagic } from '@features/cribl-search/criblSearchLookupMagic'
@@ -14,13 +15,13 @@ import type { AgentToolCall } from '@ports/AiAgentChatService'
 export type NotebookToolHost = {
   workspaceRef: MutableRefObject<WorkspaceState>
   dispatch: Dispatch<WorkspaceAction>
-  chatTabId: string
 }
 
 /**
  * Wrap workspace dispatch so {@link workspaceRef} stays in sync during a synchronous
  * tool loop (React only mirrors state into the ref after paint).
  *
+ * Uses {@link flushSync} so each tool call paints cells in the open notebook immediately.
  * Actions must be deterministic when applied twice (ref + React). Prefer stable
  * ids on `ADD_CELL` (`id` + `source`) so UUID generation does not diverge.
  */
@@ -30,29 +31,21 @@ export function syncWorkspaceDispatch(
 ): Dispatch<WorkspaceAction> {
   return (action) => {
     workspaceRef.current = tabWorkspaceReducer(workspaceRef.current, action)
-    dispatch(action)
+    flushSync(() => {
+      dispatch(action)
+    })
   }
 }
 
-function ensureLinkedNotebook(host: NotebookToolHost): string {
-  const chat = host.workspaceRef.current.tabs.find((t) => t.id === host.chatTabId)
-  if (!chat || chat.kind !== 'chat') {
-    throw new Error('Chat tab not found.')
-  }
-  const linked = chat.linkedNotebookTabId
-  if (linked) {
-    const nb = host.workspaceRef.current.tabs.find((t) => t.id === linked)
-    if (nb && isNotebookTabKind(nb.kind)) return linked
+/** Active notebook tab, or create and select a new one when Welcome (or other non-notebook) is active. */
+export function ensureTargetNotebook(host: NotebookToolHost): string {
+  const ws = host.workspaceRef.current
+  const active = ws.tabs.find((t) => t.id === ws.activeTabId)
+  if (active && isNotebookTabKind(active.kind)) {
+    return active.id
   }
   const tab = createEmptyTab()
   host.dispatch({ type: 'ADD_TAB', tab })
-  // Keep chat selected — ADD_TAB selects the new notebook; re-select chat.
-  host.dispatch({ type: 'SELECT_TAB', tabId: host.chatTabId })
-  host.dispatch({
-    type: 'SET_CHAT_LINK',
-    chatTabId: host.chatTabId,
-    linkedNotebookTabId: tab.id,
-  })
   return tab.id
 }
 
@@ -63,6 +56,7 @@ function appendCell(
   source: string,
 ): { cellId: string; index: number } {
   const before = host.workspaceRef.current.tabs.find((t) => t.id === notebookTabId)
+  const selectedId = before?.notebook.selectedId ?? null
   const onlyEmptyCode =
     before?.notebook.cells.length === 1 &&
     before.notebook.cells[0]?.cell_type === 'code' &&
@@ -80,13 +74,18 @@ function appendCell(
   }
 
   // Stable id+source so syncWorkspaceDispatch (ref + React) applies identically.
-  // Without this, ADD_CELL generates a new UUID per reducer call and UPDATE_SOURCE
-  // targets the ref-only id, leaving React cells empty.
+  // Insert after the selected cell so successive tools stack below the cursor.
   const cellId = crypto.randomUUID()
   host.dispatch({
     type: 'TAB_NOTEBOOK',
     tabId: notebookTabId,
-    action: { type: 'ADD_CELL', cellType, id: cellId, source },
+    action: {
+      type: 'ADD_CELL',
+      cellType,
+      id: cellId,
+      source,
+      afterId: selectedId ?? undefined,
+    },
   })
   // Exit markdown edit mode for readability when opening later
   if (cellType === 'markdown') {
@@ -137,7 +136,7 @@ function str(v: unknown, fallback = ''): string {
 export function executeNotebookTool(host: NotebookToolHost, call: AgentToolCall): string {
   try {
     const args = parseArgs(call.function.arguments)
-    const notebookTabId = ensureLinkedNotebook(host)
+    const notebookTabId = ensureTargetNotebook(host)
 
     switch (call.function.name) {
       case 'set_notebook_title': {

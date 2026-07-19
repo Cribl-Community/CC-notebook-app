@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Toolbar } from '@features/notebook/ui/Toolbar'
 import { CellList } from '@features/notebook/ui/CellList'
 import { NotebookTabs } from '@features/notebook/ui/NotebookTabs'
 import { NotebookSidebar, useNotebookLibrary } from '@features/library'
-import { tabIsDirty } from '@features/notebook/reducer/tabWorkspace'
+import { isNotebookTabKind, tabIsDirty } from '@features/notebook/reducer/tabWorkspace'
 import { useNotebookWorkspace } from '@features/notebook/hooks/useNotebookWorkspace'
 import { WelcomePage } from '@features/welcome'
 import { AiChatTab } from '@features/ai-chat'
@@ -17,6 +17,10 @@ import { useNotebookPageAiGenerate } from '@features/notebook/hooks/useNotebookP
 import { useNotebookPageTabChrome } from '@features/notebook/hooks/useNotebookPageTabChrome'
 import { CriblSearchNotebookPickerModal } from '@features/notebook/ui/CriblSearchNotebookPickerModal'
 import {
+  WorkspaceLeftPanel,
+  type LeftPanelMode,
+} from '@features/notebook/ui/WorkspaceLeftPanel'
+import {
   fetchCriblSearchNotebook,
   listCriblSearchNotebooks,
 } from '@app/criblSearchNotebookImport'
@@ -24,6 +28,7 @@ import {
 export function NotebookPage() {
   const { themeMode, setThemeMode, codeMirrorLuma } = useTheme()
   const { alert: showAlert, confirm: showConfirm, prompt: showPrompt } = useDialogs()
+  const [leftPanelMode, setLeftPanelMode] = useState<LeftPanelMode>('library')
 
   const {
     workspace,
@@ -89,7 +94,6 @@ export function NotebookPage() {
     handleNewTab,
     handleSelectTab,
     handleNewNotebook,
-    handleNewChatTab,
   } = useNotebookPageTabChrome({
     workspaceRef,
     dispatch,
@@ -97,6 +101,8 @@ export function NotebookPage() {
     activeTab,
     state,
   })
+
+  const openAiChat = () => setLeftPanelMode('chat')
 
   const {
     handleSave,
@@ -140,20 +146,23 @@ export function NotebookPage() {
 
   const tabLabels = useMemo(
     () =>
-      workspace.tabs.map((t) => ({
-        id: t.id,
-        title:
-          t.kind === 'welcome' ? 'Welcome' : t.kind === 'chat' ? 'AI Chat' : t.notebook.title,
-        dirty: tabIsDirty(t),
-      })),
+      workspace.tabs
+        // Legacy chat workspace tabs (if any) are not shown; AI Chat lives in the left panel.
+        .filter((t) => t.kind !== 'chat')
+        .map((t) => ({
+          id: t.id,
+          title: t.kind === 'welcome' ? 'Welcome' : t.notebook.title,
+          dirty: tabIsDirty(t),
+        })),
     [workspace.tabs],
   )
 
   const ready = Boolean(state && activeTab)
   const isWelcome = activeTab?.kind === 'welcome'
-  const isChat = activeTab?.kind === 'chat'
-  const toolbarVariant = isWelcome ? 'welcome' : isChat ? 'chat' : 'notebook'
+  const toolbarVariant = isWelcome ? 'welcome' : 'notebook'
   const kernelInit = state?.kernelInit
+  const targetNotebookTitle =
+    activeTab && isNotebookTabKind(activeTab.kind) ? activeTab.notebook.title : null
 
   return (
     <>
@@ -170,25 +179,38 @@ export function NotebookPage() {
             <div className="nb-loading">Loading…</div>
           ) : (
             <>
-              <NotebookSidebar
-                items={manifest?.items ?? []}
-                loading={libraryLoading}
-                error={libraryError}
-                selectedNotebookId={activeTab.kvNotebookId}
-                selectedParentId={selectedParentId}
-                movingId={movingId}
-                onRefresh={() => void loadLibrary()}
-                onSelectParent={setSelectedParentId}
-                onOpenNotebook={handleOpenNotebook}
-                onNewNotebook={handleNewNotebook}
-                onNewFolder={handleNewFolder}
-                onRename={handleRename}
-                onStartMove={setMovingId}
-                onCancelMove={() => setMovingId(null)}
-                onConfirmMove={handleConfirmMove}
-                onDelete={handleDelete}
-                moveDestinations={moveDestinations}
-                onEditNotebookTags={handleEditNotebookTags}
+              <WorkspaceLeftPanel
+                mode={leftPanelMode}
+                onModeChange={setLeftPanelMode}
+                library={
+                  <NotebookSidebar
+                    items={manifest?.items ?? []}
+                    loading={libraryLoading}
+                    error={libraryError}
+                    selectedNotebookId={activeTab.kvNotebookId}
+                    selectedParentId={selectedParentId}
+                    movingId={movingId}
+                    onRefresh={() => void loadLibrary()}
+                    onSelectParent={setSelectedParentId}
+                    onOpenNotebook={handleOpenNotebook}
+                    onNewNotebook={handleNewNotebook}
+                    onNewFolder={handleNewFolder}
+                    onRename={handleRename}
+                    onStartMove={setMovingId}
+                    onCancelMove={() => setMovingId(null)}
+                    onConfirmMove={handleConfirmMove}
+                    onDelete={handleDelete}
+                    moveDestinations={moveDestinations}
+                    onEditNotebookTags={handleEditNotebookTags}
+                  />
+                }
+                chat={
+                  <AiChatTab
+                    targetNotebookTitle={targetNotebookTitle}
+                    workspaceRef={workspaceRef}
+                    dispatch={dispatch}
+                  />
+                }
               />
               <div className="nb-workspace">
                 <div className="nb-workspace-stack">
@@ -229,30 +251,9 @@ export function NotebookPage() {
                           <WelcomePage
                             onOpenExample={handleOpenExample}
                             onNewNotebook={handleNewTab}
-                            onOpenAiChat={handleNewChatTab}
+                            onOpenAiChat={openAiChat}
                             onImportFile={handleImportFile}
                             onImportFromCriblSearch={handleOpenCriblSearchPicker}
-                          />
-                        </div>
-                      </div>
-                    ) : isChat && activeTab ? (
-                      <div className="nb-main">
-                        <div className="nb-scroll nb-scroll--ai-chat">
-                          <AiChatTab
-                            chatTabId={activeTab.id}
-                            linkedNotebookTabId={activeTab.linkedNotebookTabId ?? null}
-                            linkedNotebookTitle={
-                              activeTab.linkedNotebookTabId
-                                ? (workspace.tabs.find((t) => t.id === activeTab.linkedNotebookTabId)
-                                    ?.notebook.title ?? null)
-                                : null
-                            }
-                            workspaceRef={workspaceRef}
-                            dispatch={dispatch}
-                            onOpenLinkedNotebook={() => {
-                              const id = activeTab.linkedNotebookTabId
-                              if (id) handleSelectTab(id)
-                            }}
                           />
                         </div>
                       </div>

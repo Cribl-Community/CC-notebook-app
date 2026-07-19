@@ -105,7 +105,7 @@ export async function runChatToolLoop(args: {
     apiMessages: messages,
     assistantText:
       assistantText ||
-      'Stopped after the maximum number of tool rounds. Open the linked notebook to review cells.',
+      'Stopped after the maximum number of tool rounds. Review the notebook for new cells.',
     uiToolEvents,
   }
 }

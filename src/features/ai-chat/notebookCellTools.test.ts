@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  createChatTab,
+  createEmptyTab,
   createInitialWorkspace,
   tabWorkspaceReducer,
   type WorkspaceState,
@@ -8,10 +8,8 @@ import {
 import { executeNotebookTool, syncWorkspaceDispatch } from '@features/ai-chat/notebookCellTools'
 
 /** Mirrors production: sync wrapper updates ref immediately; React applies the same action separately. */
-function hostWithChat() {
-  let reactState: WorkspaceState = createInitialWorkspace()
-  const chat = createChatTab()
-  reactState = tabWorkspaceReducer(reactState, { type: 'ADD_TAB', tab: chat })
+function hostFrom(initial: WorkspaceState) {
+  let reactState = initial
   const workspaceRef = { current: reactState }
   const dispatch = syncWorkspaceDispatch(workspaceRef, (action) => {
     reactState = tabWorkspaceReducer(reactState, action)
@@ -19,15 +17,25 @@ function hostWithChat() {
   return {
     workspaceRef,
     dispatch,
-    chatTabId: chat.id,
     getState: () => workspaceRef.current,
     getReactState: () => reactState,
   }
 }
 
+function hostWithWelcome() {
+  return hostFrom(createInitialWorkspace())
+}
+
+function hostWithNotebook() {
+  let state = createInitialWorkspace()
+  const nb = createEmptyTab()
+  state = tabWorkspaceReducer(state, { type: 'ADD_TAB', tab: nb })
+  return { ...hostFrom(state), notebookTabId: nb.id }
+}
+
 describe('executeNotebookTool', () => {
-  it('creates a linked notebook and python cell', () => {
-    const host = hostWithChat()
+  it('creates a notebook from Welcome and adds a python cell', () => {
+    const host = hostWithWelcome()
     const result = JSON.parse(
       executeNotebookTool(host, {
         id: 'c1',
@@ -35,18 +43,13 @@ describe('executeNotebookTool', () => {
       }),
     ) as { ok: boolean; cellId: string }
     expect(result.ok).toBe(true)
-    const chat = host.getState().tabs.find((t) => t.id === host.chatTabId)
-    expect(chat?.linkedNotebookTabId).toBeTruthy()
-    const nb = host.getState().tabs.find((t) => t.id === chat?.linkedNotebookTabId)
-    expect(nb?.notebook.cells.some((c) => c.cell_type === 'code' && c.source.includes('print(1)'))).toBe(
-      true,
-    )
-    // Chat remains selected
-    expect(host.getState().activeTabId).toBe(host.chatTabId)
+    const active = host.getState().tabs.find((t) => t.id === host.getState().activeTabId)
+    expect(active?.kind).toBe('notebook')
+    expect(active?.notebook.cells.some((c) => c.source.includes('print(1)'))).toBe(true)
   })
 
-  it('creates a search magic cell', () => {
-    const host = hostWithChat()
+  it('writes into the active notebook', () => {
+    const host = hostWithNotebook()
     const result = JSON.parse(
       executeNotebookTool(host, {
         id: 'c2',
@@ -60,15 +63,40 @@ describe('executeNotebookTool', () => {
       }),
     ) as { ok: boolean; cellId: string }
     expect(result.ok).toBe(true)
-    const chat = host.getState().tabs.find((t) => t.id === host.chatTabId)
-    const nb = host.getState().tabs.find((t) => t.id === chat?.linkedNotebookTabId)
+    expect(host.getState().activeTabId).toBe(host.notebookTabId)
+    const nb = host.getState().tabs.find((t) => t.id === host.notebookTabId)
     const src = nb?.notebook.cells.find((c) => c.id === result.cellId)?.source ?? ''
     expect(src).toMatch(/^%%cribl_search/)
     expect(src).toContain('limit 10')
   })
 
+  it('inserts after the selected cell', () => {
+    const host = hostWithNotebook()
+    executeNotebookTool(host, {
+      id: 'a',
+      function: { name: 'create_python_cell', arguments: '{"source":"a=1"}' },
+    })
+    executeNotebookTool(host, {
+      id: 'b',
+      function: { name: 'create_python_cell', arguments: '{"source":"b=2"}' },
+    })
+    const nb = host.getState().tabs.find((t) => t.id === host.notebookTabId)!
+    const firstId = nb.notebook.cells[0]!.id
+    host.dispatch({
+      type: 'TAB_NOTEBOOK',
+      tabId: host.notebookTabId,
+      action: { type: 'SELECT_CELL', id: firstId },
+    })
+    executeNotebookTool(host, {
+      id: 'mid',
+      function: { name: 'create_python_cell', arguments: '{"source":"mid=3"}' },
+    })
+    const cells = host.getState().tabs.find((t) => t.id === host.notebookTabId)!.notebook.cells
+    expect(cells.map((c) => c.source)).toEqual(['a=1', 'mid=3', 'b=2'])
+  })
+
   it('keeps React state in sync when adding markdown then code (double-apply)', () => {
-    const host = hostWithChat()
+    const host = hostWithNotebook()
     executeNotebookTool(host, {
       id: 'm1',
       function: {
@@ -83,9 +111,8 @@ describe('executeNotebookTool', () => {
         arguments: JSON.stringify({ source: 'print(df)' }),
       },
     })
-    const chat = host.getState().tabs.find((t) => t.id === host.chatTabId)
-    const refNb = host.getState().tabs.find((t) => t.id === chat?.linkedNotebookTabId)?.notebook
-    const reactNb = host.getReactState().tabs.find((t) => t.id === chat?.linkedNotebookTabId)?.notebook
+    const refNb = host.getState().tabs.find((t) => t.id === host.notebookTabId)?.notebook
+    const reactNb = host.getReactState().tabs.find((t) => t.id === host.notebookTabId)?.notebook
     expect(reactNb?.cells.map((c) => ({ id: c.id, source: c.source }))).toEqual(
       refNb?.cells.map((c) => ({ id: c.id, source: c.source })),
     )
@@ -94,7 +121,7 @@ describe('executeNotebookTool', () => {
   })
 
   it('rejects invalid api path', () => {
-    const host = hostWithChat()
+    const host = hostWithWelcome()
     const result = JSON.parse(
       executeNotebookTool(host, {
         id: 'c3',

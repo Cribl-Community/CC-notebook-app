@@ -2,7 +2,6 @@ import { useCallback } from 'react'
 import type { Dispatch } from 'react'
 import { serializeNotebookToIpynbJson, titleToDownloadFilename } from '@features/notebook/codec/ipynb'
 import {
-  createChatTab,
   isNotebookTabKind,
   tabIsDirty,
   type NotebookTab,
@@ -66,16 +65,11 @@ export function useNotebookPageTabChrome(args: UseNotebookPageTabChromeArgs) {
     dispatch({ type: 'ADD_TAB' })
   }, [dispatch])
 
-  const handleNewChatTab = useCallback(() => {
-    dispatch({ type: 'ADD_TAB', tab: createChatTab() })
-  }, [dispatch])
-
   return {
     handleDownload,
     handleCloseTab,
     handleNewTab,
     handleSelectTab,
     handleNewNotebook,
-    handleNewChatTab,
   }
 }

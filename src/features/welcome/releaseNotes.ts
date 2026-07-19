@@ -14,7 +14,7 @@ export const RELEASE_NOTES: ReleaseEntry[] = [
     version: '1.5.0',
     date: '2026-07-19',
     highlights: [
-      'AI: **AI Chat** tab (Welcome → AI Chat) uses Cribl `open_investigator` with client tool calls to author linked notebooks — markdown, Python, `%%cribl_search`, `%%cribl_api`, and lookup magic cells.',
+      'AI: **AI Chat** left-panel mode (vertical tab beside Notebooks) uses Cribl `open_investigator` with client tools that insert cells into the open notebook after the selection — markdown, Python, `%%cribl_search`, `%%cribl_api`, and lookup magic cells.',
     ],
   },
   {

@@ -191,7 +191,7 @@ The exact nesting lives in [`src/App.tsx`](../src/App.tsx). Per-tab widget state
 - `cribl-api/` — `%%cribl_api` cell magic: OpenAPI-backed path completion,
   HTTP execution, and integration with notebook Jinja helpers.
 - `ai-riptide/` — Cribl Riptide integration (one-shot Python generate / fix).
-- `ai-chat/` — AI Chat workspace tab; multi-turn `open_investigator` with client tools that create cells on a linked notebook.
+- `ai-chat/` — AI Chat left-panel mode; multi-turn `open_investigator` with client tools that insert cells into the active notebook (or create one).
   - `riptideService.ts` — raw request/response helpers.
   - `app/riptideAiCodeAdapter.ts` — `riptideAiCodeService` implementing the
     `AiCodeService` port (and reporting `isAvailable()` based on the

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { AiAgentChatService } from '@ports/AiAgentChatService'
 import {
-  createChatTab,
+  createEmptyTab,
   createInitialWorkspace,
   tabWorkspaceReducer,
   type WorkspaceState,
@@ -13,8 +13,8 @@ import { syncWorkspaceDispatch } from '@features/ai-chat/notebookCellTools'
 describe('runChatToolLoop', () => {
   it('executes tool_calls then finishes on a text turn', async () => {
     let state: WorkspaceState = createInitialWorkspace()
-    const chatTab = createChatTab()
-    state = tabWorkspaceReducer(state, { type: 'ADD_TAB', tab: chatTab })
+    const nbTab = createEmptyTab()
+    state = tabWorkspaceReducer(state, { type: 'ADD_TAB', tab: nbTab })
     const workspaceRef = { current: state }
     // Production shape: React applies the same action on a separate state tree.
     const dispatch = syncWorkspaceDispatch(workspaceRef, (action) => {
@@ -69,14 +69,13 @@ describe('runChatToolLoop', () => {
       priorApiMessages: [],
       userText: 'Make a short notebook',
       tools: NOTEBOOK_CELL_TOOLS,
-      toolHost: { workspaceRef, dispatch, chatTabId: chatTab.id },
+      toolHost: { workspaceRef, dispatch },
     })
 
     expect(result.assistantText).toContain('Created an intro')
     expect(result.uiToolEvents).toEqual([{ summary: 'Created markdown cell', ok: true }])
     expect(chat.runAgentTurn).toHaveBeenCalledTimes(2)
-    const linked = workspaceRef.current.tabs.find((t) => t.id === chatTab.id)?.linkedNotebookTabId
-    const nb = workspaceRef.current.tabs.find((t) => t.id === linked)
+    const nb = workspaceRef.current.tabs.find((t) => t.id === nbTab.id)
     expect(nb?.notebook.cells.some((c) => c.cell_type === 'markdown' && c.source.includes('# Hi'))).toBe(
       true,
     )

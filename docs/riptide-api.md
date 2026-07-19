@@ -63,7 +63,7 @@ Notes:
   ```
 
   - **Per-cell Riptide / Suggest Fix** (`riptideService.ts`) still sends `tools: []` and only concatenates assistant text.
-  - **AI Chat tab** (`src/features/ai-chat/`) sends notebook-authoring tools and runs a client tool loop: on `tool_calls`, execute locally, append assistant (`content: ""`) + `role: "tool"` messages, re-POST until text-only (max 8 rounds).
+  - **AI Chat** (left panel, `src/features/ai-chat/`) sends notebook-authoring tools and runs a client tool loop: on `tool_calls`, execute locally against the open notebook (insert after the selected cell), append assistant (`content: ""`) + `role: "tool"` messages, re-POST until text-only (max 8 rounds).
 
 ## Response: NDJSON stream
 
@@ -81,7 +81,7 @@ Typical line shapes:
 
    `{"name":"agent:open_investigator","role":"assistant","content":null,"tool_calls":[{"id":"...","function":{"name":"<toolName>","arguments":"<JSON string>"}}]}`
 
-   The per-cell Python path does not execute tool calls; it only extracts text / fenced Python. The AI Chat tab executes matching client tools (create markdown/Python/magic cells on a linked notebook).
+   The per-cell Python path does not execute tool calls; it only extracts text / fenced Python. AI Chat executes matching client tools (create markdown/Python/magic cells on the open notebook).
 
 Timeouts: use `AbortController` and an appropriate limit for long streams (the KQL client uses ~60s for translation in `src/platform/cribl/aiTranslate.ts`; interactive chat may need longer).
 

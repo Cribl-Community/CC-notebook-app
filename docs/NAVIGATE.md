@@ -55,7 +55,7 @@ flowchart TB
 | `cribl-search/` | `%%cribl_search`, lookup save/load/delete magics, KQL editor, output | `criblSearchMagic.ts`, `criblSearchLookupMagic.ts`, `editor/criblSearchEditor.ts`, `ui/CriblSearchOutput.tsx` |
 | `cribl-api/` | `%%cribl_api` magic, OpenAPI catalog + completions, HTTP from cells | `criblApiMagic.ts`, `criblApiCatalog.ts`, `editor/criblApiCompletions.ts`, `generated/criblApiOpenApiIndex.json` |
 | `ai-riptide/` | Riptide client helpers (one-shot codegen) | `riptideService.ts` (adapter: `app/riptideAiCodeAdapter.ts`) |
-| `ai-chat/` | AI Chat tab + `open_investigator` tool loop | `ui/AiChatTab.tsx`, `toolLoop.ts`, `notebookCellTools.ts` (adapter: `app/openInvestigatorChatAdapter.ts`) |
+| `ai-chat/` | AI Chat left-panel + `open_investigator` tool loop (edits the open notebook) | `ui/AiChatTab.tsx`, `toolLoop.ts`, `notebookCellTools.ts` (adapter: `app/openInvestigatorChatAdapter.ts`) |
 | `examples/` | Bundled example notebooks manifest + loading | `useExamples.ts`, `examplesManifest.ts` |
 | `welcome/` | Welcome / release notes + proxy smoke check (uses examples) | `WelcomePage.tsx`, `releaseNotes.ts` |
 
