@@ -37,13 +37,14 @@ flowchart TB
   E["EnvProvider"]
   T["ThemeProvider"]
   AC["AiCodeProvider"]
+  AH["AiChatProvider"]
   D["DialogProvider"]
   S["SearchProvider"]
   L["LookupProvider"]
   R["NotebookRepoProvider"]
   K["KernelProvider"]
   N["NotebookPage"]
-  E --> T --> AC --> D --> S --> L --> R --> K --> N
+  E --> T --> AC --> AH --> D --> S --> L --> R --> K --> N
 ```
 
 ## `src/features/` at a glance
@@ -55,7 +56,7 @@ flowchart TB
 | `cribl-search/` | `%%cribl_search`, lookup save/load/delete magics, KQL editor, output | `criblSearchMagic.ts`, `criblSearchLookupMagic.ts`, `editor/criblSearchEditor.ts`, `ui/CriblSearchOutput.tsx` |
 | `cribl-api/` | `%%cribl_api` magic, OpenAPI catalog + completions, HTTP from cells | `criblApiMagic.ts`, `criblApiCatalog.ts`, `editor/criblApiCompletions.ts`, `generated/criblApiOpenApiIndex.json` |
 | `ai-riptide/` | Riptide client helpers (one-shot codegen) | `riptideService.ts` (adapter: `app/riptideAiCodeAdapter.ts`) |
-| `ai-chat/` | AI Chat left-panel + `open_investigator` tool loop (edits the open notebook) | `ui/AiChatTab.tsx`, `toolLoop.ts`, `notebookCellTools.ts` (adapter: `app/openInvestigatorChatAdapter.ts`) |
+| `ai-chat/` | AI Chat left-panel + `open_investigator` tool loop (edits the **active** notebook) | `hooks/useAiChatSession.ts`, `ui/AiChatTab.tsx`, `toolLoop.ts` (injected `executeTool`), `notebookCellTools.ts`, `agentNdjson.ts` (parse-only); HTTP: `app/openInvestigatorChatHttp.ts` + `app/openInvestigatorChatAdapter.ts` |
 | `examples/` | Bundled example notebooks manifest + loading | `useExamples.ts`, `examplesManifest.ts` |
 | `welcome/` | Welcome / release notes + proxy smoke check (uses examples) | `WelcomePage.tsx`, `releaseNotes.ts` |
 
@@ -71,6 +72,7 @@ flowchart TB
 | Change **Search lookup** magics (`%%cribl_*_search_lookup`) | `src/features/cribl-search/criblSearchLookupMagic.ts`, `src/ports/LookupService.ts`, `src/app/providers/LookupProvider.tsx` |
 | Change **`%%cribl_api`** REST magic or catalog | `src/features/cribl-api/`, regenerate with `npm run update:cribl-api` |
 | Work on **ipywidgets** / interactive output | `src/features/notebook/widgets/` |
+| Change **AI Chat** (left panel, cell-authoring tools) | `src/features/ai-chat/`, `src/ports/AiAgentChatService.ts`, `docs/riptide-api.md` |
 | Change **welcome / examples** list | `src/features/welcome/`, `src/features/examples/` |
 | Understand **Cribl platform** wiring (fetch proxy, KV, `proxies.yml`) | [PLATFORM.md](./PLATFORM.md) |
 | Run or extend **staging E2E** | [E2E_STAGING.md](./E2E_STAGING.md), `e2e/specs/` |

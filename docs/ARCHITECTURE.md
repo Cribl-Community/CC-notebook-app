@@ -71,13 +71,14 @@ flowchart LR
   EP["EnvProvider"]
   TP["ThemeProvider"]
   ACP["AiCodeProvider"]
+  ACH["AiChatProvider"]
   DP["DialogProvider"]
   SP["SearchProvider"]
   LP["LookupProvider"]
   NR["NotebookRepoProvider"]
   KP["KernelProvider"]
   NP["NotebookPage"]
-  EP --> TP --> ACP --> DP --> SP --> LP --> NR --> KP --> NP
+  EP --> TP --> ACP --> ACH --> DP --> SP --> LP --> NR --> KP --> NP
 ```
 
 The exact nesting lives in [`src/App.tsx`](../src/App.tsx). Per-tab widget state
@@ -119,6 +120,10 @@ The exact nesting lives in [`src/App.tsx`](../src/App.tsx). Per-tab widget state
   - `AiCodeProvider` / `useAiCodeService` — injects an `AiCodeService`
     implementation. Production: `riptideAiCodeService`. Tests pass a
     stub via the `value` prop.
+  - `AiChatProvider` / `useAiChatService` — injects an `AiAgentChatService`
+    for multi-turn left-panel AI Chat. Production: `openInvestigatorChatService`
+    (`app/openInvestigatorChatAdapter.ts` + HTTP in `app/openInvestigatorChatHttp.ts`).
+    Tests pass a stub via the `value` prop.
   - `SearchProvider` / `useSearchService` — injects `SearchService` for
     `%%cribl_search`. Production: `criblSearchService` in
     `platform/adapters/searchServiceAdapter.ts`.
@@ -191,11 +196,23 @@ The exact nesting lives in [`src/App.tsx`](../src/App.tsx). Per-tab widget state
 - `cribl-api/` — `%%cribl_api` cell magic: OpenAPI-backed path completion,
   HTTP execution, and integration with notebook Jinja helpers.
 - `ai-riptide/` — Cribl Riptide integration (one-shot Python generate / fix).
-- `ai-chat/` — AI Chat left-panel mode; multi-turn `open_investigator` with client tools that insert cells into the active notebook (or create one).
-  - `riptideService.ts` — raw request/response helpers.
+  - `riptideService.ts` — request/response helpers (`tools: []`).
   - `app/riptideAiCodeAdapter.ts` — `riptideAiCodeService` implementing the
     `AiCodeService` port (and reporting `isAvailable()` based on the
     Cribl API base).
+- `ai-chat/` — AI Chat left-panel mode (`WorkspaceLeftPanel` mode `chat`);
+  multi-turn `open_investigator` with client tools that insert cells into the
+  **active** notebook (or create one). Workspace tabs remain `welcome` | `notebook`
+  only (no `TabKind: 'chat'`).
+  - `hooks/useAiChatSession.ts` — session + send/clear/stop orchestration.
+  - `ui/AiChatTab.tsx` — presentational Capra chat UI.
+  - `toolLoop.ts` — multi-round agent loop with **injected** `executeTool`
+    (no hard dependency on notebook mutations).
+  - `notebookCellTools.ts` — notebook-authoring tool executor (magic parsers via
+    `@features/cribl-search` / `@features/cribl-api` barrels).
+  - `agentNdjson.ts` — NDJSON parse + chat constants (no `fetch`).
+  - `app/openInvestigatorChatHttp.ts` + `app/openInvestigatorChatAdapter.ts` —
+    HTTP + `AiAgentChatService` wiring in the composition root.
 - `examples/` — bundled notebook examples.
   - `examplesManifest.ts` — pure manifest parsing.
   - `useExamples.ts` — fetches `/Examples/manifest.json`, tracks
@@ -253,6 +270,8 @@ This avoids `ports/*` importing from `platform/*` or feature internals.
   helpers, KV key paths, and tree/move utilities (shared by `features/library` and
   `platform/adapters/notebookKv.ts` so repo adapters need not import feature internals).
 - `domain/exampleDataUrls.ts` — allowed sample-data URLs for bundled examples.
+- `domain/openInvestigatorAgent.ts` — shared `OPEN_INVESTIGATOR_AGENT_PATH` used by
+  one-shot Riptide and multi-turn AI Chat clients.
 - `domain/criblUser.ts` — `getCriblUser` shape used for per-user KV scoping.
 - `domain/tagFilter.ts` — pure tag-filtering helper for the library / examples UI.
 - `domain/index.ts` — barrel re-exporting the common DTO types.
@@ -267,6 +286,7 @@ no coupling to a specific adapter.
 | `KernelPort` | Python kernel lifecycle + execute/complete | `PyodideKernelAdapter` |
 | `NotebookRepo` | Save/load notebooks (+ manifest) | `kvNotebookRepo` (`platform/adapters/notebookRepoAdapter.ts`) |
 | `AiCodeService` | Natural-language → Python, error-fix suggestions | `riptideAiCodeService` (`app/riptideAiCodeAdapter.ts`) |
+| `AiAgentChatService` | Multi-turn chat + client tool rounds (`open_investigator`) | `openInvestigatorChatService` (`app/openInvestigatorChatAdapter.ts`) |
 | `SearchService` | Cribl Search job orchestration | `criblSearchService` (`platform/adapters/searchServiceAdapter.ts`) |
 | `LookupService` | Cribl Search lookup file CRUD (`%%cribl_*_search_lookup`) | Search lookup adapter (`/m/{group}/system/lookups`) |
 | `DialogService` | alert / confirm / prompt | `DialogProvider` |
