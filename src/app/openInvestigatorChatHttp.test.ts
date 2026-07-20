@@ -8,15 +8,14 @@ describe('postOpenInvestigatorTurn', () => {
   })
 
   it('POSTs to open_investigator and returns parsed text + tool_calls', async () => {
-    const fetchMock = vi.fn(
-      async (_url: string | URL | Request, _init?: RequestInit): Promise<Response> =>
-        new Response(
-          [
-            '{"name":"agent:open_investigator","role":"assistant","content":"Hi"}',
-            '{"name":"agent:open_investigator","role":"assistant","content":"","tool_calls":[{"id":"t1","function":{"name":"create_markdown_cell","arguments":"{\\"source\\":\\"# x\\"}"}}]}',
-          ].join('\n'),
-          { status: 200 },
-        ),
+    const fetchMock = vi.fn(async (): Promise<Response> =>
+      new Response(
+        [
+          '{"name":"agent:open_investigator","role":"assistant","content":"Hi"}',
+          '{"name":"agent:open_investigator","role":"assistant","content":"","tool_calls":[{"id":"t1","function":{"name":"create_markdown_cell","arguments":"{\\"source\\":\\"# x\\"}"}}]}',
+        ].join('\n'),
+        { status: 200 },
+      ),
     )
     vi.stubGlobal('fetch', fetchMock)
 
