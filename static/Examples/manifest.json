@@ -1,0 +1,190 @@
+{
+  "version": 2,
+  "notebooks": [
+    {
+      "filename": "00_Getting_Started_Tour.ipynb",
+      "title": "00 Getting Started Tour",
+      "summary": "Start here: run your first cells and open curated follow-ups.",
+      "tags": [
+        "onboarding",
+        "starter"
+      ],
+      "level": "beginner",
+      "estimatedRuntime": "5 min",
+      "recommendedOrder": 1
+    },
+    {
+      "filename": "AI_Magic.ipynb",
+      "title": "AI Magic",
+      "summary": "Prompt patterns for generate-and-iterate visualizations and debugging.",
+      "tags": [
+        "ai",
+        "prompting"
+      ],
+      "level": "intermediate",
+      "estimatedRuntime": "10 min",
+      "recommendedOrder": 9
+    },
+    {
+      "filename": "Anomaly_Detection_PyOD.ipynb",
+      "title": "Anomaly Detection PyOD",
+      "summary": "Time-series windows: PyOD where WASM allows, otherwise sklearn-labeled substitutes (Numba/torch slots); temperatures via %%cribl_search externaldata; interactive Plotly per model with anomaly markers (after JaminJeong/AnomalyDetectionUsingPyOD).",
+      "tags": [
+        "python",
+        "ml",
+        "pyod",
+        "visualization",
+        "plotly"
+      ],
+      "level": "advanced",
+      "estimatedRuntime": "25–40 min first run",
+      "recommendedOrder": 11
+    },
+    {
+      "filename": "Composio_Python_SDK.ipynb",
+      "title": "Composio Python SDK",
+      "summary": "Explore Composio toolkits and tools via composio-client; paste your API key and run.",
+      "tags": [
+        "composio",
+        "python",
+        "integration",
+        "sdk",
+        "ai-tools"
+      ],
+      "level": "advanced",
+      "estimatedRuntime": "10 min",
+      "recommendedOrder": 13
+    },
+    {
+      "filename": "Cribl_API_Examples.ipynb",
+      "title": "Cribl API Examples",
+      "summary": "Use %%cribl_api for GET/POST requests and templated YAML payloads.",
+      "tags": [
+        "api",
+        "magic-cells"
+      ],
+      "level": "intermediate",
+      "estimatedRuntime": "12 min",
+      "recommendedOrder": 8
+    },
+    {
+      "filename": "Cribl_Python_SDK.ipynb",
+      "title": "Cribl Python SDK",
+      "summary": "SDK walkthrough for inventory insights and plotting with AI prompt helpers.",
+      "tags": [
+        "sdk",
+        "python"
+      ],
+      "level": "advanced",
+      "estimatedRuntime": "15 min",
+      "recommendedOrder": 7
+    },
+    {
+      "filename": "Cribl_Search_Examples.ipynb",
+      "title": "Cribl Search Examples",
+      "summary": "KQL and English search patterns with templating and follow-up analysis.",
+      "tags": [
+        "search",
+        "kql"
+      ],
+      "level": "beginner",
+      "estimatedRuntime": "12 min",
+      "recommendedOrder": 6
+    },
+    {
+      "filename": "Cribl_Search_Lookup_Magics.ipynb",
+      "title": "Cribl Search Lookup Magics",
+      "summary": "Search lookups: save/load/delete magics, $vt_lookups query, and %%cribl_api PUT/POST/DELETE REST (default_search).",
+      "tags": [
+        "search",
+        "lookups",
+        "magic-cells"
+      ],
+      "level": "intermediate",
+      "estimatedRuntime": "8 min",
+      "recommendedOrder": 12
+    },
+    {
+      "filename": "Incident_Triage_Playbook.ipynb",
+      "title": "Incident Triage Playbook",
+      "summary": "End-to-end triage flow with search, API checks, charts, and AI prompts.",
+      "tags": [
+        "workflow",
+        "search",
+        "api",
+        "ai"
+      ],
+      "level": "intermediate",
+      "estimatedRuntime": "15 min",
+      "recommendedOrder": 2
+    },
+    {
+      "filename": "Malware_Hash_Threat_Hunt.ipynb",
+      "title": "Malware Hash Threat Hunt",
+      "summary": "Hosted TI + PE CSVs (notebook-app-example-data) via Search HTTP dataset; MD5 lookup join and charts. Run All from Welcome.",
+      "tags": [
+        "security",
+        "threat-hunting",
+        "malware",
+        "hash",
+        "search",
+        "join",
+        "lookups",
+        "api",
+        "externaldata",
+        "visualization"
+      ],
+      "level": "intermediate",
+      "estimatedRuntime": "20–35 min",
+      "recommendedOrder": 4
+    },
+    {
+      "filename": "Process_Lineage_Sigma_Hunt.ipynb",
+      "title": "Process Lineage Sigma Hunt",
+      "summary": "Trace Sigma-hit process lineage (WMI → PowerShell → rundll32) as a networkx kill-chain, then rank rare port/user/URL tuples with a rarity baseline. Hosted Windows telemetry via %%cribl_search externaldata (after MohitDabas/sigmalineage-mcp).",
+      "tags": [
+        "security",
+        "threat-hunting",
+        "sigma",
+        "evtx",
+        "process-lineage",
+        "networkx",
+        "externaldata",
+        "visualization"
+      ],
+      "level": "advanced",
+      "estimatedRuntime": "15–25 min first run",
+      "recommendedOrder": 5
+    },
+    {
+      "filename": "Threat_Hunting_Playbook.ipynb",
+      "title": "Threat Hunting Playbook",
+      "summary": "Pick six external VPC flow IPs from cribl_search_sample, save a static lookup, join + timestats, and chart the timeline.",
+      "tags": [
+        "security",
+        "threat-hunting",
+        "search",
+        "join",
+        "lookups",
+        "timestats",
+        "visualization"
+      ],
+      "level": "intermediate",
+      "estimatedRuntime": "8–12 min",
+      "recommendedOrder": 3
+    },
+    {
+      "filename": "Visualisations.ipynb",
+      "title": "Visualisations",
+      "summary": "Rendering recipes with Matplotlib, Plotly, and Vega-Lite.",
+      "tags": [
+        "visualization",
+        "plotly",
+        "altair"
+      ],
+      "level": "beginner",
+      "estimatedRuntime": "10 min",
+      "recommendedOrder": 10
+    }
+  ]
+}
