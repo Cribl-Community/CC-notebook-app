@@ -8,7 +8,7 @@ describe('postOpenInvestigatorTurn', () => {
   })
 
   it('POSTs to open_investigator and returns parsed text + tool_calls', async () => {
-    const fetchMock = vi.fn(async (): Promise<Response> =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response(
         [
           '{"name":"agent:open_investigator","role":"assistant","content":"Hi"}',
@@ -26,7 +26,8 @@ describe('postOpenInvestigatorTurn', () => {
       tools: [],
     })
 
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(`/api/v1${OPEN_INVESTIGATOR_AGENT_PATH}`)
+    const requestedUrl = fetchMock.mock.calls[0]?.[0]
+    expect(String(requestedUrl)).toContain(`/api/v1${OPEN_INVESTIGATOR_AGENT_PATH}`)
     expect(result.assistantText).toBe('Hi')
     expect(result.toolCalls).toHaveLength(1)
     expect(result.toolCalls[0]?.function.name).toBe('create_markdown_cell')
